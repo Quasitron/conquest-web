@@ -151,7 +151,7 @@ Cities defend as an Army (Attack 2/Defense 2, 1 hit) and never attack.
   for production.
 
 ### Victory
-- A player is eliminated at the end of their turn if they own no cities and no units.
+- At the end of every turn, any player who owns no cities and no units is eliminated.
 - A player may resign: their units are removed and their cities become neutral.
 - Last remaining player wins.
 
