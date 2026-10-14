@@ -76,6 +76,7 @@ export interface GameState {
   nextUnitId: number;
   rngState: number;
   winner: PlayerId | null;
+  over: boolean;
 }
 
 export type Command =
@@ -112,7 +113,7 @@ export type GameEvent =
   | { type: 'unitProduced'; unitId: number; cityId: number; unitType: UnitType }
   | { type: 'turnStarted'; player: PlayerId; turn: number }
   | { type: 'playerEliminated'; player: PlayerId }
-  | { type: 'gameOver'; winner: PlayerId };
+  | { type: 'gameOver'; winner: PlayerId | null };
 
 export type ApplyResult =
   | { ok: true; state: GameState; events: GameEvent[] }

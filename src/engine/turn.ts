@@ -33,8 +33,9 @@ export function checkEliminations(s: GameState, events: GameEvent[]): void {
 
 function checkWinner(s: GameState, events: GameEvent[]): boolean {
   const alive = s.players.filter((p) => !p.eliminated);
-  if (alive.length !== 1) return false;
-  s.winner = alive[0].id;
+  if (alive.length > 1) return false;
+  s.winner = alive.length === 1 ? alive[0].id : null;
+  s.over = true;
   events.push({ type: 'gameOver', winner: s.winner });
   return true;
 }

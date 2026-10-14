@@ -38,6 +38,7 @@ export function createGame(o: NewGameOptions): GameState {
     nextUnitId: 1,
     rngState: o.seed | 0,
     winner: null,
+    over: false,
   };
   o.startCityIndices.forEach((ci, pid) => {
     s.cities[ci].owner = pid;

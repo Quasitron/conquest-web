@@ -7,6 +7,7 @@ export interface PlayerView {
   turn: number;
   currentPlayer: PlayerId;
   winner: PlayerId | null;
+  over: boolean;
   width: number;
   height: number;
   wrap: boolean;
@@ -26,6 +27,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     turn: s.turn,
     currentPlayer: s.currentPlayer,
     winner: s.winner,
+    over: s.over,
     width: s.width,
     height: s.height,
     wrap: s.wrap,

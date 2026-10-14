@@ -59,7 +59,7 @@ describe('apply', () => {
 
   it('rejects everything once the game is over', () => {
     const s = makeGame(M);
-    s.winner = 0;
+    s.over = true;
     expect(apply(s, { type: 'endTurn' }).ok).toBe(false);
   });
 

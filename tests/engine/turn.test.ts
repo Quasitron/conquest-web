@@ -97,6 +97,23 @@ describe('elimination and victory', () => {
     expect(s.winner).toBeNull();
   });
 
+  it('ends the game with no winner when every player is eliminated at once', () => {
+    const s = makeGame(['*#*#*'], { players: 3 });
+    s.players[1].eliminated = true;
+    for (const c of s.cities) c.owner = null;
+    const events: GameEvent[] = [];
+    endTurn(s, events);
+    expect(s.over).toBe(true);
+    expect(s.winner).toBeNull();
+    expect(events).toContainEqual({ type: 'gameOver', winner: null });
+  });
+
+  it('a sole survivor sets winner and over', () => {
+    const s = makeGame(T);
+    resign(s, []);
+    expect(s.over).toBe(true);
+  });
+
   it('resigning in a two-player game hands victory to the opponent', () => {
     const s = makeGame(T);
     resign(s, []);

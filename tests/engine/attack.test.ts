@@ -35,6 +35,20 @@ describe('unit combat', () => {
     expect(a).toMatchObject({ x: 2, y: 1 });
   });
 
+  it('a winner does not advance onto a square still holding other enemy units', () => {
+    const s = makeGame(M);
+    const c = addUnit(s, 'cruiser', 0, 3, 1);
+    addUnit(s, 'destroyer', 1, 4, 1);
+    addUnit(s, 'fighter', 1, 4, 1);
+    expect(moveUnit(s, attackerAlwaysHits(), c, 2, [])).toBeNull();
+    expect(c).toMatchObject({ x: 3, y: 1 });
+    expect(s.units.filter((u) => u.x === 4 && u.y === 1)).toHaveLength(1);
+    for (const u of s.units) {
+      const owners = new Set(s.units.filter((o) => o.x === u.x && o.y === u.y).map((o) => o.owner));
+      expect(owners.size).toBe(1);
+    }
+  });
+
   it('enforces attack restrictions', () => {
     const s = makeGame(M);
     const army = addUnit(s, 'army', 0, 2, 1);

@@ -38,21 +38,33 @@ function checkInvariants(s: GameState): void {
     const cargo = s.units.filter((c) => c.carriedBy === u.id).length;
     expect(cargo).toBeLessThanOrEqual(cargoCapacity(u));
   }
+  // Opposing units never share a square (cities aside).
+  const ownerAt = new Map<number, number>();
+  for (const u of s.units) {
+    if (u.carriedBy !== null || s.cities.some((c) => c.x === u.x && c.y === u.y)) continue;
+    const key = u.y * s.width + u.x;
+    const seen = ownerAt.get(key);
+    if (seen !== undefined) expect(u.owner).toBe(seen);
+    ownerAt.set(key, u.owner);
+  }
 }
 
-function playRandomly(initial: GameState, count: number, seed: number) {
+function playRandomly(initial: GameState, count: number, seed: number, extras = false) {
   const r = new Rng(seed);
   let s = initial;
   const commands: Command[] = [];
   let cargoStates = 0;
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(r.next() * xs.length)];
-  for (let i = 0; i < count && s.winner === null; i++) {
+  for (let i = 0; i < count && !s.over; i++) {
     const me = s.currentPlayer;
     const units = s.units.filter((u) => u.owner === me);
     const cities = s.cities.filter((c) => c.owner === me);
+    const extra = extras ? r.next() : 1;
     const roll = r.next();
     let cmd: Command;
-    if (roll < 0.8 && units.length) cmd = { type: 'move', unitId: pick(units).id, dir: Math.floor(r.next() * 8) as Dir };
+    if (extra < 0.002) cmd = { type: 'resign' };
+    else if (extra < 0.022 && units.length) cmd = { type: 'disband', unitId: pick(units).id };
+    else if (roll < 0.8 && units.length) cmd = { type: 'move', unitId: pick(units).id, dir: Math.floor(r.next() * 8) as Dir };
     else if (roll < 0.86 && cities.length) cmd = { type: 'setProduction', cityId: pick(cities).id, unitType: pick(UNIT_TYPES) };
     else cmd = { type: 'endTurn' };
     const res = apply(s, cmd);
@@ -73,6 +85,18 @@ describe('determinism', () => {
     expect(commands.length).toBeGreaterThan(100);
     expect(cargoStates).toBeGreaterThan(0);
     expect(hashState(replay(initial, commands))).toBe(hashState(final));
+  });
+
+  it('a three-player game with disbands and resignations replays exactly and never hangs', () => {
+    let finished = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const initial = makeGame(WORLD, { players: 3, starts: [0, 5, 2], seed });
+      const { final, commands } = playRandomly(initial, 6000, seed + 100, true);
+      expect(commands.length).toBeGreaterThan(50);
+      expect(hashState(replay(initial, commands))).toBe(hashState(final));
+      if (final.over) finished++;
+    }
+    expect(finished).toBeGreaterThan(0);
   });
 
   it('the same seed and commands give the same result twice', () => {

@@ -2,7 +2,7 @@ import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
 import { CITY_COMBAT, UNIT_STATS, isCrippled } from './units';
 import { terrainAt } from './map';
-import { destroyUnit, trimCargo, unitsAt } from './query';
+import { destroyUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
 import { resolveCombat } from './combat';
 import { relocate, settleAircraft, spendMove } from './movement';
@@ -59,7 +59,8 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   if (r.attackerWon) {
     destroyUnit(s, def, 'combat', events);
     trimCargo(s, att, events);
-    if (canOccupy(att, terrainAt(s, target.x, target.y))) {
+    const targetClear = topLevelUnitsAt(s, target.x, target.y).every((u) => areFriendly(s, u.owner, att.owner));
+    if (targetClear && canOccupy(att, terrainAt(s, target.x, target.y))) {
       att.carriedBy = null;
       relocate(s, att, target, events);
     }
