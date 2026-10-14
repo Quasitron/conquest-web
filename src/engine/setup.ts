@@ -1,5 +1,6 @@
 import type { ParsedMap } from './ascii';
 import type { GameState } from './types';
+import { updateFog } from './fog';
 
 export interface NewGameOptions {
   map: ParsedMap;
@@ -42,5 +43,6 @@ export function createGame(o: NewGameOptions): GameState {
     s.cities[ci].owner = pid;
     s.cities[ci].production = 'army';
   });
+  for (const p of s.players) updateFog(s, p.id);
   return s;
 }
