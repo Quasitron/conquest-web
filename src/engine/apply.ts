@@ -13,6 +13,7 @@ function validDir(dir: unknown): boolean {
 
 export function apply(state: GameState, cmd: Command): ApplyResult {
   if (state.winner !== null) return { ok: false, error: 'the game is over' };
+  if (typeof cmd !== 'object' || cmd === null) return { ok: false, error: 'malformed command' };
   const s = structuredClone(state);
   const rng = new Rng(s.rngState);
   const events: GameEvent[] = [];

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { hashState } from '../../src/engine/hash';
 import { replay } from '../../src/engine/replay';
@@ -28,6 +28,8 @@ function checkInvariants(s: GameState): void {
       const carrier = s.units.find((c) => c.id === u.carriedBy);
       expect(carrier).toBeDefined();
       expect([carrier!.x, carrier!.y]).toEqual([u.x, u.y]);
+      expect(UNIT_STATS[carrier!.type].carries).toBe(u.type);
+      expect(carrier!.carriedBy).toBeNull();
     } else if (domain === 'land') {
       expect(terrain).not.toBe('water');
     } else if (domain === 'sea') {
@@ -42,6 +44,7 @@ function playRandomly(initial: GameState, count: number, seed: number) {
   const r = new Rng(seed);
   let s = initial;
   const commands: Command[] = [];
+  let cargoStates = 0;
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(r.next() * xs.length)];
   for (let i = 0; i < count && s.winner === null; i++) {
     const me = s.currentPlayer;
@@ -57,16 +60,18 @@ function playRandomly(initial: GameState, count: number, seed: number) {
       s = res.state;
       commands.push(cmd);
       checkInvariants(s);
+      if (s.units.some((u) => u.carriedBy !== null)) cargoStates++;
     }
   }
-  return { final: s, commands };
+  return { final: s, commands, cargoStates };
 }
 
 describe('determinism', () => {
   it('replaying the command log reproduces the exact final state', () => {
     const initial = makeGame(WORLD, { starts: [0, 5], seed: 2024 });
-    const { final, commands } = playRandomly(initial, 4000, 7);
+    const { final, commands, cargoStates } = playRandomly(initial, 8000, 10);
     expect(commands.length).toBeGreaterThan(100);
+    expect(cargoStates).toBeGreaterThan(0);
     expect(hashState(replay(initial, commands))).toBe(hashState(final));
   });
 

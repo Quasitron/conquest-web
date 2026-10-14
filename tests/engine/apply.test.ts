@@ -31,10 +31,29 @@ describe('apply', () => {
       { type: 'setProduction', cityId: 42, unitType: 'army' },
       { type: 'disband', unitId: theirs.id },
       { type: 'launch' } as unknown as Command,
+      null as unknown as Command,
+      'endTurn' as unknown as Command,
     ];
+    const before = hashState(s);
     for (const cmd of bad) {
       const r = apply(s, cmd);
       expect(r.ok, JSON.stringify(cmd)).toBe(false);
+      expect(hashState(s), JSON.stringify(cmd)).toBe(before);
+    }
+  });
+
+  it('rejections from inside moveUnit leave state unchanged', () => {
+    const s = makeGame(M);
+    const tired = addUnit(s, 'army', 0, 1, 1, { movesLeft: 0 });
+    const shore = addUnit(s, 'army', 0, 2, 1);
+    const before = hashState(s);
+    const cmds: Command[] = [
+      { type: 'move', unitId: tired.id, dir: 2 },
+      { type: 'move', unitId: shore.id, dir: 2 },
+    ];
+    for (const cmd of cmds) {
+      expect(apply(s, cmd).ok, JSON.stringify(cmd)).toBe(false);
+      expect(hashState(s), JSON.stringify(cmd)).toBe(before);
     }
   });
 
