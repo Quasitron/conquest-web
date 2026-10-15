@@ -42,6 +42,29 @@ describe('parseSave', () => {
     expect(parseSave(JSON.stringify({ ...good, seats: [seats[0]] })).ok).toBe(false);
     expect(parseSave(JSON.stringify({ ...good, commands: [{ type: 'move', player: 0, unitId: 999, dir: 0 }] })).ok).toBe(false);
   });
+
+  it('rejects a skeletal game state with no commands instead of accepting it', () => {
+    const skeleton = { version: 1, players: [{}] };
+    const r = parseSave(JSON.stringify({
+      format: 1, name: 'x', savedAt: '2026-10-14T12:00:00.000Z',
+      seats: [seats[0]], initial: skeleton, commands: [], snapshot: skeleton,
+    }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects a null JSON root, an array root and a non-object initial without throwing', () => {
+    const good = sampleSave();
+    expect(() => parseSave('null')).not.toThrow();
+    expect(parseSave('null').ok).toBe(false);
+    expect(parseSave('[]').ok).toBe(false);
+    expect(parseSave('[1,2,3]').ok).toBe(false);
+    for (const initial of [null, 5, 'x', [], true]) {
+      const text = JSON.stringify({ ...good, initial });
+      let r: ReturnType<typeof parseSave> | undefined;
+      expect(() => { r = parseSave(text); }).not.toThrow();
+      expect(r!.ok).toBe(false);
+    }
+  });
 });
 
 describe('MemorySaveStore', () => {
