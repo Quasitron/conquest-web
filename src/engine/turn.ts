@@ -51,7 +51,8 @@ function advanceToNextPlayer(s: GameState): void {
 
 export function startTurn(s: GameState, events: GameEvent[]): void {
   const pid = s.currentPlayer;
-  advanceProduction(s, pid, events);
+  // Nobody's cities progress on turn 1, so every player's first production tick is on turn 2.
+  if (s.turn > 1) advanceProduction(s, pid, events);
   for (const u of s.units) {
     if (u.owner !== pid) continue;
     u.movesLeft = effectiveMove(u);

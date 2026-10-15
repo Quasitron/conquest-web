@@ -1,7 +1,7 @@
 import type { ApplyResult, Command, GameEvent, GameState } from './types';
 import { Rng } from './rng';
-import { UNIT_TYPES } from './units';
-import { destroyUnit, unitById } from './query';
+import { UNIT_STATS, UNIT_TYPES } from './units';
+import { cityAt, destroyUnit, topLevelUnitsAt, unitById } from './query';
 import { moveUnit } from './movement';
 import { setProduction } from './production';
 import { endTurn, resign } from './turn';
@@ -14,6 +14,7 @@ function validDir(dir: unknown): boolean {
 export function apply(state: GameState, cmd: Command): ApplyResult {
   if (state.over) return { ok: false, error: 'the game is over' };
   if (typeof cmd !== 'object' || cmd === null) return { ok: false, error: 'malformed command' };
+  if ((cmd as { player?: unknown }).player !== state.currentPlayer) return { ok: false, error: 'not your turn' };
   const s = structuredClone(state);
   const rng = new Rng(s.rngState);
   const events: GameEvent[] = [];
@@ -44,9 +45,19 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       else destroyUnit(s, u, 'disbanded', events);
       break;
     }
-    case 'endTurn':
-      endTurn(s, events);
+    case 'endTurn': {
+      const stuck = s.units.find(
+        (u) =>
+          u.owner === actor &&
+          UNIT_STATS[u.type].domain === 'air' &&
+          u.carriedBy === null &&
+          !cityAt(s, u.x, u.y) &&
+          topLevelUnitsAt(s, u.x, u.y).length > 1,
+      );
+      if (stuck) error = `${UNIT_STATS[stuck.type].name} ${stuck.id} cannot end its turn on an occupied square`;
+      else endTurn(s, events);
       break;
+    }
     case 'resign':
       resign(s, events);
       break;
