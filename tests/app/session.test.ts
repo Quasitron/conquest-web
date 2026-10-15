@@ -34,9 +34,29 @@ describe('GameSession', () => {
     const s = GameSession.create({ world: { ...world, players: 2 }, seed: 5, seats: [human('Ann'), human('Ben')] }, null);
     s.confirmHandoff();
     expect(s.act({ type: 'endTurn' })).toBeNull();
-    expect(s.lastEvents.length).toBeGreaterThan(0);
+    expect(s.phase).toBe('handoff');
+    expect(s.lastEvents).toEqual([]);
     s.confirmHandoff();
     expect(s.lastEvents).toEqual([]);
+  });
+
+  it('reports a failed autosave without an unhandled rejection, and clears it after a good save', async () => {
+    class FlakyStore extends MemorySaveStore {
+      failing = true;
+      override async put(save: Parameters<MemorySaveStore['put']>[0]): Promise<void> {
+        if (this.failing) throw new Error('quota exceeded');
+        return super.put(save);
+      }
+    }
+    const store = new FlakyStore();
+    const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')] }, store);
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    await tick();
+    expect(s.saveError).toBe('autosave failed: quota exceeded');
+    store.failing = false;
+    expect(s.act({ type: 'endTurn' })).toBeNull();
+    await tick();
+    expect(s.saveError).toBeNull();
   });
 
   it('a loaded hotseat game starts at the hand-off screen', () => {

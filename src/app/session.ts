@@ -27,6 +27,8 @@ export class GameSession {
   phase: SessionPhase = 'playing';
   /** Events from the last successful act, filtered for the player who acted. */
   lastEvents: GameEvent[] = [];
+  /** Set when the last turn-change autosave failed; cleared by the next successful autosave. */
+  saveError: string | null = null;
   private logs: LogEntry[][];
   private listeners = new Set<() => void>();
   private lastHuman: PlayerId;
@@ -166,8 +168,19 @@ export class GameSession {
       this.lastHuman = this.state.currentPlayer;
       const humans = this.seats.filter((s) => s.kind === 'human').length;
       this.phase = humans > 1 ? 'handoff' : 'playing';
+      // Entering a hand-off hides the previous player's events from the next player.
+      if (this.phase === 'handoff') this.lastEvents = [];
     }
-    void this.autosave();
+    this.autosave().then(
+      () => this.setSaveError(null),
+      (e: unknown) => this.setSaveError(`autosave failed: ${e instanceof Error ? e.message : String(e)}`),
+    );
+  }
+
+  private setSaveError(message: string | null): void {
+    if (this.saveError === message) return;
+    this.saveError = message;
+    this.emit();
   }
 
   private emit(): void {
