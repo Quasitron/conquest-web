@@ -7,5 +7,7 @@ export default defineConfig(() => ({
   plugins: [preact()],
   test: {
     include: ['tests/**/*.test.ts'],
+    // The randomized determinism runs take ~2s locally but much longer on CI runners.
+    testTimeout: 60_000,
   },
 }));
