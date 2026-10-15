@@ -25,13 +25,15 @@ describe('turn sequence', () => {
     expect(d).toMatchObject({ movesLeft: 3, movedThisTurn: false });
   });
 
-  it('advances production only for the player whose turn starts', () => {
+  it('advances production only for the player whose turn starts, from turn 2', () => {
     const s = makeGame(T);
-    endTurn(s, []);
-    expect(s.cities[0].progress).toBe(0);
-    expect(s.cities[1].progress).toBe(1);
-    endTurn(s, []);
+    endTurn(s, []); // P1 starts turn 1: no production on turn 1
+    expect(s.cities[1].progress).toBe(0);
+    endTurn(s, []); // P0 starts turn 2
     expect(s.cities[0].progress).toBe(1);
+    expect(s.cities[1].progress).toBe(0);
+    endTurn(s, []); // P1 starts turn 2
+    expect(s.cities[1].progress).toBe(1);
   });
 
   it('in-flight aircraft burn unused moves and crash when out of fuel', () => {

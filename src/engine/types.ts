@@ -80,11 +80,11 @@ export interface GameState {
 }
 
 export type Command =
-  | { type: 'move'; unitId: number; dir: Dir }
-  | { type: 'setProduction'; cityId: number; unitType: UnitType | null }
-  | { type: 'disband'; unitId: number }
-  | { type: 'endTurn' }
-  | { type: 'resign' };
+  | { type: 'move'; player: PlayerId; unitId: number; dir: Dir }
+  | { type: 'setProduction'; player: PlayerId; cityId: number; unitType: UnitType | null }
+  | { type: 'disband'; player: PlayerId; unitId: number }
+  | { type: 'endTurn'; player: PlayerId }
+  | { type: 'resign'; player: PlayerId };
 
 export type DestroyReason =
   | 'combat' | 'cargoLost' | 'crashed' | 'cityCaptured'

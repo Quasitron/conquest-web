@@ -14,3 +14,8 @@ export { buildTime } from './production';
 export { areFriendly } from './relations';
 export { Rng } from './rng';
 export type { RandomSource } from './rng';
+export { DIRS, step, normalize, neighbors, chebyshev, isCoastal, index, terrainAt } from './map';
+export type { MapLike } from './map';
+export { eventsFor } from './events';
+export type { EnemyMarker } from './view';
+export { validateMapSize, MIN_MAP, MAX_MAP } from './limits';

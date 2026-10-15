@@ -1,6 +1,17 @@
-import type { City, GameState, LastSeen, PlayerId, Terrain, Unit } from './types';
+import type { City, GameState, PlayerId, Terrain, Unit, UnitType } from './types';
 import { index } from './map';
-import { canPlayerSeeUnit } from './fog';
+import { canPlayerSeeUnit, visibleSquares } from './fog';
+
+export interface EnemyMarker {
+  /** View-local id; not the engine's unit id. */
+  markerId: number;
+  type: UnitType;
+  owner: PlayerId;
+  x: number;
+  y: number;
+  turnSeen: number;
+  visibleNow: boolean;
+}
 
 export interface PlayerView {
   me: PlayerId;
@@ -13,11 +24,13 @@ export interface PlayerView {
   wrap: boolean;
   /** null = unexplored. */
   terrain: (Terrain | null)[];
+  /** Indices (y * width + x) of squares currently in sight, ascending. */
+  visibleSquares: number[];
   players: { id: PlayerId; name: string; eliminated: boolean }[];
   myUnits: Unit[];
   myCities: City[];
   knownCities: { id: number; x: number; y: number; owner: PlayerId | null }[];
-  enemies: (LastSeen & { visibleNow: boolean })[];
+  enemies: EnemyMarker[];
 }
 
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
@@ -32,16 +45,19 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     height: s.height,
     wrap: s.wrap,
     terrain: s.terrain.map((t, i) => (fog.explored[i] ? t : null)),
+    visibleSquares: [...visibleSquares(s, me)].sort((a, b) => a - b),
     players: s.players.map((p) => ({ id: p.id, name: p.name, eliminated: p.eliminated })),
     myUnits: structuredClone(s.units.filter((u) => u.owner === me)),
     myCities: structuredClone(s.cities.filter((c) => c.owner === me)),
     knownCities: s.cities
       .filter((c) => fog.explored[index(s, c.x, c.y)])
       .map((c) => ({ id: c.id, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null) })),
-    enemies: Object.values(fog.lastSeen).map((e) => {
-      const u = s.units.find((x) => x.id === e.unitId);
-      const visibleNow = !!u && u.x === e.x && u.y === e.y && canPlayerSeeUnit(s, me, u);
-      return { ...e, visibleNow };
-    }),
+    enemies: Object.values(fog.lastSeen)
+      .sort((a, b) => a.y - b.y || a.x - b.x || a.turnSeen - b.turnSeen || a.type.localeCompare(b.type))
+      .map((e, markerId) => {
+        const u = s.units.find((x) => x.id === e.unitId);
+        const visibleNow = !!u && u.x === e.x && u.y === e.y && canPlayerSeeUnit(s, me, u);
+        return { markerId, type: e.type, owner: e.owner, x: e.x, y: e.y, turnSeen: e.turnSeen, visibleNow };
+      }),
   };
 }

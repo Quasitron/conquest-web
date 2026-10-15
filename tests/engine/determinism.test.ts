@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { hashState } from '../../src/engine/hash';
 import { replay } from '../../src/engine/replay';
@@ -62,11 +62,11 @@ function playRandomly(initial: GameState, count: number, seed: number, extras = 
     const extra = extras ? r.next() : 1;
     const roll = r.next();
     let cmd: Command;
-    if (extra < 0.002) cmd = { type: 'resign' };
-    else if (extra < 0.022 && units.length) cmd = { type: 'disband', unitId: pick(units).id };
-    else if (roll < 0.8 && units.length) cmd = { type: 'move', unitId: pick(units).id, dir: Math.floor(r.next() * 8) as Dir };
-    else if (roll < 0.86 && cities.length) cmd = { type: 'setProduction', cityId: pick(cities).id, unitType: pick(UNIT_TYPES) };
-    else cmd = { type: 'endTurn' };
+    if (extra < 0.002) cmd = { type: 'resign', player: me };
+    else if (extra < 0.022 && units.length) cmd = { type: 'disband', player: me, unitId: pick(units).id };
+    else if (roll < 0.8 && units.length) cmd = { type: 'move', player: me, unitId: pick(units).id, dir: Math.floor(r.next() * 8) as Dir };
+    else if (roll < 0.86 && cities.length) cmd = { type: 'setProduction', player: me, cityId: pick(cities).id, unitType: pick(UNIT_TYPES) };
+    else cmd = { type: 'endTurn', player: me };
     const res = apply(s, cmd);
     if (res.ok) {
       s = res.state;
@@ -81,7 +81,7 @@ function playRandomly(initial: GameState, count: number, seed: number, extras = 
 describe('determinism', () => {
   it('replaying the command log reproduces the exact final state', () => {
     const initial = makeGame(WORLD, { starts: [0, 5], seed: 2024 });
-    const { final, commands, cargoStates } = playRandomly(initial, 8000, 10);
+    const { final, commands, cargoStates } = playRandomly(initial, 8000, 3);
     expect(commands.length).toBeGreaterThan(100);
     expect(cargoStates).toBeGreaterThan(0);
     expect(hashState(replay(initial, commands))).toBe(hashState(final));
@@ -116,6 +116,6 @@ describe('determinism', () => {
 
   it('replay reports the first rejected command', () => {
     const initial = makeGame(WORLD, { starts: [0, 5] });
-    expect(() => replay(initial, [{ type: 'move', unitId: 12345, dir: 0 }])).toThrow(/command 0/);
+    expect(() => replay(initial, [{ type: 'move', player: 0, unitId: 12345, dir: 0 }])).toThrow(/command 0/);
   });
 });

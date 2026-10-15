@@ -106,4 +106,18 @@ describe('player view', () => {
     expect(u.x).toBe(1);
     expect(v.knownCities).toEqual([{ id: 0, x: 0, y: 0, owner: 0 }]);
   });
+
+  it('lists squares in sight and hides real enemy unit ids', () => {
+    const s = makeGame(land);
+    addUnit(s, 'army', 0, 2, 1);
+    addUnit(s, 'army', 1, 3, 1);
+    updateFog(s, 0);
+    const v = getPlayerView(s, 0);
+    expect(v.visibleSquares).toContain(index(s, 0, 0));
+    expect(v.visibleSquares).toContain(index(s, 3, 2));
+    expect(v.visibleSquares).not.toContain(index(s, 5, 0));
+    expect(v.enemies).toHaveLength(1);
+    expect(v.enemies[0]).toMatchObject({ markerId: 0, type: 'army', owner: 1, x: 3, y: 1, visibleNow: true });
+    expect('unitId' in v.enemies[0]).toBe(false);
+  });
 });
