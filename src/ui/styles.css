@@ -1,0 +1,42 @@
+:root {
+  --bg: #12161c;
+  --panel: #1b2129;
+  --text: #e8ecf1;
+  --muted: #9aa5b1;
+  --accent: #3d8bfd;
+  --error: #ff6b6b;
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #333c48; background: #222a34; color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: 0.5; cursor: default; }
+input, select { font: inherit; background: #0f1318; color: var(--text); border: 1px solid #333c48; border-radius: 4px; padding: 4px 6px; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; }
+.error { color: var(--error); }
+
+.title { max-width: 640px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+.title section { background: var(--panel); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.title h2 { margin: 0; font-size: 1.1rem; }
+.seats td { padding: 2px 6px 2px 0; }
+
+.game { display: grid; grid-template-columns: 1fr 260px; grid-template-rows: auto 1fr; height: 100%; }
+.topbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 12px; background: var(--panel); }
+.topbar .message { color: var(--muted); }
+canvas.map { width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+.side { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--panel); overflow: hidden; }
+canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; cursor: pointer; }
+.panel h3 { margin: 4px 0; }
+.panel button { margin: 2px 4px 2px 0; }
+.log { flex: 1; overflow-y: auto; margin: 0; padding-left: 18px; font-size: 0.85rem; color: var(--muted); }
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: grid; place-items: center; z-index: 10; }
+/* Hotseat hand-off must hide the next player's map completely. */
+.overlay.handoff { background: var(--bg); }
+.card { background: var(--panel); padding: 24px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 260px; text-align: center; }
+
+@media (max-width: 760px) {
+  .game { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .side { max-height: 40vh; }
+}
