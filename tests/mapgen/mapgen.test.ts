@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { heightField } from '../../src/mapgen/noise';
 import { labelLand, thresholdLand } from '../../src/mapgen/land';
 import { chebyshevDist, forNeighbors } from '../../src/mapgen/grid';
+import { placeCities } from '../../src/mapgen/cities';
+import { chooseStarts } from '../../src/mapgen/starts';
+import { generateWorld } from '../../src/mapgen/generate';
+import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen/options';
+import { Rng } from '../../src/engine/rng';
+import { createGame } from '../../src/engine/setup';
 
 describe('grid helpers', () => {
   it('wraps neighbors and distance horizontally only when wrap is on', () => {
@@ -68,5 +74,99 @@ describe('land', () => {
     const r = labelLand(land, w, h, true, 4);
     expect(r.labels[1 * w + 0]).toBe(r.labels[1 * w + 5]);
     expect(r.land[1 * w + 0]).toBe(true);
+  });
+});
+
+describe('cities and starts', () => {
+  it('places cities on land at least 3 apart', () => {
+    const w = 60, h = 45;
+    const { land } = labelLand(thresholdLand(heightField(w, h, false, 10, 5), w, h, 70), w, h, false, 4);
+    const cities = placeCities(land, w, h, false, 40, new Rng(1));
+    expect(cities.length).toBeGreaterThan(10);
+    for (const c of cities) expect(land[c.y * w + c.x]).toBe(true);
+    for (let i = 0; i < cities.length; i++) {
+      for (let j = i + 1; j < cities.length; j++) {
+        expect(chebyshevDist(w, false, cities[i].x, cities[i].y, cities[j].x, cities[j].y)).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('returns null when not enough qualifying cities exist', () => {
+    const cities = [{ x: 0, y: 0 }, { x: 5, y: 0 }];
+    const labels = new Array(10).fill(-1);
+    labels[0] = 0;
+    labels[5] = 1;
+    expect(chooseStarts(cities, labels, 10, false, 2, 3)).toBeNull();
+    expect(chooseStarts(cities, labels, 10, false, 2, 0)).toEqual(expect.arrayContaining([0, 1]));
+  });
+});
+
+describe('generateWorld', () => {
+  const opts = { ...DEFAULT_WORLD };
+
+  it('is deterministic for a seed', () => {
+    expect(generateWorld(opts, 42)).toEqual(generateWorld(opts, 42));
+    expect(generateWorld(opts, 42).map.terrain).not.toEqual(generateWorld(opts, 43).map.terrain);
+  });
+
+  it('hits the water target, has no tiny islands, and spaces cities', () => {
+    const { map } = generateWorld(opts, 9);
+    const water = map.terrain.filter((t) => t === 'water').length / map.terrain.length;
+    expect(water).toBeGreaterThan(0.67);
+    expect(water).toBeLessThan(0.75);
+    const land = map.terrain.map((t) => t !== 'water');
+    const r = labelLand(land, map.width, map.height, false, 1);
+    for (const size of r.sizes) if (size > 0) expect(size).toBeGreaterThanOrEqual(4);
+    for (let i = 0; i < map.cities.length; i++) {
+      for (let j = i + 1; j < map.cities.length; j++) {
+        const a = map.cities[i], b = map.cities[j];
+        expect(chebyshevDist(map.width, false, a.x, a.y, b.x, b.y)).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('produces valid, distinct starts that createGame accepts, for 2..6 players', () => {
+    for (let players = 2; players <= 6; players++) {
+      const w = generateWorld({ ...opts, players }, 100 + players);
+      expect(new Set(w.startCityIndices).size).toBe(players);
+      const s = createGame({
+        map: w.map,
+        players: Array.from({ length: players }, (_, i) => ({ name: `P${i}`, kind: 'human' as const })),
+        startCityIndices: w.startCityIndices,
+        seed: w.seedUsed,
+      });
+      expect(s.cities.filter((c) => c.owner !== null)).toHaveLength(players);
+    }
+  });
+
+  it('gives 2-4 players at least 3 other cities on their start landmass with default settings', () => {
+    for (let players = 2; players <= 4; players++) {
+      const w = generateWorld({ ...opts, players }, 7);
+      const land = w.map.terrain.map((t) => t !== 'water');
+      const { labels } = labelLand(land, w.map.width, w.map.height, false, 1);
+      for (const si of w.startCityIndices) {
+        const c = w.map.cities[si];
+        const label = labels[c.y * w.map.width + c.x];
+        const others = w.map.cities.filter((o) => labels[o.y * w.map.width + o.x] === label).length - 1;
+        expect(others).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('handles edge settings without hanging', () => {
+    expect(() => generateWorld({ ...opts, ...SIZE_PRESETS.small, players: 6 }, 1)).not.toThrow();
+    expect(() => generateWorld({ ...opts, waterPercent: 85 }, 1)).not.toThrow();
+  });
+
+  it('rejects invalid options', () => {
+    expect(() => generateWorld({ ...opts, width: 10 }, 1)).toThrow(/at least/);
+    expect(() => generateWorld({ ...opts, players: 7 }, 1)).toThrow(/players/);
+    expect(() => generateWorld({ ...opts, waterPercent: 95 }, 1)).toThrow(/water/);
+  });
+
+  it('generates a Huge map in under a second', () => {
+    const t0 = performance.now();
+    generateWorld({ ...opts, ...SIZE_PRESETS.huge, players: 6 }, 3);
+    expect(performance.now() - t0).toBeLessThan(1000);
   });
 });
