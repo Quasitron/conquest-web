@@ -68,6 +68,7 @@ export function GameScreen({ session, onQuit }: Props) {
   // New turn for the viewing player: reset skips and pick the first unit.
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
   useEffect(() => {
+    setSelection(null);
     if (session.phase !== 'playing') return;
     setSkipped(new Set());
     const first = view.myUnits.filter((u) => u.movesLeft > 0).sort((a, b) => a.id - b.id)[0];
@@ -84,7 +85,12 @@ export function GameScreen({ session, onQuit }: Props) {
     if (err) {
       setMessage(err);
       const stuck = /(\d+) cannot end its turn/.exec(err);
-      if (stuck) setSelection({ kind: 'unit', id: Number(stuck[1]) });
+      if (stuck) {
+        const id = Number(stuck[1]);
+        setSelection({ kind: 'unit', id });
+        const unit = view.myUnits.find((u) => u.id === id);
+        if (unit) focus(unit);
+      }
       return false;
     }
     setMessage(null);
@@ -116,20 +122,36 @@ export function GameScreen({ session, onQuit }: Props) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT') return;
+      const tag = (e.target as HTMLElement).tagName;
+      // Keys typed into form controls or focused buttons keep their native behavior.
+      if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag)) return;
       const a = keyToAction(e.key, e.code);
       if (!a) return;
-      e.preventDefault();
-      if (a.kind === 'pan') return setCam(pan(cam, -a.dx * cam.tile, -a.dy * cam.tile));
+      if (a.kind === 'pan') {
+        e.preventDefault();
+        return setCam(pan(cam, -a.dx * cam.tile, -a.dy * cam.tile));
+      }
       if (session.phase !== 'playing') return;
-      if (a.kind === 'move') moveSelected(a.dir);
-      else if (a.kind === 'next') selectNext();
-      else if (a.kind === 'skip' && selectedUnit) {
+      if (a.kind === 'move' && selectedUnit) {
+        e.preventDefault();
+        moveSelected(a.dir);
+      } else if (a.kind === 'next') {
+        e.preventDefault();
+        selectNext();
+      } else if (a.kind === 'skip' && selectedUnit) {
+        e.preventDefault();
         setSkipped(new Set(skipped).add(selectedUnit.id));
         selectNext();
-      } else if (a.kind === 'endTurn') act({ type: 'endTurn' });
-      else if (a.kind === 'center' && selectedPos) focus(selectedPos);
-      else if (a.kind === 'deselect') setSelection(null);
+      } else if (a.kind === 'endTurn') {
+        e.preventDefault();
+        act({ type: 'endTurn' });
+      } else if (a.kind === 'center' && selectedPos) {
+        e.preventDefault();
+        focus(selectedPos);
+      } else if (a.kind === 'deselect') {
+        e.preventDefault();
+        setSelection(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -158,7 +180,11 @@ export function GameScreen({ session, onQuit }: Props) {
         <button class="primary" onClick={() => act({ type: 'endTurn' })} disabled={session.phase !== 'playing'}>End Turn</button>
         <button onClick={() => {
           const name = window.prompt('Save name?', session.name === 'autosave' ? 'My game' : session.name);
-          if (name) session.saveAs(name).then(() => setMessage(`Saved as "${name}".`));
+          if (name) {
+            session.saveAs(name)
+              .then(() => setMessage(`Saved as "${name}".`))
+              .catch((e) => setMessage(`Save failed: ${(e as Error).message}`));
+          }
         }}>Save</button>
         <button onClick={() => downloadSave(session.toSave())}>Export</button>
         <button onClick={onQuit}>Quit</button>
@@ -188,7 +214,7 @@ export function GameScreen({ session, onQuit }: Props) {
       {session.phase === 'handoff' && (
         <div class="overlay handoff">
           <div class="card">
-            <h2>Pass to {session.seats[session.state.currentPlayer].name}</h2>
+            <h2>Pass to {session.seats[view.currentPlayer].name}</h2>
             <button class="primary" onClick={() => session.confirmHandoff()}>I'm ready</button>
           </div>
         </div>

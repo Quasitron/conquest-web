@@ -134,8 +134,8 @@ export class GameSession {
   }
 
   async saveAs(name: string): Promise<void> {
-    this.name = name;
     if (this.store) await this.store.put(this.toSave(name));
+    this.name = name;
   }
 
   async autosave(): Promise<void> {

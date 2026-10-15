@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { GameSession } from '../app/session';
 import { validateMapSize } from '../engine';
 import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
-import { parseSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
+import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
 import { pickFileText } from './exportFile';
 
@@ -45,8 +45,16 @@ export function TitleScreen({ store, onStart }: Props) {
     }
   };
   const load = async (name: string) => {
-    const save = await store.get(name);
-    if (save) onStart(GameSession.fromSave(save, store));
+    try {
+      const save = await store.get(name);
+      if (!save) return setError(`No save named "${name}".`);
+      // Re-validate the stored record as if it were an imported file.
+      const r = parseSave(serializeSave(save));
+      if (!r.ok) return setError(r.error);
+      onStart(GameSession.fromSave(r.save, store));
+    } catch (e) {
+      setError(`Could not load "${name}": ${(e as Error).message}`);
+    }
   };
   const importFile = async () => {
     const text = await pickFileText();
