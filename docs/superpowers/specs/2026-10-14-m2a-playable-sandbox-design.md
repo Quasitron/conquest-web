@@ -44,7 +44,7 @@ Rules:
 
 ## 3. Engine additions
 
-1. **First turn starts like every other turn.** `createGame` runs the turn-start step for player 0. Turn 1 then emits `turnStarted` and production timing matches all other turns. Update affected M1 tests.
+1. **Fair first turn.** No player's cities make production progress on turn 1, so every player's first tick is on turn 2. Before this change, player 0 was one tick behind. `GameSession` treats game creation as player 0's turn start. Update the affected M1 turn test.
 2. **`eventsFor(state, events, pid)`.** Returns only the events player `pid` may see:
    - their own units' and cities' events
    - combats they took part in
@@ -53,12 +53,12 @@ Rules:
 
    Cargo losses of enemy carriers are reported only as the carrier's fate, never as a count of lost cargo.
 3. **PlayerView changes.**
-   - Add `visibleNow: number[]`, the indices of squares currently in sight.
+   - Add `visibleSquares: number[]`, the sorted indices of squares currently in sight.
    - Enemy markers get view-local ids (`markerId`) instead of real unit ids.
 4. **Commands carry `player`.** `apply` rejects a command whose `player` is not the current player.
 5. **Aircraft end-turn rule.** `endTurn` is rejected while any of the current player's aircraft ends on a square shared with another top-level unit that is not a city or carrier. The error message names the unit.
 6. **Exports.** `index.ts` also exports `DIRS`, `step`, `normalize`, `neighbors`, `chebyshev`, `isCoastal`, `index`, `effectiveMove`.
-7. **Map validation.** `createGame` rejects maps smaller than 20×20 or larger than 150×200, ragged maps, and empty maps.
+7. **Map validation.** A new `validateMapSize(width, height)` enforces 20×20 to 150×200. The map generator and the New Game screen use it. `createGame` keeps accepting small ASCII maps, because engine tests depend on them.
 8. **Tooling.**
    - Bump `vite`/`vitest` to current patched versions.
    - Add a `tsconfig` for `src/engine` without the DOM lib.
@@ -135,7 +135,7 @@ Rules:
   - **Space** or **N**: next unit with moves left.
   - **S**: skip this unit for this turn (UI-only).
   - **Enter**: End Turn.
-  - **C**: center on the selected unit.
+  - **F**: center on the selected unit (C is a move key).
   - **Esc**: deselect.
 - **Touch:** tap = click; drag = pan; pinch = zoom.
 
