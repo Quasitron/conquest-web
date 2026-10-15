@@ -259,6 +259,11 @@ bonus at the highest level. Never via hidden-information cheating.
   allies; enabled by the `areFriendly` relationship function.
 - **Advanced rules**: terrain types, armor, bombers, airbases, city efficiency and
   specialization, unit support.
+- **Spy unit** (user idea, 2026-10-15; inspired by Civilization):
+  - No defense. It is destroyed if an enemy unit ends its move on the spy's square.
+  - It sees adjacent squares, and inside or next to an enemy city it can see that city's production.
+  - It can sabotage a city's production, with a chance of being discovered and killed.
+  - Open questions: build cost, whether spies can enter enemy cities, sabotage odds and effect, and how the AI defends against spies.
 - Map/scenario editor; player history; sound.
 
 ## 11. Non-goals for v1
