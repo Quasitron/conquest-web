@@ -264,6 +264,12 @@ bonus at the highest level. Never via hidden-information cheating.
   - It sees adjacent squares, and inside or next to an enemy city it can see that city's production.
   - It can sabotage a city's production, with a chance of being discovered and killed.
   - Open questions: build cost, whether spies can enter enemy cities, sabotage odds and effect, and how the AI defends against spies.
+- **Earth-based maps** (user idea, 2026-10-15): selectable real-geography maps as an alternative to random worlds.
+  - Possible maps: a whole-world map plus regions such as Europe, the Pacific, the Mediterranean and North America.
+  - Build them from public-domain geographic data (e.g. Natural Earth), converted to the game grid by our own tool. No maps are copied from other games.
+  - Cities would sit at real locations with their real names, which pairs with the city-name feature.
+  - Start positions are balanced per map.
+  - These maps need the map/scenario format, so they come with the editor work.
 - Map/scenario editor; player history; sound.
 
 ## 11. Non-goals for v1
