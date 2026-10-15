@@ -37,7 +37,8 @@ export class IndexedDbSaveStore implements SaveStore {
   }
 
   async put(save: SaveFile): Promise<void> {
-    await run('readwrite', (s) => s.put(save));
+    const copy = structuredClone(save);
+    await run('readwrite', (s) => s.put(copy));
   }
 
   async delete(name: string): Promise<void> {

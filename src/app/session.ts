@@ -128,7 +128,7 @@ export class GameSession {
       name,
       seats: this.seats,
       initial: this.initial,
-      commands: this.commands,
+      commands: [...this.commands],
       snapshot: this.state,
     };
   }

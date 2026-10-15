@@ -57,11 +57,15 @@ export function TitleScreen({ store, onStart }: Props) {
     }
   };
   const importFile = async () => {
-    const text = await pickFileText();
-    if (text === null) return;
-    const r = parseSave(text);
-    if (!r.ok) return setError(r.error);
-    onStart(GameSession.fromSave(r.save, store));
+    try {
+      const text = await pickFileText();
+      if (text === null) return;
+      const r = parseSave(text);
+      if (!r.ok) return setError(r.error);
+      onStart(GameSession.fromSave(r.save, store));
+    } catch (e) {
+      setError(`Could not import save: ${(e as Error).message}`);
+    }
   };
 
   const autosave = saves.find((s) => s.name === 'autosave');

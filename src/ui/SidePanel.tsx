@@ -37,6 +37,7 @@ function CityDetails({ city, view, onProduction, onSelectUnit }: {
       <label>Building{' '}
         <select value={city.production ?? ''} onChange={(e) => {
           const v = (e.target as HTMLSelectElement).value;
+          (e.currentTarget as HTMLElement).blur();
           onProduction(city.id, v === '' ? null : (v as UnitType));
         }}>
           <option value="">Nothing</option>
@@ -52,7 +53,7 @@ function CityDetails({ city, view, onProduction, onSelectUnit }: {
         <div>
           <h4>Units here</h4>
           {here.map((u) => (
-            <button onClick={() => onSelectUnit(u.id)}>{UNIT_STATS[u.type].name} ({u.movesLeft} moves)</button>
+            <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onSelectUnit(u.id); }}>{UNIT_STATS[u.type].name} ({u.movesLeft} moves)</button>
           ))}
         </div>
       )}
@@ -68,7 +69,7 @@ export function SidePanel({ view, selection, onSelectUnit, onProduction, onDisba
     return (
       <aside class="panel">
         <UnitDetails u={u} view={view} />
-        <button onClick={() => onDisband(u.id)}>Disband</button>
+        <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onDisband(u.id); }}>Disband</button>
       </aside>
     );
   }

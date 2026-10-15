@@ -17,6 +17,9 @@ interface Props {
   onQuit: () => void;
 }
 
+// After a pointer click, release focus so Space/Enter/arrows go to the game, not the button.
+const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+
 export function GameScreen({ session, onQuit }: Props) {
   const [, setTick] = useState(0);
   useEffect(() => session.subscribe(() => setTick((t) => t + 1)), [session]);
@@ -109,7 +112,7 @@ export function GameScreen({ session, onQuit }: Props) {
 
   const onSquare = (p: Pos) => {
     if (session.phase !== 'playing') return;
-    if (selectedUnit) {
+    if (selectedUnit && targets.some((t) => t.x === p.x && t.y === p.y)) {
       const dir = dirTo(view, selectedUnit, p);
       if (dir !== null) return moveSelected(dir);
     }
@@ -122,6 +125,7 @@ export function GameScreen({ session, onQuit }: Props) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const tag = (e.target as HTMLElement).tagName;
       // Keys typed into form controls or focused buttons keep their native behavior.
       if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag)) return;
@@ -177,8 +181,9 @@ export function GameScreen({ session, onQuit }: Props) {
       <header class="topbar">
         <span>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
-        <button class="primary" onClick={() => act({ type: 'endTurn' })} disabled={session.phase !== 'playing'}>End Turn</button>
-        <button onClick={() => {
+        <button class="primary" onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={session.phase !== 'playing'}>End Turn</button>
+        <button onClick={(e) => {
+          blur(e);
           const name = window.prompt('Save name?', session.name === 'autosave' ? 'My game' : session.name);
           if (name) {
             session.saveAs(name)
@@ -186,8 +191,8 @@ export function GameScreen({ session, onQuit }: Props) {
               .catch((e) => setMessage(`Save failed: ${(e as Error).message}`));
           }
         }}>Save</button>
-        <button onClick={() => downloadSave(session.toSave())}>Export</button>
-        <button onClick={onQuit}>Quit</button>
+        <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
+        <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         {message && <span class="message" role="status">{message}</span>}
         {session.saveError && <span class="error" role="alert">{session.saveError}</span>}
       </header>
@@ -215,7 +220,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <div class="overlay handoff">
           <div class="card">
             <h2>Pass to {session.seats[view.currentPlayer].name}</h2>
-            <button class="primary" onClick={() => session.confirmHandoff()}>I'm ready</button>
+            <button class="primary" onClick={(e) => { blur(e); session.confirmHandoff(); }}>I'm ready</button>
           </div>
         </div>
       )}

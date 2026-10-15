@@ -94,6 +94,11 @@ export function MapCanvas(p: Props) {
           setCam(pan(camRef.current, dx, dy));
         }
       }}
+      onPointerCancel={(e) => {
+        pointers.current.delete(e.pointerId);
+        dragged.current = false;
+        pinchDist.current = 0;
+      }}
       onPointerUp={(e) => {
         const wasDrag = dragged.current;
         const pt = local(e);

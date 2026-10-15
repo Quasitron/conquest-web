@@ -92,6 +92,15 @@ describe('GameSession', () => {
     expect(loaded.phase).toBe('playing');
   });
 
+  it('toSave does not alias the live command log', () => {
+    const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')] }, null);
+    s.act({ type: 'endTurn' });
+    const save = s.toSave('slot');
+    const before = save.commands.length;
+    expect(s.act({ type: 'endTurn' })).toBeNull();
+    expect(save.commands.length).toBe(before);
+  });
+
   it('validates seats', () => {
     expect(() => GameSession.create({ world, seed: 1, seats: [human('Ann')] }, null)).toThrow(/seat/);
     expect(() => GameSession.create({ world, seed: 1, seats: [idle('A'), idle('B')] }, null)).toThrow(/human/);
