@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { hashState } from '../../src/engine/hash';
 import { replay } from '../../src/engine/replay';
