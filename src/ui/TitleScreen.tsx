@@ -73,7 +73,9 @@ export function TitleScreen({ store, onStart }: Props) {
 
   return (
     <main class="title">
-      <h1>Conquest Web</h1>
+      <h1 class="hero">
+        <img src="/title.webp" alt="Theater of Conquest: Global Command" width={1376} height={768} />
+      </h1>
       {autosave && (
         <button class="primary" onClick={() => load('autosave')}>Continue (turn {autosave.turn})</button>
       )}

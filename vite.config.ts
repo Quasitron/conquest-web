@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import preact from '@preact/preset-vite';
 
-export default defineConfig(({ command, isPreview }) => ({
-  base: command === 'build' || isPreview ?'/conquest-web/' : '/',
+// Served from the root of the custom domain (theaterofconquest.com), so no base path is needed.
+export default defineConfig(() => ({
+  base: '/',
   plugins: [preact()],
   test: {
     include: ['tests/**/*.test.ts'],
