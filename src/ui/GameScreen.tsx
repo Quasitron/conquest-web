@@ -9,11 +9,14 @@ import {
 import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
 import { centerOn, clampCamera, pan, type Camera } from './camera';
-import { builtThisTurn, readyUnits } from './cycle';
+import { CityScreen } from './CityScreen';
+import { builtThisTurn, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
 import { downloadSave } from './exportFile';
 import { keyToAction, type ActionId } from './keys';
 import { pathLabel } from './labels';
+import { cityScreenPoint } from './placement';
+import { ProductionReport } from './ProductionReport';
 import { MapCanvas } from './MapCanvas';
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
@@ -73,6 +76,10 @@ export function GameScreen({ session, onQuit }: Props) {
   const [infoId, setInfoId] = useState<number | null>(null);
   const setInfo = (on: boolean) => { if (!on) setInfoId(null); };
   const [message, setMessage] = useState<string | null>(null);
+  // The city screen (by city id) and the turn-start production reports still to be acknowledged.
+  const [cityOpen, setCityOpen] = useState<number | null>(null);
+  const [reports, setReports] = useState<ProductionReportItem[]>([]);
+  const [reportIdx, setReportIdx] = useState(0);
 
   // Show a one-off load notice (e.g. an older save) when the game opens.
   useEffect(() => {
@@ -96,6 +103,17 @@ export function GameScreen({ session, onQuit }: Props) {
   const selectedPos: Pos | null =
     selectedUnit ?? (selection?.kind === 'city' ? view.knownCities.find((c) => c.id === selection.id) ?? null : null);
   const playing = session.phase === 'playing';
+  const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
+  const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
+  const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
+  const dialogOpen = openCityObj !== null || reportCity !== null;
+  /** Screen position of a city's center, for the leader line; null when it is off the visible map. */
+  const anchorFor = (c: Pos | null) => {
+    const el = document.querySelector('canvas.map');
+    if (!c || !el) return null;
+    const r = el.getBoundingClientRect();
+    return cityScreenPoint(cam, c, view.width, view.wrap, { left: r.left, top: r.top, w: r.width, h: r.height });
+  };
   // The info dialog belongs to one unit: it closes when the selection moves elsewhere.
   const info = infoId !== null && infoId === selectedUnit?.id;
   const targets = useMemo(
@@ -163,13 +181,50 @@ export function GameScreen({ session, onQuit }: Props) {
     setMenu(null);
     setPicker(null);
     setInfo(false);
+    setCityOpen(null);
+    setReports([]);
+    setReportIdx(0);
     if (session.phase !== 'playing') return;
     setHeld(new Set());
     setSkipped([]);
-    const first = readyUnits(view.myUnits, builtThisTurn(session.log(view.me), view.turn), new Set(), [])[0];
+    // Production reports come first; the unit cycle starts after the last one.
+    const queue = reportQueue(session.log(view.me), view.turn, view.me, view.myCities)
+      .filter((r) => view.myUnits.some((u) => u.id === r.unitId));
+    if (queue.length > 0) setReports(queue);
+    else startCycle();
+  }, [turnKey]);
+
+  /** Selects the first ready unit of a fresh turn (built-this-turn first), else looks at a city. */
+  const startCycle = () => {
+    const first = readyNow(new Set(), [])[0];
     if (first) selectUnit(first);
     else if (view.myCities[0]) focus(view.myCities[0]);
-  }, [turnKey]);
+  };
+  const nextReport = () => {
+    if (reportIdx + 1 < reports.length) {
+      setReportIdx(reportIdx + 1);
+      return;
+    }
+    setReports([]);
+    setReportIdx(0);
+    startCycle();
+  };
+  // Each report centers the map on its city.
+  useEffect(() => {
+    if (reportCity) focus(reportCity);
+  }, [reportCity?.id, report?.unitId]);
+  const openCity = (id: number) => {
+    // Fresh from the session: a just-captured city is not in this render's view yet.
+    const city = session.view().myCities.find((c) => c.id === id);
+    if (!city) return;
+    setMessage(null);
+    setInfo(false);
+    setMenu(null);
+    setPicker(null);
+    setTarget(null);
+    focus(city);
+    setCityOpen(id);
+  };
 
   const act = (cmd: SessionCommand): boolean => {
     const err = session.act(cmd);
@@ -186,7 +241,7 @@ export function GameScreen({ session, onQuit }: Props) {
     }
     setMessage(null);
     const captured = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
-    if (captured && captured.type === 'cityCaptured') setSelection({ kind: 'city', id: captured.cityId });
+    if (captured && captured.type === 'cityCaptured') openCity(captured.cityId);
     return true;
   };
 
@@ -274,7 +329,7 @@ export function GameScreen({ session, onQuit }: Props) {
   };
 
   const onSquare = (p: Pos) => {
-    if (!playing) return;
+    if (!playing || dialogOpen) return;
     const explored = view.terrain[p.y * view.width + p.x] !== null;
     if (target && selectedUnit) {
       if (!explored) {
@@ -291,6 +346,9 @@ export function GameScreen({ session, onQuit }: Props) {
       const dir = dirTo(view, selectedUnit, p);
       if (dir !== null) return moveSelected(dir);
     }
+    // Your own city opens its screen when nothing is selected, or when the selected unit stands in it.
+    const own = view.myCities.find((c) => c.x === p.x && c.y === p.y);
+    if (own && (!selectedUnit || (selectedUnit.x === own.x && selectedUnit.y === own.y))) return openCity(own.id);
     const city = view.knownCities.find((c) => c.x === p.x && c.y === p.y);
     if (city) return setSelection({ kind: 'city', id: city.id });
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
@@ -301,7 +359,7 @@ export function GameScreen({ session, onQuit }: Props) {
 
   /** Double-click on one of your units outside a city opens its info dialog. */
   const onDouble = (p: Pos) => {
-    if (!playing || target) return;
+    if (!playing || target || dialogOpen) return;
     if (view.knownCities.some((c) => c.x === p.x && c.y === p.y)) return;
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
     if (!unit) return;
@@ -310,7 +368,7 @@ export function GameScreen({ session, onQuit }: Props) {
   };
 
   const onContext = (_p: Pos, client: { x: number; y: number }) => {
-    if (!playing) return;
+    if (!playing || dialogOpen) return;
     if (target) {
       setTarget(null);
       return;
@@ -327,6 +385,7 @@ export function GameScreen({ session, onQuit }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (dialogOpen) return; // the city screen and the reports take their own keys
       const tag = (e.target as HTMLElement).tagName;
       // Keys typed into form controls or focused buttons keep their native behavior.
       if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag)) return;
@@ -394,11 +453,12 @@ export function GameScreen({ session, onQuit }: Props) {
   );
 
   // Stable handlers so the memoised side panel is not re-rendered by hover or camera changes.
-  const latest = useRef({ doAction, act, select: (id: number) => setSelection({ kind: 'unit', id }) });
-  latest.current = { doAction, act, select: (id: number) => setSelection({ kind: 'unit', id }) };
+  const latest = useRef({ doAction, act, openCity, select: (id: number) => setSelection({ kind: 'unit', id }) });
+  latest.current = { doAction, act, openCity, select: (id: number) => setSelection({ kind: 'unit', id }) };
   const stable = useMemo(() => ({
     onAction: (id: ActionId) => latest.current.doAction(id),
     onSelectUnit: (id: number) => latest.current.select(id),
+    onOpenCity: (id: number) => latest.current.openCity(id),
     onProduction: (cityId: number, unitType: UnitType | null) => { latest.current.act({ type: 'setProduction', cityId, unitType }); },
   }), []);
   const nothingLeft = view.myUnits.length === 0 && view.myCities.length === 0;
@@ -410,7 +470,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const cargo = pickerUnit ? view.myUnits.filter((c) => c.carriedBy === pickerUnit.id).sort((a, b) => a.id - b.id) : [];
 
   return (
-    <div class="game">
+    <div class={dialogOpen ? 'game modal' : 'game'}>
       <header class="topbar">
         <span>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
@@ -458,6 +518,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSelectUnit={stable.onSelectUnit}
           onProduction={stable.onProduction}
           onAction={stable.onAction}
+          onOpenCity={stable.onOpenCity}
           readyCount={ready.length}
         />
         <GameLog lines={logLines} />
@@ -506,6 +567,22 @@ export function GameScreen({ session, onQuit }: Props) {
             }}
           />
         </div>
+      )}
+      {openCityObj && (
+        <CityScreen
+          key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} error={message}
+          onPick={(unitType) => { act({ type: 'setProduction', cityId: openCityObj.id, unitType }); }}
+          onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }); }}
+          onClose={() => setCityOpen(null)}
+        />
+      )}
+      {report && reportCity && (
+        <ProductionReport
+          key={report.unitId} view={view} report={report} anchor={anchorFor(reportCity)} error={message}
+          onRename={(name) => { act({ type: 'renameUnit', unitId: report.unitId, name: name.trim() === '' ? null : name.trim() }); }}
+          onProd={() => openCity(reportCity.id)}
+          onOk={nextReport}
+        />
       )}
       {session.phase === 'handoff' && (
         <div class="overlay handoff">

@@ -1,4 +1,4 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, effectiveMove, unitDisplayName, type City, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, effectiveMove, isCoastal, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { describeOrders } from './actions';
 
 export function pathLabel(turn: number, arrival: number | null, fuelLeft: number | null): string {
@@ -61,4 +61,18 @@ export function statusLine(u: Unit): string {
   let line = `${unitDisplayName(u)} \u00b7 Moves ${u.movesLeft}/${effectiveMove(u)} \u00b7 Orders: ${describeOrders(u.orders)}`;
   if (u.fuel !== null) line += ` \u00b7 Fuel ${u.fuel}/${st.range}`;
   return line;
+}
+
+/** One-line type stats, e.g. "Move 5, attack 2, defense 2, hits 1, range 20". */
+export function statsText(type: UnitType): string {
+  const st = UNIT_STATS[type];
+  return `Move ${st.move}, attack ${st.attack}, defense ${st.defense}, hits ${st.hits}${st.range !== null ? `, range ${st.range}` : ''}`;
+}
+
+/** Whether a city touches the sea, judged from what the viewer has explored (unexplored squares count as land). */
+export function cityIsCoastal(view: PlayerView, city: Pick<City, 'x' | 'y'>): boolean {
+  return isCoastal(
+    { width: view.width, height: view.height, wrap: view.wrap, terrain: view.terrain.map((t) => t ?? 'land') },
+    city.x, city.y,
+  );
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { LogEntry } from '../../src/app/session';
-import { builtThisTurn, nextReadyAfter, readyUnits } from '../../src/ui/cycle';
+import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue } from '../../src/ui/cycle';
 import { addUnit, makeGame } from '../helpers';
 
 const M = ['*##', '###', '##*'];
@@ -85,5 +85,27 @@ describe('nextReadyAfter', () => {
     expect(nextReadyAfter(mk(3, 5), null)?.id).toBe(3);
     expect(nextReadyAfter([], 3)).toBeNull();
     expect(nextReadyAfter([], null)).toBeNull();
+  });
+});
+
+describe('reportQueue', () => {
+  const produced = (turn: number, unitId: number, cityId: number): LogEntry => (
+    { turn, event: { type: 'unitProduced', unitId, cityId, unitType: 'army' } }
+  );
+
+  it('lists this turn\'s productions for my cities, by city then unit', () => {
+    const s = makeGame(['*#*#', '####']);
+    const entries: LogEntry[] = [produced(5, 30, 1), produced(5, 12, 0), produced(5, 11, 1)];
+    const q = reportQueue(entries, 5, 0, s.cities.map((c) => ({ ...c, owner: 0 })));
+    expect(q.map((r) => [r.cityId, r.unitId])).toEqual([[0, 12], [1, 11], [1, 30]]);
+    expect(q[0].unitType).toBe('army');
+  });
+
+  it('leaves out other turns and cities the viewer does not own', () => {
+    const s = makeGame(['*#*#', '####']);
+    const cities = s.cities.map((c, i) => ({ ...c, owner: i === 0 ? 0 : 1 }));
+    const entries: LogEntry[] = [produced(4, 7, 0), produced(5, 8, 0), produced(5, 9, 1)];
+    expect(reportQueue(entries, 5, 0, cities).map((r) => r.unitId)).toEqual([8]);
+    expect(reportQueue(entries, 5, 1, cities).map((r) => r.unitId)).toEqual([9]);
   });
 });

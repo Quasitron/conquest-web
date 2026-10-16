@@ -1,11 +1,11 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, isCoastal, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
 import { describeOrders } from './actions';
 import type { ActionId } from './keys';
 import { UNIT_GLYPH } from './colors';
-import { cargoSummary } from './labels';
+import { cargoSummary, cityIsCoastal } from './labels';
 import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 
@@ -17,6 +17,7 @@ interface Props {
   onSelectUnit: (id: number) => void;
   onProduction: (cityId: number, type: UnitType | null) => void;
   onAction: (id: ActionId) => void;
+  onOpenCity: (cityId: number) => void;
   /** Number of units the cycle would visit; End Turn is offered in the empty panel when it is 0. */
   readyCount: number;
 }
@@ -53,17 +54,15 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
   );
 }
 
-function CityDetails({ city, view, onProduction, onSelectUnit }: {
-  city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit'];
+function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity }: {
+  city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit']; onOpenCity: Props['onOpenCity'];
 }) {
-  const coastal = isCoastal(
-    { width: view.width, height: view.height, wrap: view.wrap, terrain: view.terrain.map((t) => t ?? 'land') },
-    city.x, city.y,
-  );
+  const coastal = cityIsCoastal(view, city);
   const here = view.myUnits.filter((u) => u.x === city.x && u.y === city.y && u.carriedBy === null);
   return (
     <div>
-      <h3>City #{city.id}</h3>
+      <h3>{city.name}</h3>
+      <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
       <label>Building{' '}
         <select value={city.production ?? ''} onChange={(e) => {
           const v = (e.target as HTMLSelectElement).value;
@@ -103,7 +102,7 @@ function EmptyPanel({ text, readyCount, onAction }: { text: string; readyCount: 
   );
 }
 
-function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, readyCount }: Props) {
+function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, onOpenCity, readyCount }: Props) {
   if (!selection) return <EmptyPanel text="Select a unit or city." readyCount={readyCount} onAction={onAction} />;
   if (selection.kind === 'unit') {
     const u = view.myUnits.find((x) => x.id === selection.id);
@@ -118,7 +117,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
   if (own) {
     return (
       <aside class="panel">
-        <CityDetails city={own} view={view} onProduction={onProduction} onSelectUnit={onSelectUnit} />
+        <CityDetails city={own} view={view} onProduction={onProduction} onSelectUnit={onSelectUnit} onOpenCity={onOpenCity} />
       </aside>
     );
   }
@@ -126,7 +125,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
   const owner = known?.owner;
   return (
     <aside class="panel">
-      <h3>City #{selection.id}</h3>
+      <h3>{known?.name ?? `City #${selection.id}`}</h3>
       <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
     </aside>
   );

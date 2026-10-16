@@ -1,5 +1,5 @@
 import type { LogEntry } from '../app/session';
-import type { Unit } from '../engine';
+import type { City, PlayerId, Unit, UnitType } from '../engine';
 
 /**
  * Units the unit cycle should visit this turn: awake, with moves left, not held.
@@ -37,4 +37,23 @@ export function nextReadyAfter(ready: readonly Unit[], id: number | null): Unit 
   const at = ready.findIndex((u) => u.id === id);
   if (at >= 0) return ready[(at + 1) % ready.length];
   return ready.find((u) => u.id > id) ?? ready[0];
+}
+
+export interface ProductionReportItem { cityId: number; unitId: number; unitType: UnitType }
+
+/**
+ * This turn's unitProduced events as turn-start reports, ordered by city id then unit id.
+ * When `cities` is given, only cities owned by `me` are reported (the log may hold other seats' events).
+ */
+export function reportQueue(
+  entries: readonly LogEntry[], turn: number, me: PlayerId, cities?: readonly Pick<City, 'id' | 'owner'>[],
+): ProductionReportItem[] {
+  const mine = cities ? new Set(cities.filter((c) => c.owner === me).map((c) => c.id)) : null;
+  const out: ProductionReportItem[] = [];
+  for (const e of entries) {
+    if (e.turn !== turn || e.event.type !== 'unitProduced') continue;
+    if (mine && !mine.has(e.event.cityId)) continue;
+    out.push({ cityId: e.event.cityId, unitId: e.event.unitId, unitType: e.event.unitType });
+  }
+  return out.sort((a, b) => a.cityId - b.cityId || a.unitId - b.unitId);
 }

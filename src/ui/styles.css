@@ -88,3 +88,28 @@ button.linklike { border: 0; background: none; padding: 0; text-align: left; col
 .unit-info h2, .unit-info p { margin: 0; }
 .rename { display: flex; gap: 6px; }
 .rename input { flex: 1; min-width: 0; }
+
+/* City screen and production reports: dialogs placed beside the city, joined to it by a leader line. */
+.game.modal .topbar, .game.modal .side, .game.modal .statusline { pointer-events: none; }
+.dialog { position: fixed; z-index: 12; text-align: left; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; outline: none; border: 1px solid #333c48; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55); }
+.dialog h2, .dialog h3, .dialog p { margin: 0; }
+.dialog h2 .muted { font-weight: 400; margin-left: 6px; }
+svg.leader { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 11; pointer-events: none; }
+svg.leader line { stroke: #ffd24a; stroke-width: 2; stroke-linecap: round; }
+svg.leader circle { fill: #ffd24a; }
+.prod-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.prod-row, .prod-head { display: grid; grid-template-columns: 1.8em 1fr 4em 6em; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; }
+.prod-row { cursor: pointer; }
+.prod-row:hover { background: #222a34; }
+.prod-row.selected { background: var(--accent); color: #fff; }
+.prod-row.current:not(.selected) { outline: 1px solid var(--accent); }
+.prod-row.disabled { opacity: 0.45; cursor: default; }
+.prod-row.disabled:hover { background: none; }
+.prod-head { font-size: 0.75rem; color: var(--muted); }
+.num { text-align: right; }
+.stats-line { min-height: 1.3em; }
+.progress { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.progress-bar { height: 8px; background: #0f1318; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); }
+.plain-list { margin: 0; padding-left: 18px; }
+.report-text { line-height: 1.4; }
