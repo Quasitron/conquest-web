@@ -1,8 +1,6 @@
 import type { Unit } from '../engine';
 import { statusLine } from './labels';
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+import { blur } from './blur';
 
 export function StatusLine({ unit, onFit }: { unit: Unit | null; onFit: () => void }) {
   return (

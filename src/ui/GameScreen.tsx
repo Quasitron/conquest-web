@@ -22,6 +22,7 @@ import { StatusLine } from './StatusLine';
 import { dirTo, stepTargets } from './targets';
 import { UnitInfo } from './UnitInfo';
 import { UnitPicker } from './UnitPicker';
+import { blur } from './blur';
 
 interface Props {
   session: GameSession;
@@ -31,13 +32,9 @@ interface Props {
 
 type TargetMode = null | 'moveTo' | 'patrol';
 
-// After a pointer click, release focus so Space/Enter/arrows go to the game, not the button.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
-
 // Rough size of the context menu, used to keep it on screen.
 const MENU_W = 220;
 const MENU_H = 400;
-
 
 interface LogLine { turn: number; text: string }
 
@@ -73,7 +70,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
-  const [info, setInfo] = useState(false);
+  const [infoId, setInfoId] = useState<number | null>(null);
+  const setInfo = (on: boolean) => { if (!on) setInfoId(null); };
   const [message, setMessage] = useState<string | null>(null);
 
   // Show a one-off load notice (e.g. an older save) when the game opens.
@@ -98,6 +96,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const selectedPos: Pos | null =
     selectedUnit ?? (selection?.kind === 'city' ? view.knownCities.find((c) => c.id === selection.id) ?? null : null);
   const playing = session.phase === 'playing';
+  // The info dialog belongs to one unit: it closes when the selection moves elsewhere.
+  const info = infoId !== null && infoId === selectedUnit?.id;
   const targets = useMemo(
     () => (selectedUnit && playing ? stepTargets(view, selectedUnit) : []),
     [selectedUnit, view, playing],
@@ -259,7 +259,7 @@ export function GameScreen({ session, onQuit }: Props) {
         if (window.confirm('Disband this unit?')) order(u, { type: 'disband', unitId: u.id });
         return;
       case 'info':
-        setInfo(true);
+        setInfoId(u.id);
         return;
       case 'moveTo':
       case 'patrol':
@@ -306,7 +306,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
     if (!unit) return;
     setSelection({ kind: 'unit', id: unit.id });
-    setInfo(true);
+    setInfoId(unit.id);
   };
 
   const onContext = (_p: Pos, client: { x: number; y: number }) => {
@@ -465,7 +465,7 @@ export function GameScreen({ session, onQuit }: Props) {
       {info && selectedUnit && playing && (
         <div class="overlay">
           <UnitInfo
-            view={view} unit={selectedUnit}
+            key={selectedUnit.id} view={view} unit={selectedUnit}
             onRename={(name) => { act({ type: 'renameUnit', unitId: selectedUnit.id, name: name.trim() === '' ? null : name.trim() }); }}
             onOrders={(at) => setMenu({
               x: Math.max(0, Math.min(at.x, window.innerWidth - MENU_W)),
@@ -474,7 +474,8 @@ export function GameScreen({ session, onQuit }: Props) {
             onClose={() => setInfo(false)}
           />
         </div>
-      )}      {menu && selectedUnit && (
+      )}
+      {menu && selectedUnit && (
         <OrdersMenu view={view} unit={selectedUnit} at={menu} onAction={doAction} onClose={() => setMenu(null)} />
       )}
       {pickerUnit && picker === 'load' && (

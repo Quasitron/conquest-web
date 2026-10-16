@@ -3,13 +3,11 @@ import type { PlayerView, Unit } from '../engine';
 import { ACTION_LABELS } from './ActionBar';
 import { availableActions } from './actions';
 import type { ActionId } from './keys';
+import { blur } from './blur';
 
 const ORDER_ITEMS: ActionId[] = [
   'moveTo', 'patrol', 'goHome', 'explore', 'sentry', 'load', 'unload', 'clearOrders', 'skip', 'hold', 'disband',
 ];
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
 
 interface Props {
   view: PlayerView;

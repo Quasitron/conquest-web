@@ -3,9 +3,7 @@ import { UNIT_STATS, isCrippled, unitDisplayName, type PlayerView, type Unit } f
 import { describeOrders } from './actions';
 import { UNIT_GLYPH } from './colors';
 import { cargoSummary, healthText } from './labels';
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+import { blur } from './blur';
 
 export function HealthBar({ u }: { u: Unit }) {
   const st = UNIT_STATS[u.type];

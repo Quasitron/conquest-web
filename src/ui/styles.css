@@ -39,10 +39,11 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .statusline button { padding: 2px 10px; }
 canvas.map { width: 100%; flex: 1 1 0; min-height: 0; display: block; touch-action: none; cursor: pointer; }
 .side { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--panel); overflow: hidden; }
-canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; cursor: pointer; }
+canvas.minimap { flex: 0 0 auto; width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; cursor: pointer; }
+.panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .panel h3 { margin: 4px 0; }
 .panel button { margin: 2px 4px 2px 0; }
-.log { flex: 1; overflow-y: auto; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; color: var(--muted); }
+.log { flex: 1 1 80px; min-height: 80px; overflow-y: auto; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; color: var(--muted); }
 .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); display: grid; place-items: center; z-index: 10; }
 /* Hotseat hand-off must hide the next player's map completely. */
 .overlay.handoff { background: var(--bg); }
@@ -54,7 +55,7 @@ canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; curso
 }
 
 .muted { color: var(--muted); font-size: 0.85rem; }
-.actions { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; max-height: 50vh; overflow-y: auto; }
+.actions { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
 .actions button, .orders-menu button { font-size: 0.85rem; padding: 4px 8px; margin: 0; }
 .actions button { width: 100%; text-align: left; }
 .health { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; font-size: 0.9rem; }

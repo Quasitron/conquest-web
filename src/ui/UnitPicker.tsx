@@ -1,8 +1,6 @@
 import { useState } from 'preact/hooks';
 import { UNIT_STATS, type Unit } from '../engine';
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+import { blur } from './blur';
 
 interface Props {
   title: string;

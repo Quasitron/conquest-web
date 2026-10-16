@@ -1,6 +1,7 @@
 import type { PlayerView, Unit } from '../engine';
 import { visibleButtons } from './actions';
 import type { ActionId } from './keys';
+import { blur } from './blur';
 
 export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   next: { label: 'Next', key: 'N' },
@@ -20,9 +21,6 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   info: { label: 'Info', key: 'I' },
   fit: { label: 'Fit', key: 'Z' },
 };
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
 
 export function ActionBar({ view, unit, onAction }: {
   view: PlayerView; unit: Unit; onAction: (id: ActionId) => void;

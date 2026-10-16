@@ -7,9 +7,7 @@ import type { ActionId } from './keys';
 import { UNIT_GLYPH } from './colors';
 import { cargoSummary } from './labels';
 import { HealthBar } from './UnitInfo';
-
-// After a pointer click, release focus so keys keep going to the map.
-const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+import { blur } from './blur';
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | null;
 
@@ -54,6 +52,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
     </div>
   );
 }
+
 function CityDetails({ city, view, onProduction, onSelectUnit }: {
   city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit'];
 }) {
