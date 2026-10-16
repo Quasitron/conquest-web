@@ -1,31 +1,35 @@
 import type { Dir } from '../engine';
 
+export type ActionId = 'next' | 'skip' | 'hold' | 'sentry' | 'moveTo' | 'patrol' | 'goHome' | 'explore'
+  | 'load' | 'unload' | 'clearOrders' | 'disband' | 'center' | 'endTurn';
+
 export type KeyAction =
   | { kind: 'move'; dir: Dir }
-  | { kind: 'next' }
-  | { kind: 'skip' }
-  | { kind: 'endTurn' }
-  | { kind: 'center' }
-  | { kind: 'deselect' }
-  | { kind: 'pan'; dx: number; dy: number };
+  | { kind: 'arrow'; dir: Dir; dx: number; dy: number }
+  | { kind: 'action'; id: ActionId }
+  | { kind: 'escape' };
 
 const NUMPAD: Record<string, Dir> = {
   Numpad8: 0, Numpad9: 1, Numpad6: 2, Numpad3: 3, Numpad2: 4, Numpad1: 5, Numpad4: 6, Numpad7: 7,
 };
-const LETTERS: Record<string, Dir> = { w: 0, e: 1, d: 2, c: 3, x: 4, z: 5, a: 6, q: 7 };
-const PAN: Record<string, [number, number]> = {
-  ArrowUp: [0, -3], ArrowDown: [0, 3], ArrowLeft: [-3, 0], ArrowRight: [3, 0],
+const NAV: Record<string, Dir> = { Home: 7, PageUp: 1, End: 5, PageDown: 3 };
+const ARROWS: Record<string, { dir: Dir; dx: number; dy: number }> = {
+  ArrowUp: { dir: 0, dx: 0, dy: -3 },
+  ArrowRight: { dir: 2, dx: 3, dy: 0 },
+  ArrowDown: { dir: 4, dx: 0, dy: 3 },
+  ArrowLeft: { dir: 6, dx: -3, dy: 0 },
+};
+const ACTIONS: Record<string, ActionId> = {
+  n: 'next', ' ': 'skip', tab: 'hold', s: 'sentry', t: 'moveTo', p: 'patrol', h: 'goHome', x: 'explore',
+  l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', f: 'center', enter: 'endTurn',
 };
 
 export function keyToAction(key: string, code: string): KeyAction | null {
   if (code in NUMPAD) return { kind: 'move', dir: NUMPAD[code] };
-  if (code in PAN) return { kind: 'pan', dx: PAN[code][0], dy: PAN[code][1] };
+  if (key in NAV) return { kind: 'move', dir: NAV[key] };
+  if (key in ARROWS) return { kind: 'arrow', ...ARROWS[key] };
+  if (key === 'Escape') return { kind: 'escape' };
   const k = key.toLowerCase();
-  if (k in LETTERS) return { kind: 'move', dir: LETTERS[k] };
-  if (k === ' ' || k === 'n') return { kind: 'next' };
-  if (k === 's') return { kind: 'skip' };
-  if (k === 'enter') return { kind: 'endTurn' };
-  if (k === 'f') return { kind: 'center' };
-  if (k === 'escape') return { kind: 'deselect' };
+  if (k in ACTIONS) return { kind: 'action', id: ACTIONS[k] };
   return null;
 }

@@ -131,7 +131,12 @@ export function GameScreen({ session, onQuit }: Props) {
       if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(tag)) return;
       const a = keyToAction(e.key, e.code);
       if (!a) return;
-      if (a.kind === 'pan') {
+      if (a.kind === 'arrow' && selectedUnit && session.phase === 'playing') {
+        e.preventDefault();
+        moveSelected(a.dir);
+        return;
+      }
+      if (a.kind === 'arrow') {
         e.preventDefault();
         return setCam(pan(cam, -a.dx * cam.tile, -a.dy * cam.tile));
       }
@@ -139,20 +144,20 @@ export function GameScreen({ session, onQuit }: Props) {
       if (a.kind === 'move' && selectedUnit) {
         e.preventDefault();
         moveSelected(a.dir);
-      } else if (a.kind === 'next') {
+      } else if (a.kind === 'action' && a.id === 'next') {
         e.preventDefault();
         selectNext();
-      } else if (a.kind === 'skip' && selectedUnit) {
+      } else if (a.kind === 'action' && a.id === 'skip' && selectedUnit) {
         e.preventDefault();
         setSkipped(new Set(skipped).add(selectedUnit.id));
         selectNext();
-      } else if (a.kind === 'endTurn') {
+      } else if (a.kind === 'action' && a.id === 'endTurn') {
         e.preventDefault();
         act({ type: 'endTurn' });
-      } else if (a.kind === 'center' && selectedPos) {
+      } else if (a.kind === 'action' && a.id === 'center' && selectedPos) {
         e.preventDefault();
         focus(selectedPos);
-      } else if (a.kind === 'deselect') {
+      } else if (a.kind === 'escape') {
         e.preventDefault();
         setSelection(null);
       }
