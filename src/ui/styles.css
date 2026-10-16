@@ -93,6 +93,7 @@ canvas.minimap { flex: 0 0 auto; width: 100%; aspect-ratio: 200 / 140; border-ra
 
 .turn-divider { margin-top: 6px; padding-top: 2px; border-top: 1px solid #333c48; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .log li:first-child { margin-top: 0; }
+button.primary.blink { background: #e8890c; border-color: #e8890c; }
 button.blink { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
 

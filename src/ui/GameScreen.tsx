@@ -41,7 +41,7 @@ type TargetMode = null | 'moveTo' | 'patrol';
 const MENU_W = 220;
 const MENU_H = 400;
 // How long a newly given Move To / Patrol route stays on screen before the cycle moves on.
-const ROUTE_PAUSE_MS = 1000;
+const ROUTE_PAUSE_MS = 700;
 
 interface LogLine { turn: number; text: string }
 
@@ -688,21 +688,23 @@ export function GameScreen({ session, onQuit }: Props) {
   const pickerUnit = picker && selectedUnit ? selectedUnit : null;
   const cargo = pickerUnit ? view.myUnits.filter((c) => c.carriedBy === pickerUnit.id).sort((a, b) => a.id - b.id) : [];
 
+  /** Saves under the game's own name when it has one (and `keepName`), otherwise asks for a name first. */
+  const save = (keepName: boolean) => {
+    const name = keepName ? session.name : window.prompt('Save name?', session.name === 'autosave' ? 'My game' : session.name);
+    if (!name) return;
+    session.saveAs(name)
+      .then(() => setMessage(`Saved as "${name}".`))
+      .catch((e) => setMessage(`Save failed: ${(e as Error).message}`));
+  };
+
   return (
     <div class={dialogOpen ? 'game modal' : 'game'}>
       <header class="topbar">
         <span>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
-        <button onClick={(e) => {
-          blur(e);
-          const name = window.prompt('Save name?', session.name === 'autosave' ? 'My game' : session.name);
-          if (name) {
-            session.saveAs(name)
-              .then(() => setMessage(`Saved as "${name}".`))
-              .catch((e) => setMessage(`Save failed: ${(e as Error).message}`));
-          }
-        }}>Save</button>
+        <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
+        <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
