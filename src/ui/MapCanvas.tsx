@@ -3,6 +3,7 @@ import type { PlayerView, Pos } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
 import type { StepTarget } from './targets';
+import { useBlink } from './useBlink';
 
 interface Props {
   view: PlayerView;
@@ -17,7 +18,10 @@ interface Props {
   /** Right-click, or a long-press on touch; client is in viewport coordinates. */
   onContext: (p: Pos, client: { x: number; y: number }) => void;
   activeId: number | null;
-  blinkOn: boolean;
+  /** Blink the active unit only while the game is being played. */
+  blinkActive: boolean;
+  /** Double-click on a square. */
+  onDouble: (p: Pos) => void;
   path: Pos[] | null;
   pathOk: boolean;
   pathLabel: string | null;
@@ -28,6 +32,8 @@ interface Props {
 }
 
 export function MapCanvas(p: Props) {
+  // The blink state lives here so a tick redraws only the canvas, not the whole game screen.
+  const blinkOn = useBlink(p.blinkActive);
   const ref = useRef<HTMLCanvasElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const dragged = useRef(false);
@@ -56,7 +62,7 @@ export function MapCanvas(p: Props) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
-      activeId: p.activeId, blinkOn: p.blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
+      activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
       route: p.route, routeLabel: p.routeLabel, attack: p.attack,
     });
   });
@@ -90,6 +96,10 @@ export function MapCanvas(p: Props) {
         if (longPressed.current) return; // the touch long-press already opened it
         const sq = squareAt(local(e as unknown as PointerEvent));
         if (sq) p.onContext(sq, { x: e.clientX, y: e.clientY });
+      }}
+      onDblClick={(e) => {
+        const sq = squareAt(local(e as unknown as PointerEvent));
+        if (sq) p.onDouble(sq);
       }}
       onPointerLeave={() => p.onHover(null)}
       onWheel={(e) => {

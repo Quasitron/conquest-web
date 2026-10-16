@@ -1,8 +1,15 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, isCoastal, isCrippled, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, isCoastal, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { memo } from 'preact/compat';
+import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
 import { describeOrders } from './actions';
 import type { ActionId } from './keys';
-import { healthText } from './labels';
+import { UNIT_GLYPH } from './colors';
+import { cargoSummary } from './labels';
+import { HealthBar } from './UnitInfo';
+
+// After a pointer click, release focus so keys keep going to the map.
+const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | null;
 
@@ -12,29 +19,41 @@ interface Props {
   onSelectUnit: (id: number) => void;
   onProduction: (cityId: number, type: UnitType | null) => void;
   onAction: (id: ActionId) => void;
+  /** Number of units the cycle would visit; End Turn is offered in the empty panel when it is 0. */
+  readyCount: number;
 }
 
-function UnitDetails({ u, view, onAction }: { u: Unit; view: PlayerView; onAction: (id: ActionId) => void }) {
+function UnitDetails({ u, view, onAction, onSelectUnit }: {
+  u: Unit; view: PlayerView; onAction: (id: ActionId) => void; onSelectUnit: (id: number) => void;
+}) {
   const st = UNIT_STATS[u.type];
-  const cargo = view.myUnits.filter((c) => c.carriedBy === u.id);
-  const pct = ((st.hits - u.damage) / st.hits) * 100;
+  const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).sort((a, b) => a.id - b.id);
+  const [open, setOpen] = useState(false);
   return (
     <div>
-      <h3>{st.name} #{u.id}</h3>
+      <h3><span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
       <p>Orders: {describeOrders(u.orders)}</p>
       <p>Moves {u.movesLeft}/{st.move}</p>
-      <div class="health" title={healthText(u)}>
-        <div class="health-bar"><div class={`health-fill${isCrippled(u) ? ' crippled' : ''}`} style={{ width: `${pct}%` }} /></div>
-        <span>{healthText(u)}</span>
-        {isCrippled(u) && <span class="crippled-tag">Crippled</span>}
-      </div>
+      <HealthBar u={u} />
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
-      {cargo.length > 0 && <p>Carrying: {cargo.map((c) => UNIT_STATS[c.type].name).join(', ')}</p>}
+      {cargo.length > 0 && (
+        <div>
+          <button class="linklike" aria-expanded={open} onClick={(e) => { blur(e); setOpen(!open); }}>
+            Carrying: {cargoSummary(cargo)}
+          </button>
+          {open && (
+            <ul class="cargo-list">
+              {cargo.map((c) => (
+                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)}</button></li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <ActionBar view={view} unit={u} onAction={onAction} />
     </div>
   );
 }
-
 function CityDetails({ city, view, onProduction, onSelectUnit }: {
   city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit'];
 }) {
@@ -73,14 +92,26 @@ function CityDetails({ city, view, onProduction, onSelectUnit }: {
   );
 }
 
-export function SidePanel({ view, selection, onSelectUnit, onProduction, onAction }: Props) {
-  if (!selection) return <aside class="panel"><p>Select a unit or city.</p></aside>;
+function EmptyPanel({ text, readyCount, onAction }: { text: string; readyCount: number; onAction: Props['onAction'] }) {
+  return (
+    <aside class="panel">
+      <p>{text}</p>
+      <div class="actions">
+        <button onClick={(e) => { blur(e); onAction('next'); }}>Next unit</button>
+        {readyCount === 0 && <button class="primary" onClick={(e) => { blur(e); onAction('endTurn'); }}>End Turn</button>}
+      </div>
+    </aside>
+  );
+}
+
+function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, readyCount }: Props) {
+  if (!selection) return <EmptyPanel text="Select a unit or city." readyCount={readyCount} onAction={onAction} />;
   if (selection.kind === 'unit') {
     const u = view.myUnits.find((x) => x.id === selection.id);
-    if (!u) return <aside class="panel"><p>That unit is gone.</p></aside>;
+    if (!u) return <EmptyPanel text="That unit is gone." readyCount={readyCount} onAction={onAction} />;
     return (
       <aside class="panel">
-        <UnitDetails u={u} view={view} onAction={onAction} />
+        <UnitDetails key={u.id} u={u} view={view} onAction={onAction} onSelectUnit={onSelectUnit} />
       </aside>
     );
   }
@@ -101,3 +132,6 @@ export function SidePanel({ view, selection, onSelectUnit, onProduction, onActio
     </aside>
   );
 }
+
+/** Memoised so unrelated GameScreen renders (hover, camera) skip it when its props are unchanged. */
+export const SidePanel = memo(SidePanelView);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { updateFog } from '../../src/engine/fog';
-import { UNIT_BUTTONS, availableActions, describeOrders, loadCandidates } from '../../src/ui/actions';
+import { UNIT_BUTTONS, availableActions, describeOrders, loadCandidates, visibleButtons } from '../../src/ui/actions';
 import { addUnit, makeGame } from '../helpers';
 
 // Player 0 starts in the city at (0,0); player 1 at (6,0).
@@ -118,5 +118,18 @@ describe('UNIT_BUTTONS and the new actions', () => {
     expect(acts.fit).toBe(true);
     expect(acts.patrol).toBe(true);
     expect(acts.explore).toBe(false);
+  });
+});
+describe('visibleButtons', () => {
+  it('drops load and unload for an army aboard a transport at sea, keeps sentry, in button order', () => {
+    const s = makeGame(M);
+    const t = addUnit(s, 'transport', 0, 3, 0);
+    const a = addUnit(s, 'army', 0, 3, 0, { carriedBy: t.id, orders: { kind: 'sentry' } });
+    const { v, u } = viewOf(s, a.id);
+    const shown = visibleButtons(v, u);
+    expect(shown).not.toContain('load');
+    expect(shown).not.toContain('unload');
+    expect(shown).toContain('sentry');
+    expect(shown).toEqual(UNIT_BUTTONS.filter((id) => shown.includes(id)));
   });
 });

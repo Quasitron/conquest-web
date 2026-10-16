@@ -1,5 +1,5 @@
 import type { PlayerView, Unit } from '../engine';
-import { availableActions } from './actions';
+import { visibleButtons } from './actions';
 import type { ActionId } from './keys';
 
 export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
@@ -21,18 +21,15 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   fit: { label: 'Fit', key: 'Z' },
 };
 
-const BAR: ActionId[] = ['next', 'skip', 'hold', 'sentry', 'moveTo', 'center', 'disband', 'load', 'unload'];
-
 // After a pointer click, release focus so keys keep going to the map.
 const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
 
 export function ActionBar({ view, unit, onAction }: {
   view: PlayerView; unit: Unit; onAction: (id: ActionId) => void;
 }) {
-  const avail = availableActions(view, unit);
   return (
     <div class="actions">
-      {BAR.filter((id) => avail[id]).map((id) => (
+      {visibleButtons(view, unit).map((id) => (
         <button key={id} onClick={(e) => { blur(e); onAction(id); }}>
           {ACTION_LABELS[id].label} ({ACTION_LABELS[id].key})
         </button>

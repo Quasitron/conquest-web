@@ -41,6 +41,12 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
   };
 }
 
+/** The unit-panel buttons that apply to u, in UNIT_BUTTONS order. */
+export function visibleButtons(view: PlayerView, u: Unit): ActionId[] {
+  const avail = availableActions(view, u);
+  return UNIT_BUTTONS.filter((id) => avail[id]);
+}
+
 export function describeOrders(o: Orders | null): string {
   if (o === null) return 'None';
   switch (o.kind) {

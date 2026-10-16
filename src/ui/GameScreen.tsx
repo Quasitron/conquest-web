@@ -1,9 +1,10 @@
 import type { JSX } from 'preact';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { memo } from 'preact/compat';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
 import {
   UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, findPath, pathMapFromView,
-  type Dir, type Orders, type Pos, type Unit,
+  type Dir, type Orders, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
@@ -17,7 +18,9 @@ import { MapCanvas } from './MapCanvas';
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
+import { StatusLine } from './StatusLine';
 import { dirTo, stepTargets } from './targets';
+import { UnitInfo } from './UnitInfo';
 import { UnitPicker } from './UnitPicker';
 
 interface Props {
@@ -34,6 +37,21 @@ const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
 // Rough size of the context menu, used to keep it on screen.
 const MENU_W = 220;
 const MENU_H = 400;
+
+
+interface LogLine { turn: number; text: string }
+
+/** The event log; memoised on `lines`, which only changes with the game view. */
+const GameLog = memo(function GameLog({ lines }: { lines: LogLine[] }) {
+  const items: JSX.Element[] = [];
+  let lastTurn: number | null = null;
+  lines.forEach((l, i) => {
+    if (l.turn !== lastTurn) items.push(<li class="turn-divider" key={`t${l.turn}-${i}`}>Turn {l.turn}</li>);
+    lastTurn = l.turn;
+    items.push(<li key={`l${i}`}>{l.text}</li>);
+  });
+  return <ul class="log">{items}</ul>;
+});
 
 export function GameScreen({ session, onQuit }: Props) {
   const [tick, setTick] = useState(0);
@@ -55,19 +73,13 @@ export function GameScreen({ session, onQuit }: Props) {
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
-  const [blinkOn, setBlinkOn] = useState(true);
+  const [info, setInfo] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Show a one-off load notice (e.g. an older save) when the game opens.
   useEffect(() => {
     if (session.notice) setMessage(session.notice);
   }, [session]);
-
-  useEffect(() => {
-    if (session.phase !== 'playing') return;
-    const id = window.setInterval(() => setBlinkOn((b) => !b), 250);
-    return () => window.clearInterval(id);
-  }, [session.phase]);
 
   const viewport = () => {
     const el = document.querySelector('canvas.map') as HTMLCanvasElement | null;
@@ -114,7 +126,11 @@ export function GameScreen({ session, onQuit }: Props) {
     const v = session.view();
     return readyUnits(v.myUnits, builtThisTurn(session.log(v.me), v.turn), h, s);
   };
-  const ready = readyUnits(view.myUnits, builtThisTurn(session.log(view.me), view.turn), held, skipped);
+  // Depends on view (rebuilt per session change), held and skipped only, so hover and zoom reuse it.
+  const ready = useMemo(
+    () => readyUnits(view.myUnits, builtThisTurn(session.log(view.me), view.turn), held, skipped),
+    [view, held, skipped],
+  );
 
   const selectUnit = (u: Pos & { id: number }) => {
     setSelection({ kind: 'unit', id: u.id });
@@ -146,6 +162,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setTarget(null);
     setMenu(null);
     setPicker(null);
+    setInfo(false);
     if (session.phase !== 'playing') return;
     setHeld(new Set());
     setSkipped([]);
@@ -188,8 +205,12 @@ export function GameScreen({ session, onQuit }: Props) {
     }
   };
 
+  /** Fit-to-window hook; auto-fit is wired in here later. */
+  const requestFit = () => {};
+
   const doAction = (id: ActionId) => {
     if (!playing) return;
+    if (id !== 'info') setInfo(false);
     if (id === 'endTurn') {
       act({ type: 'endTurn' });
       return;
@@ -198,6 +219,10 @@ export function GameScreen({ session, onQuit }: Props) {
       const cur = selectedUnit && ready.some((u) => u.id === selectedUnit.id) ? selectedUnit : null;
       const next = (cur && nextAfter(cur.id, ready, ready)) ?? (cur ? cur : ready[0]);
       if (next) selectUnit(next);
+      return;
+    }
+    if (id === 'fit') {
+      requestFit();
       return;
     }
     if (id === 'center') {
@@ -232,6 +257,9 @@ export function GameScreen({ session, onQuit }: Props) {
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':
         if (window.confirm('Disband this unit?')) order(u, { type: 'disband', unitId: u.id });
+        return;
+      case 'info':
+        setInfo(true);
         return;
       case 'moveTo':
       case 'patrol':
@@ -271,6 +299,16 @@ export function GameScreen({ session, onQuit }: Props) {
     setSelection(null);
   };
 
+  /** Double-click on one of your units outside a city opens its info dialog. */
+  const onDouble = (p: Pos) => {
+    if (!playing || target) return;
+    if (view.knownCities.some((c) => c.x === p.x && c.y === p.y)) return;
+    const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
+    if (!unit) return;
+    setSelection({ kind: 'unit', id: unit.id });
+    setInfo(true);
+  };
+
   const onContext = (_p: Pos, client: { x: number; y: number }) => {
     if (!playing) return;
     if (target) {
@@ -297,12 +335,13 @@ export function GameScreen({ session, onQuit }: Props) {
       if (a.kind === 'escape') {
         e.preventDefault();
         if (menu) setMenu(null);
+        else if (info) setInfo(false);
         else if (picker) setPicker(null);
         else if (target) setTarget(null);
         else setSelection(null);
         return;
       }
-      if (picker) return; // the picker is modal
+      if (picker || info) return; // the picker and the info dialog are modal
       if (a.kind === 'arrow' && selectedUnit && playing) {
         e.preventDefault();
         moveSelected(a.dir);
@@ -344,22 +383,28 @@ export function GameScreen({ session, onQuit }: Props) {
     city: (id: number) =>
       view.myCities.find((c) => c.id === id)?.name ?? view.knownCities.find((c) => c.id === id)?.name,
   };
-  const lines = session.log(view.me)
-    .map((entry) => ({ turn: entry.turn, text: describeEvent(entry.event, view.me, names, lookup) }))
-    .filter((l): l is { turn: number; text: string } => l.text !== null)
-    .slice(-40)
-    .reverse();
-  const logItems: JSX.Element[] = [];
-  let lastTurn: number | null = null;
-  lines.forEach((l, i) => {
-    if (l.turn !== lastTurn) logItems.push(<li class="turn-divider" key={`t${l.turn}-${i}`}>Turn {l.turn}</li>);
-    lastTurn = l.turn;
-    logItems.push(<li key={`l${i}`}>{l.text}</li>);
-  });
-  const current = view.players[view.currentPlayer];
+  // Rebuilt only when the view changes, so the log component below skips blink-free re-renders.
+  const logLines = useMemo(
+    () => session.log(view.me)
+      .map((entry) => ({ turn: entry.turn, text: describeEvent(entry.event, view.me, names, lookup) }))
+      .filter((l): l is LogLine => l.text !== null)
+      .slice(-40)
+      .reverse(),
+    [view],
+  );
+
+  // Stable handlers so the memoised side panel is not re-rendered by hover or camera changes.
+  const latest = useRef({ doAction, act, select: (id: number) => setSelection({ kind: 'unit', id }) });
+  latest.current = { doAction, act, select: (id: number) => setSelection({ kind: 'unit', id }) };
+  const stable = useMemo(() => ({
+    onAction: (id: ActionId) => latest.current.doAction(id),
+    onSelectUnit: (id: number) => latest.current.select(id),
+    onProduction: (cityId: number, unitType: UnitType | null) => { latest.current.act({ type: 'setProduction', cityId, unitType }); },
+  }), []);
   const nothingLeft = view.myUnits.length === 0 && view.myCities.length === 0;
   const allMoved = playing && ready.length === 0 && !nothingLeft;
   const endTurnBlinks = playing && ready.length === 0;
+  const current = view.players[view.currentPlayer];
 
   const pickerUnit = picker && selectedUnit ? selectedUnit : null;
   const cargo = pickerUnit ? view.myUnits.filter((c) => c.carriedBy === pickerUnit.id).sort((a, b) => a.id - b.id) : [];
@@ -369,7 +414,6 @@ export function GameScreen({ session, onQuit }: Props) {
       <header class="topbar">
         <span>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
-        <button class={endTurnBlinks ?'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => {
           blur(e);
@@ -382,19 +426,25 @@ export function GameScreen({ session, onQuit }: Props) {
         }}>Save</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
-        {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
-        {!target && message && <span class="message" role="status">{message}</span>}
-        {!target && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}
-        {!target && !message && allMoved && <span class="message" role="status">All units have moved. Press Enter or click End Turn.</span>}
-        {session.saveError && <span class="error" role="alert">{session.saveError}</span>}
+        <span class="topbar-right">
+          {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
+          {!target && message && <span class="message" role="status">{message}</span>}
+          {!target && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}
+          {!target && !message && allMoved && <span class="message" role="status">All units have moved. Press Enter or click End Turn.</span>}
+          {session.saveError && <span class="error" role="alert">{session.saveError}</span>}
+          <button class={endTurnBlinks ? 'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
+        </span>
       </header>
-      <MapCanvas
-        view={view} cam={cam} setCam={setCamRaw} selected={selectedPos} targets={targets} colors={colors}
-        onSquare={onSquare} onHover={onHover} onContext={onContext}
-        activeId={playing ? selectedUnit?.id ?? null : null} blinkOn={blinkOn}
-        path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-        route={null} routeLabel={null} attack={null}
-      />
+      <div class="mapcol">
+        <StatusLine unit={playing ? selectedUnit : null} onFit={requestFit} />
+        <MapCanvas
+          view={view} cam={cam} setCam={setCamRaw} selected={selectedPos} targets={targets} colors={colors}
+          onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
+          activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
+          path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
+          route={null} routeLabel={null} attack={null}
+        />
+      </div>
       <div class="side">
         <canvas class="minimap" width={200} height={140} onClick={(e) => {
           const r = (e.target as HTMLCanvasElement).getBoundingClientRect();
@@ -405,13 +455,26 @@ export function GameScreen({ session, onQuit }: Props) {
         <SidePanel
           view={view}
           selection={selection}
-          onSelectUnit={(id) => setSelection({ kind: 'unit', id })}
-          onProduction={(cityId, unitType) => act({ type: 'setProduction', cityId, unitType })}
-          onAction={doAction}
+          onSelectUnit={stable.onSelectUnit}
+          onProduction={stable.onProduction}
+          onAction={stable.onAction}
+          readyCount={ready.length}
         />
-        <ul class="log">{logItems}</ul>
+        <GameLog lines={logLines} />
       </div>
-      {menu && selectedUnit && (
+      {info && selectedUnit && playing && (
+        <div class="overlay">
+          <UnitInfo
+            view={view} unit={selectedUnit}
+            onRename={(name) => { act({ type: 'renameUnit', unitId: selectedUnit.id, name: name.trim() === '' ? null : name.trim() }); }}
+            onOrders={(at) => setMenu({
+              x: Math.max(0, Math.min(at.x, window.innerWidth - MENU_W)),
+              y: Math.max(0, Math.min(at.y, window.innerHeight - MENU_H)),
+            })}
+            onClose={() => setInfo(false)}
+          />
+        </div>
+      )}      {menu && selectedUnit && (
         <OrdersMenu view={view} unit={selectedUnit} at={menu} onAction={doAction} onClose={() => setMenu(null)} />
       )}
       {pickerUnit && picker === 'load' && (

@@ -29,10 +29,15 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .house-rule input { margin-top: 3px; }
 .house-rule .hint { display: block; }
 
-.game { display: grid; grid-template-columns: 1fr 260px; grid-template-rows: auto 1fr; height: 100%; }
+.game { display: grid; grid-template-columns: minmax(0, 1fr) 260px; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
 .topbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 12px; background: var(--panel); }
 .topbar .message { color: var(--muted); }
-canvas.map { width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+.topbar-right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.statusline { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px; background: var(--panel); border-bottom: 1px solid #333c48; font-size: 0.9rem; }
+.statusline-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statusline button { padding: 2px 10px; }
+canvas.map { width: 100%; flex: 1 1 0; min-height: 0; display: block; touch-action: none; cursor: pointer; }
 .side { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--panel); overflow: hidden; }
 canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; cursor: pointer; }
 .panel h3 { margin: 4px 0; }
@@ -49,10 +54,12 @@ canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; curso
 }
 
 .muted { color: var(--muted); font-size: 0.85rem; }
-.actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.actions { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; max-height: 50vh; overflow-y: auto; }
 .actions button, .orders-menu button { font-size: 0.85rem; padding: 4px 8px; margin: 0; }
+.actions button { width: 100%; text-align: left; }
 .health { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; font-size: 0.9rem; }
-.health-bar { flex: 1 1 120px; height: 8px; background: #0f1318; border-radius: 4px; overflow: hidden; }
+.health span { white-space: nowrap; }
+.health-bar { flex: 1 1 80px; min-width: 0; height: 8px; background: #0f1318; border-radius: 4px; overflow: hidden; }
 .health-fill { height: 100%; background: #4caf50; }
 .health-fill.crippled { background: #ff9800; }
 .crippled-tag { color: #ff9800; font-weight: 600; }
@@ -71,3 +78,12 @@ canvas.minimap { width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; curso
 .log li:first-child { margin-top: 0; }
 button.blink { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.35; } }
+
+.glyph { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 700; background: #0f1318; border-radius: 4px; }
+button.linklike { border: 0; background: none; padding: 0; text-align: left; color: var(--accent); text-decoration: underline; }
+.cargo-list { margin: 4px 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.cargo-list button { width: 100%; text-align: left; font-size: 0.85rem; padding: 2px 8px; margin: 0; }
+.unit-info { text-align: left; max-width: 360px; }
+.unit-info h2, .unit-info p { margin: 0; }
+.rename { display: flex; gap: 6px; }
+.rename input { flex: 1; min-width: 0; }
