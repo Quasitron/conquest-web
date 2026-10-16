@@ -4,6 +4,7 @@ import { cityAt, destroyUnit, isAtRefuelPoint } from './query';
 import { areFriendly } from './relations';
 import { advanceProduction } from './production';
 import { updateFog } from './fog';
+import { inOwnCity, unloadCargo } from './cargo';
 
 function finishPlayerTurn(s: GameState, pid: PlayerId, events: GameEvent[]): void {
   for (const u of [...s.units]) {
@@ -56,6 +57,11 @@ export function startTurn(s: GameState, events: GameEvent[]): void {
     if (u.owner !== pid) continue;
     u.movesLeft = effectiveMove(u);
     u.movedThisTurn = false;
+  }
+  for (const t of s.units) {
+    if (t.owner !== pid || !t.unloadNextTurn) continue;
+    if (inOwnCity(s, t) && t.orders === null) unloadCargo(s, t, null, events);
+    t.unloadNextTurn = false;
   }
   updateFog(s, pid);
   events.push({ type: 'turnStarted', player: pid, turn: s.turn });

@@ -18,6 +18,7 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
   const leaving = cityAt(s, from.x, from.y);
   u.x = to.x;
   u.y = to.y;
+  u.unloadNextTurn = false;
   for (const c of cargoOf(s, u)) {
     c.x = to.x;
     c.y = to.y;
@@ -25,17 +26,20 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
   if (carriesArmies && leaving && areFriendly(s, leaving.owner, u.owner)) {
     const room = cargoCapacity(u) - cargoOf(s, u).length;
     const waiting = s.units.filter(
-      (a) => a.type === 'army' && a.carriedBy === null && a.owner === u.owner && a.x === from.x && a.y === from.y,
+      (a) =>
+        a.type === 'army' &&
+        a.carriedBy === null &&
+        a.owner === u.owner &&
+        a.x === from.x &&
+        a.y === from.y &&
+        !(s.rules.sentriedStayAsGarrison && a.orders !== null),
     );
     for (const a of waiting.slice(0, Math.max(0, room))) {
       a.carriedBy = u.id;
       a.x = to.x;
       a.y = to.y;
+      a.orders = { kind: 'sentry' };
     }
-  }
-  const entering = cityAt(s, to.x, to.y);
-  if (carriesArmies && entering && areFriendly(s, entering.owner, u.owner)) {
-    for (const c of cargoOf(s, u)) c.carriedBy = null;
   }
   events.push({ type: 'unitMoved', unitId: u.id, from, to: { x: to.x, y: to.y } });
 }
@@ -81,6 +85,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   if (host) {
     spendMove(u);
     u.carriedBy = host.id;
+    u.orders = { kind: 'sentry' };
     relocate(s, u, to, events);
     settleAircraft(s, u, events);
     return null;

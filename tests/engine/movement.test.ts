@@ -83,7 +83,7 @@ describe('transports', () => {
     expect(cargoOf(s, t)).toHaveLength(6);
   });
 
-  it('auto-loads armies when leaving a friendly city and unloads when entering one', () => {
+  it('auto-loads armies when leaving a friendly city and keeps them aboard when entering one', () => {
     const s = makeGame(M);
     s.cities[2].owner = 0;
     const t = addUnit(s, 'transport', 0, 2, 2);
@@ -93,7 +93,7 @@ describe('transports', () => {
     expect(cargoOf(s, t)).toHaveLength(2);
     expect(cargoOf(s, t).every((a) => a.x === 3 && a.y === 2)).toBe(true);
     expect(moveUnit(s, rng, t, 6, [])).toBeNull();
-    expect(cargoOf(s, t)).toHaveLength(0);
+    expect(cargoOf(s, t)).toHaveLength(2);
   });
 });
 

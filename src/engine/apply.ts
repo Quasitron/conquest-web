@@ -1,11 +1,12 @@
 import type { ApplyResult, Command, GameEvent, GameState } from './types';
 import { Rng } from './rng';
 import { UNIT_STATS, UNIT_TYPES } from './units';
-import { cityAt, destroyUnit, topLevelUnitsAt, unitById } from './query';
+import { cargoOf, cityAt, destroyUnit, topLevelUnitsAt, unitById } from './query';
 import { moveUnit } from './movement';
 import { setProduction } from './production';
 import { endTurn, resign } from './turn';
 import { updateFog } from './fog';
+import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 
 function validDir(dir: unknown): boolean {
   return typeof dir === 'number' && Number.isInteger(dir) && dir >= 0 && dir <= 7;
@@ -27,7 +28,21 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       if (!u) error = 'no such unit';
       else if (u.owner !== actor) error = 'not your unit';
       else if (!validDir(cmd.dir)) error = 'invalid direction';
-      else error = moveUnit(s, rng, u, cmd.dir, events);
+      else {
+        u.orders = null;
+        error = moveUnit(s, rng, u, cmd.dir, events);
+        if (!error && u.type === 'transport' && inOwnCity(s, u) && cargoOf(s, u).length > 0) u.unloadNextTurn = true;
+      }
+      break;
+    }
+    case 'load':
+    case 'unload': {
+      const t = unitById(s, cmd.transportId);
+      if (!t) error = 'no such unit';
+      else if (t.owner !== actor) error = 'not your unit';
+      else if (cmd.type === 'load') error = loadUnits(s, t, cmd.unitIds);
+      else if (cmd.unitIds !== null && cmd.unitIds.length === 0) error = 'nothing to unload';
+      else error = unloadCargo(s, t, cmd.unitIds, events);
       break;
     }
     case 'setProduction': {
@@ -67,6 +82,6 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
 
   if (error) return { ok: false, error };
   s.rngState = rng.state;
-  if (cmd.type === 'move' || cmd.type === 'setProduction' || cmd.type === 'disband') updateFog(s, actor);
+  if (cmd.type === 'move' || cmd.type === 'setProduction' || cmd.type === 'disband' || cmd.type === 'load' || cmd.type === 'unload') updateFog(s, actor);
   return { ok: true, state: s, events };
 }

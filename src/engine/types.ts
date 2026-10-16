@@ -94,6 +94,8 @@ export type Command =
   | { type: 'move'; player: PlayerId; unitId: number; dir: Dir }
   | { type: 'setProduction'; player: PlayerId; cityId: number; unitType: UnitType | null }
   | { type: 'disband'; player: PlayerId; unitId: number }
+  | { type: 'load'; player: PlayerId; transportId: number; unitIds: number[] }
+  | { type: 'unload'; player: PlayerId; transportId: number; unitIds: number[] | null }
   | { type: 'endTurn'; player: PlayerId }
   | { type: 'resign'; player: PlayerId };
 
@@ -122,6 +124,7 @@ export type GameEvent =
   | { type: 'unitDestroyed'; unitId: number; owner: PlayerId; unitType: UnitType; reason: DestroyReason }
   | { type: 'cityCaptured'; cityId: number; by: PlayerId; from: PlayerId | null }
   | { type: 'unitProduced'; unitId: number; cityId: number; unitType: UnitType }
+  | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
   | { type: 'turnStarted'; player: PlayerId; turn: number }
   | { type: 'playerEliminated'; player: PlayerId }
   | { type: 'gameOver'; winner: PlayerId | null };

@@ -43,6 +43,9 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
         if (mine(e.by) || mine(e.from) || (c !== undefined && seen(c.x, c.y))) out.push(e);
         break;
       }
+      case 'cargoUnloaded':
+        if (mine(e.owner)) out.push(e);
+        break;
       case 'unitProduced':
         if (mine(owners.get(e.unitId))) out.push(e);
         break;
