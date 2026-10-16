@@ -558,7 +558,12 @@ if (ownBlocks(s, u, next)) {
 - [ ] **Step 1: Implement:**
   - **Layout:** `.title` becomes a full-window element (`min-height: 100vh`) with `background: url('/title.webp') top center / cover no-repeat`. Drop the `<img>` hero, and keep the alt text as a visually hidden `h1`.
   - **Very wide windows:** a `::before` layer holds the same image, `cover`, with `filter: blur(24px) brightness(0.5)`. The main image is drawn at `contain`, top center, over it, so the title is never cropped. Use this layered approach on all widths ≥ 800 px.
-  - **Menus:** Continue, New game and Saved games sit in a translucent left column: `width: min(420px, 40vw)`, `background: rgba(18,22,28,0.82)`, `backdrop-filter: blur(6px)`, scrolling.
+  - **Menus:** they sit in a translucent left column: `width: min(420px, 40vw)`, `background: rgba(18,22,28,0.82)`, `backdrop-filter: blur(6px)`, scrolling.
+  - **Compact menu** (user decision):
+    - On first load the column shows only **Continue (turn N)** (when an autosave exists) and **New Game**.
+    - **New Game** expands the full options panel (map, players, seed, house rules, city names, Start) in place, with a **Back** to collapse it.
+    - **Load…** is a button beside Continue, shown when there are named saves. It expands a list of the named saves plus **Import save file…**. With only the autosave, Continue stays a single button, but Load… is still shown so Import stays reachable.
+    - The panel state is in component state only: `useState<'menu' | 'new' | 'load'>('menu')`.
   - **Narrow windows:** below 800 px wide, or in portrait (`@media (max-width: 799px), (orientation: portrait)`), the art sits on top at full width (an `<img>` shown only in that layout), with the menus stacked below.
   - **New Game:** a "City names" select: World (default), Europe, North America, Latin America, Asia, Africa & Middle East, Oceania. It sets `world.nameRegion`.
 - [ ] **Step 2: Run** `npx vitest run` and `npm run build`. Expected: PASS. Manual check at 1920×1080, 2560×1080, 390×844.

@@ -214,6 +214,10 @@ Also in 2c: polish items from the 2b review and the 2b playtest (§7).
 ### 5.6 Title screen
 - **The key art** is a full-window background (`background-size: cover`), anchored so the baked-in title stays visible.
 - **The menus** (Continue, New game, Saved games and the rest) float in a translucent panel on the left.
+- **A compact first screen** (user decision):
+  - It shows only Continue (if an autosave exists) and New Game.
+  - New Game expands the full options panel.
+  - Named saves and Import sit behind a "Load…" control beside Continue, as an expandable list.
 - **Narrow or tall windows** (width below about 800 px, or portrait): the art sits on top at full width, with the menus stacked below.
 - **Very wide windows:** the edges are filled with a blurred, darkened copy of the art, so `cover` doesn't crop the title.
 
