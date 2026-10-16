@@ -276,6 +276,9 @@ bonus at the highest level. Never via hidden-information cheating.
   - Results are recorded automatically when a game ends (win, loss, resign, no survivors).
   - The record is stored in the browser (IndexedDB) and can be exported or imported like saves.
   - Optional extras: a victory screen showing the promotion; per-game stats (cities captured, units lost); best times.
+  - **Rank shown in play:** wherever a human player's name appears, show their rank with it, e.g. "Kosta (2nd Lieutenant)". That covers the top bar for whose turn it is, the hotseat hand-off screen and the game-over screen.
+    - New Game seats pick from known commanders, or create a new one.
+    - Idle and AI seats get no rank, or a fixed one.
 - Map/scenario editor; sound.
 
 ## 11. Non-goals for v1
