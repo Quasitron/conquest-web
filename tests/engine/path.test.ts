@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   arrivalTurn, dirBetween, findFrontier, findPath, getPlayerView, pathMapFromState, pathMapFromView,
 } from '../../src/engine';

@@ -123,7 +123,10 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.globalAlpha = 1;
   };
 
-  const ownAlpha = (u: Unit) => (u.id === o.activeId && !o.blinkOn ? 0.25 : u.movesLeft > 0 ? 1 : 0.6);
+  // Cargo is not drawn itself, so an active unit aboard blinks its carrier instead.
+  const activeCarrier = view.myUnits.find((u) => u.id === o.activeId)?.carriedBy ?? null;
+  const blinking = (u: Unit) => u.id === o.activeId || u.id === activeCarrier;
+  const ownAlpha = (u: Unit) => (blinking(u) && !o.blinkOn ? 0.25 : u.movesLeft > 0 ? 1 : 0.6);
 
   // Enemy markers (fade with age).
   for (const e of view.enemies) {
@@ -142,7 +145,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const top = cityStackTop(stack);
     if (top === null) continue;
     // The active unit represents its stack when it is in one, so the blink shows there too.
-    const shown = stack.find((u) => u.id === o.activeId) ?? top;
+    const shown = stack.find(blinking) ?? top;
     const alpha = ownAlpha(shown);
     each((mx, my, sx, sy) => {
       if (mx !== city.x || my !== city.y) return;

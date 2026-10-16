@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
 import {
-  UNIT_STATS, arrivalTurn, cargoCapacity, findPath, pathMapFromView,
+  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, findPath, pathMapFromView,
   type Dir, type Orders, type Pos, type Unit,
 } from '../engine';
 import type { SaveStore } from '../storage';
@@ -95,9 +95,13 @@ export function GameScreen({ session, onQuit }: Props) {
   const preview = useMemo(() => {
     if (!selectedUnit || !hover || !playing) return null;
     if (hover.x === selectedUnit.x && hover.y === selectedUnit.y) return null;
-    const path = findPath(pathMapFromView(view), selectedUnit, hover);
+    const map = pathMapFromView(view);
+    const path = findPath(map, selectedUnit, hover);
     const arrival = path ? arrivalTurn(selectedUnit, path.length, view.turn) : null;
-    const fuelLeft = selectedUnit.fuel === null ? null : path ? selectedUnit.fuel - path.length : null;
+    const fuel = selectedUnit.fuel;
+    // Aircraft keep a unit of fuel in hand unless they end at a refuel point.
+    const reach = fuel === null || !path || aircraftCanReach(map, path.length, fuel, hover);
+    const fuelLeft = fuel === null || !path ? null : reach ? fuel - path.length : -1;
     return {
       path,
       ok: path !== null && (fuelLeft === null || fuelLeft >= 0),

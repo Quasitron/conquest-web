@@ -7,7 +7,7 @@ import { areFriendly } from './relations';
 import { canPlayerSeeUnit, updateFog } from './fog';
 import { moveUnit } from './movement';
 import { unloadCargo } from './cargo';
-import { dirBetween, findFrontier, findPath, pathMapFromState } from './path';
+import { aircraftCanReach, dirBetween, findFrontier, findPath, pathMapFromState } from './path';
 
 const NO_AIR_MOVING = 'aircraft cannot patrol or explore yet';
 
@@ -32,9 +32,10 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
     case 'goto': {
       if (!validSquare(s, u, o.target)) return 'target is not an explored square';
       if (o.target.x === u.x && o.target.y === u.y) return 'already there';
-      const path = findPath(pathMapFromState(s, u.owner), u, o.target);
+      const map = pathMapFromState(s, u.owner);
+      const path = findPath(map, u, o.target);
       if (path === null) return 'no known path';
-      if (air && path.length > (u.fuel ?? 0)) return 'out of range';
+      if (air && !aircraftCanReach(map, path.length, u.fuel ?? 0, o.target)) return 'out of range';
       return null;
     }
     case 'patrol': {
@@ -83,6 +84,11 @@ export function executeOrders(s: GameState, rng: RandomSource, u: Unit, events: 
     if (UNIT_STATS[u.type].carries === 'army' && cityAt(s, u.x, u.y)?.owner === u.owner) {
       unloadCargo(s, u, null, events); // 'nothing to unload' is fine
     }
+    if (u.carriedBy !== null) {
+      // Boarding already made the unit a sentry; keep that.
+      events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'arrived' });
+      return;
+    }
     endOrders(u, 'arrived', events);
   };
 
@@ -99,7 +105,10 @@ export function executeOrders(s: GameState, rng: RandomSource, u: Unit, events: 
     }
     const path = findPath(map, u, target);
     if (path === null || path.length === 0) return endOrders(u, 'blocked', events);
-    if (u.fuel !== null && path.length > u.fuel) return endOrders(u, 'lowFuel', events);
+    if (u.fuel !== null && o.kind === 'goto' && !aircraftCanReach(map, path.length, u.fuel, target)) {
+      return endOrders(u, 'lowFuel', events);
+    }
+    if (u.fuel !== null && o.kind !== 'goto' && path.length > u.fuel) return endOrders(u, 'lowFuel', events);
     const next = path[0];
     const city = cityAt(s, next.x, next.y);
     if (

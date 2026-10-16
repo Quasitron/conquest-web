@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
-import { chooseHome, wakeSentries } from '../../src/engine/orders';
+import { chooseHome, executeOrders, wakeSentries } from '../../src/engine/orders';
 import { unitById } from '../../src/engine/query';
 import type { Command, GameEvent, GameState, Orders, OrdersEndReason } from '../../src/engine/types';
-import { addUnit, makeGame } from '../helpers';
+import { addUnit, fixedRng, makeGame } from '../helpers';
 
 /** A quiet game: nothing is produced and player 0 has explored the whole map. */
 function game(rows: string[], opts: Parameters<typeof makeGame>[1] = {}): GameState {
@@ -298,5 +298,50 @@ describe('other', () => {
     const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 4, y: 0 } } });
     expect(ended(eventsFor(r.state, r.events, 0))).toHaveLength(1);
     expect(ended(eventsFor(r.state, r.events, 1))).toHaveLength(0);
+  });
+});
+
+describe('go-to boarding and aircraft range', () => {
+  it('an army going to a transport at sea ends aboard and sentried', () => {
+    const s = game(['*##.#*']);
+    const t = addUnit(s, 'transport', 0, 3, 0);
+    const a = addUnit(s, 'army', 0, 2, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 3, y: 0 } } });
+    expect(unitById(r.state, a.id)).toMatchObject({ carriedBy: t.id, orders: { kind: 'sentry' } });
+    expect(ended(r.events)).toEqual([{ type: 'ordersEnded', unitId: a.id, owner: 0, reason: 'arrived' }]);
+  });
+
+  it('a fighter going to a carrier ends aboard and sentried', () => {
+    const s = game(['*..*']);
+    const c = addUnit(s, 'carrier', 0, 2, 0);
+    const f = addUnit(s, 'fighter', 0, 0, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: { kind: 'goto', target: { x: 2, y: 0 } } });
+    expect(unitById(r.state, f.id)).toMatchObject({ carriedBy: c.id, orders: { kind: 'sentry' } });
+  });
+
+  it('rejects an aircraft go-to to a plain square at exactly its fuel distance', () => {
+    const s = game(['*###*']);
+    const f = addUnit(s, 'fighter', 0, 0, 0, { fuel: 3 });
+    const r = setOrders(s, f.id, { kind: 'goto', target: { x: 3, y: 0 } });
+    expect(r).toMatchObject({ ok: false, error: 'out of range' });
+    expect(setOrders(s, f.id, { kind: 'goto', target: { x: 2, y: 0 } }).ok).toBe(true);
+  });
+
+  it('accepts an aircraft go-to to an own city at exactly its fuel distance', () => {
+    const s = game(['*##*#', '#####']);
+    s.cities[1].owner = 0;
+    const f = addUnit(s, 'fighter', 0, 0, 0, { fuel: 3 });
+    const r = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: { kind: 'goto', target: { x: 3, y: 0 } } });
+    expect(unitById(r.state, f.id)).toMatchObject({ x: 3, y: 0, orders: null });
+    expect(unitById(fullRound(r.state).state, f.id)!.fuel).toBe(20);
+  });
+
+  it('ends a running aircraft go-to with lowFuel when fuel no longer reaches', () => {
+    const s = game(['*###*']);
+    const f = addUnit(s, 'fighter', 0, 0, 0, { fuel: 3, orders: { kind: 'goto', target: { x: 3, y: 0 } } });
+    const events: GameEvent[] = [];
+    executeOrders(s, fixedRng(0.5), f, events);
+    expect(ended(events)).toEqual([{ type: 'ordersEnded', unitId: f.id, owner: 0, reason: 'lowFuel' }]);
+    expect(unitById(s, f.id)).toMatchObject({ x: 0, orders: null });
   });
 });

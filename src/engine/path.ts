@@ -1,4 +1,4 @@
-﻿import type { Dir, GameState, PlayerId, Pos, Terrain, Unit, UnitType } from './types';
+import type { Dir, GameState, PlayerId, Pos, Terrain, Unit, UnitType } from './types';
 import type { PlayerView } from './view';
 import type { MapLike } from './map';
 import { DIRS, chebyshev, index, normalize as normalizeSquare } from './map';
@@ -20,8 +20,7 @@ export interface PathMap {
   own: Map<number, { count: number; room: Partial<Record<UnitType, number>> }>;
 }
 
-/** Geometry only: 
-ormalize and chebyshev never read terrain. */
+/** Geometry only: normalize and chebyshev never read terrain. */
 const geo = (m: Pick<PathMap, 'width' | 'height' | 'wrap'>): MapLike => m as unknown as MapLike;
 const normalize = (m: Pick<PathMap, 'width' | 'height' | 'wrap'>, x: number, y: number) => normalizeSquare(geo(m), x, y);
 
@@ -215,4 +214,10 @@ export function dirBetween(m: Pick<PathMap, 'width' | 'height' | 'wrap'>, from: 
   return null;
 }
 
-
+/** Whether an aircraft with uel can safely make a go-to of steps to 	arget: it must keep a unit of fuel, unless it ends at a refuel point it knows (own city, or own carrier with room). */
+export function aircraftCanReach(m: PathMap, steps: number, fuel: number, target: Pos): boolean {
+  if (steps < fuel) return true;
+  if (steps > fuel) return false;
+  const i = target.y * m.width + target.x;
+  return m.cityOwner.get(i) === m.me || (m.own.get(i)?.room.fighter ?? 0) > 0;
+}

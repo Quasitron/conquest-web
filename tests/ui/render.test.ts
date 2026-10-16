@@ -114,6 +114,14 @@ describe('render', () => {
     expect(on.arcs.map((a) => a.alpha)).toEqual([1, 1]);
   });
 
+  it('an active unit aboard a carrier blinks the carrier instead', () => {
+    const s = makeGame(M);
+    const transport = addUnit(s, 'transport', 0, 3, 1);
+    const army = addUnit(s, 'army', 0, 3, 1, { carriedBy: transport.id });
+    const off = paint(s, 20, { activeId: army.id, blinkOn: false });
+    expect(off.arcs.map((a) => a.alpha)).toEqual([0.25, 0.25]);
+    expect(paint(s, 20, { activeId: army.id, blinkOn: true }).arcs.map((a) => a.alpha)).toEqual([1, 1]);
+  });
   it('the path label is drawn when a path is given, and the preview is red when not ok', () => {
     const s = makeGame(M);
     const calls = paint(s, 20, {

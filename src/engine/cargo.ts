@@ -24,6 +24,7 @@ export function loadUnits(s: GameState, t: Unit, unitIds: number[]): string | nu
     u.carriedBy = t.id;
     u.orders = { kind: 'sentry' };
   }
+  t.unloadNextTurn = false;
   return null;
 }
 

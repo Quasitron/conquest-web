@@ -4,7 +4,7 @@ export interface HouseRules {
   easierNeutralCities: boolean;
   /** No city produces on turn 1, so every player's first tick is on turn 2. */
   fairFirstTurn: boolean;
-  /** Sentried units stay as a garrison when their city is captured. */
+  /** A transport leaving a city does not auto-load armies that have orders (Sentry). */
   sentriedStayAsGarrison: boolean;
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
+import { loadUnits } from '../../src/engine/cargo';
 import { moveUnit } from '../../src/engine/movement';
 import { cargoOf, unitById } from '../../src/engine/query';
 import { Rng } from '../../src/engine/rng';
@@ -184,5 +185,15 @@ describe('cargoUnloaded visibility', () => {
     const e: GameEvent = { type: 'cargoUnloaded', transportId: 1, owner: 0, unitIds: [2] };
     expect(eventsFor(s, [e], 0)).toEqual([e]);
     expect(eventsFor(s, [e], 1)).toEqual([]);
+  });
+});
+
+describe('load clears unloadNextTurn', () => {
+  it('loading armies cancels a pending unload', () => {
+    const s = makeGame(['*##*', '####', '####']);
+    const t = addUnit(s, 'transport', 0, 0, 0, { unloadNextTurn: true });
+    const a = addUnit(s, 'army', 0, 0, 0);
+    expect(loadUnits(s, t, [a.id])).toBeNull();
+    expect(t.unloadNextTurn).toBe(false);
   });
 });
