@@ -1,7 +1,7 @@
 import {
   apply, createGame, eventsFor, getPlayerView,
-  RULES_VERSION,
-  type Command, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView,
+  RULES_VERSION, unitDisplayName,
+  type Command, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView, type UnitType,
 } from '../engine';
 import { generateWorld, type WorldOptions } from '../mapgen';
 import type { SaveFile, SaveStore, SeatConfig } from '../storage';
@@ -34,6 +34,8 @@ export class GameSession {
   /** A one-off message about how this game was loaded (e.g. from an older version). */
   notice: string | null = null;
   private logs: LogEntry[][];
+  /** Per player: type and display name of each unit they have ever owned. Never holds another player's units. */
+  private roster: Map<number, { type: UnitType; name: string }>[];
   private listeners = new Set<() => void>();
   private lastHuman: PlayerId;
 
@@ -46,6 +48,8 @@ export class GameSession {
     public name: string,
   ) {
     this.logs = seats.map(() => []);
+    this.roster = seats.map(() => new Map());
+    this.recordRoster(state);
     this.lastHuman = seats.findIndex((s) => s.kind === 'human');
   }
 
@@ -96,6 +100,11 @@ export class GameSession {
     const s = structuredClone(this.state);
     s.fog[this.viewer].explored.fill(1);
     return getPlayerView(s, this.viewer);
+  }
+
+  /** A unit the player owns or has owned, for naming it in their log even after it is gone. */
+  unitInfo(pid: PlayerId, id: number): { type: UnitType; name: string } | undefined {
+    return this.roster[pid]?.get(id);
   }
 
   log(pid: PlayerId): readonly LogEntry[] {
@@ -152,9 +161,11 @@ export class GameSession {
 
   /** Applies a full command; returns its raw events, or an error message. */
   private applyCommand(cmd: Command): GameEvent[] | string {
+    this.recordRoster(this.state);
     const r = apply(this.state, cmd);
     if (!r.ok) return r.error;
     this.state = r.state;
+    this.recordRoster(r.state);
     this.commands.push(cmd);
     this.seats.forEach((_, pid) => {
       for (const event of eventsFor(r.state, r.events, pid)) this.logs[pid].push({ turn: r.state.turn, event });
@@ -183,6 +194,10 @@ export class GameSession {
       () => this.setSaveError(null),
       (e: unknown) => this.setSaveError(`autosave failed: ${e instanceof Error ? e.message : String(e)}`),
     );
+  }
+
+  private recordRoster(s: GameState): void {
+    for (const unit of s.units) this.roster[unit.owner].set(unit.id, { type: unit.type, name: unitDisplayName(unit) });
   }
 
   private setSaveError(message: string | null): void {

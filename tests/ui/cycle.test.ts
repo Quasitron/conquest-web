@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { LogEntry } from '../../src/app/session';
-import { builtThisTurn, readyUnits } from '../../src/ui/cycle';
+import { builtThisTurn, nextReadyAfter, readyUnits } from '../../src/ui/cycle';
 import { addUnit, makeGame } from '../helpers';
 
 const M = ['*##', '###', '##*'];
@@ -56,5 +56,34 @@ describe('builtThisTurn', () => {
     ];
     expect([...builtThisTurn(entries, 3)].sort((a, b) => a - b)).toEqual([7, 9]);
     expect(builtThisTurn(entries, 4).size).toBe(0);
+  });
+});
+
+describe('nextReadyAfter', () => {
+  const mk = (...ids: number[]) => {
+    const s = makeGame(M);
+    return ids.map((id) => addUnit(s, 'army', 0, 0, 1, { id }));
+  };
+
+  it('gives the next unit, wrapping at the end', () => {
+    const r = mk(3, 5, 8);
+    expect(nextReadyAfter(r, 3)?.id).toBe(5);
+    expect(nextReadyAfter(r, 8)?.id).toBe(3);
+  });
+
+  it('gives the unit itself when it is the only one ready', () => {
+    expect(nextReadyAfter(mk(4), 4)?.id).toBe(4);
+  });
+
+  it('for an id that is not ready, gives the first greater id, else the first', () => {
+    const r = mk(3, 5, 8);
+    expect(nextReadyAfter(r, 4)?.id).toBe(5);
+    expect(nextReadyAfter(r, 9)?.id).toBe(3);
+  });
+
+  it('starts at the first unit for null and gives null for an empty list', () => {
+    expect(nextReadyAfter(mk(3, 5), null)?.id).toBe(3);
+    expect(nextReadyAfter([], 3)).toBeNull();
+    expect(nextReadyAfter([], null)).toBeNull();
   });
 });

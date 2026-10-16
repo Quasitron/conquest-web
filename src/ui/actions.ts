@@ -12,6 +12,10 @@ export function loadCandidates(view: PlayerView, t: Unit): Unit[] {
     .sort((a, b) => a.id - b.id);
 }
 
+export const UNIT_BUTTONS: ActionId[] = [
+  'next', 'skip', 'hold', 'sentry', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+];
+
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
   const st = UNIT_STATS[u.type];
   const air = st.domain === 'air';
@@ -28,7 +32,9 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     load: st.carries !== null && inCity && loadCandidates(view, u).length > 0,
     unload: hasCargo,
     goHome: view.myCities.length > 0 && !inCity,
-    patrol: !air,
+    patrol: true,
+    info: true,
+    fit: true,
     explore: !air,
     sentry: !air || inCity || u.carriedBy !== null,
     clearOrders: u.orders !== null,

@@ -1,7 +1,7 @@
 import type { Dir } from '../engine';
 
 export type ActionId = 'next' | 'skip' | 'hold' | 'sentry' | 'moveTo' | 'patrol' | 'goHome' | 'explore'
-  | 'load' | 'unload' | 'clearOrders' | 'disband' | 'center' | 'endTurn';
+  | 'load' | 'unload' | 'clearOrders' | 'disband' | 'center' | 'endTurn' | 'info' | 'fit';
 
 export type KeyAction =
   | { kind: 'move'; dir: Dir }
@@ -21,7 +21,7 @@ const ARROWS: Record<string, { dir: Dir; dx: number; dy: number }> = {
 };
 const ACTIONS: Record<string, ActionId> = {
   n: 'next', ' ': 'skip', tab: 'hold', s: 'sentry', t: 'moveTo', p: 'patrol', h: 'goHome', x: 'explore',
-  l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', f: 'center', enter: 'endTurn',
+  l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', f: 'center', enter: 'endTurn', i: 'info', z: 'fit',
 };
 
 export function keyToAction(key: string, code: string): KeyAction | null {

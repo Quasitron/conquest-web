@@ -48,9 +48,16 @@ describe('keyToAction', () => {
   });
 
   it('no longer maps the old letter-direction keys or unbound letters', () => {
-    for (const k of ['q', 'w', 'e', 'a', 'd', 'z', 'c']) {
+    for (const k of ['q', 'w', 'e', 'a', 'd', 'c']) {
       expect(keyToAction(k, `Key${k.toUpperCase()}`)).toBeNull();
     }
     expect(keyToAction('y', 'KeyY')).toBeNull();
+  });
+});
+
+describe('info and fit keys', () => {
+  it('maps i to info and z to fit', () => {
+    expect(keyToAction('i', 'KeyI')).toEqual({ kind: 'action', id: 'info' });
+    expect(keyToAction('z', 'KeyZ')).toEqual({ kind: 'action', id: 'fit' });
   });
 });

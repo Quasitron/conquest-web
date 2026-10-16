@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { GameSession } from '../../src/app/session';
+import { RULES_VERSION, unitDisplayName } from '../../src/engine';
+import { describeEvent } from '../../src/ui/describe';
+import { addUnit, makeGame } from '../helpers';
 import { hashState } from '../../src/engine/hash';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
 import { MemorySaveStore, parseSave, serializeSave, type SeatConfig } from '../../src/storage';
@@ -122,5 +125,42 @@ describe('GameSession', () => {
     off();
     s.act({ type: 'endTurn' });
     expect(calls).toBe(1);
+  });
+});
+
+describe('GameSession unit roster', () => {
+  function duel() {
+    const g = makeGame(['*#*', '###']);
+    const a = addUnit(g, 'army', 0, 0, 1);
+    const b = addUnit(g, 'army', 1, 1, 1);
+    const seats = [human('Ann'), human('Ben')];
+    const s = GameSession.fromSave(
+      { format: 3, rulesVersion: RULES_VERSION, savedAt: '', name: 't', seats, initial: g, commands: [], snapshot: g },
+      null,
+    );
+    s.confirmHandoff();
+    return { s, a, b };
+  }
+
+  it('never lets one player see another player custom unit name', () => {
+    const { s, a, b } = duel();
+    expect(s.act({ type: 'renameUnit', unitId: a.id, name: 'Secret' })).toBeNull();
+    expect(s.unitInfo(0, a.id)).toEqual({ type: 'army', name: 'Secret' });
+    expect(s.unitInfo(1, a.id)).toBeUndefined();
+    expect(s.unitInfo(1, b.id)).toEqual({ type: 'army', name: unitDisplayName(b) });
+    const lookup = { unit: (id: number) => s.unitInfo(1, id), city: () => undefined };
+    const lines = s.log(1).map((e) => describeEvent(e.event, 1, ['Ann', 'Ben'], lookup) ?? '');
+    expect(lines.join('\n')).not.toContain('Secret');
+  });
+
+  it('still resolves the name of a unit destroyed in combat for its owner', () => {
+    const { s, a, b } = duel();
+    s.act({ type: 'renameUnit', unitId: a.id, name: 'Secret' });
+    expect(s.act({ type: 'move', unitId: a.id, dir: 2 })).toBeNull();
+    const survivors = s.state.units.map((u) => u.id);
+    expect(survivors.length).toBe(1);
+    expect(s.unitInfo(0, a.id)?.name).toBe('Secret');
+    expect(s.unitInfo(1, b.id)?.type).toBe('army');
+    expect(s.unitInfo(1, a.id)).toBeUndefined();
   });
 });

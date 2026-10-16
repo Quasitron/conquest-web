@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { badgeMode, cityStackTop, healthText, pathLabel } from '../../src/ui/labels';
+import { buildTime } from '../../src/engine';
+import {
+  badgeMode, cargoSummary, cityLabelVisible, cityStackTop, healthText, inProductionCount, pathLabel, pluralUnit,
+  statusLine, turnsToComplete, withArticle,
+} from '../../src/ui/labels';
 import { addUnit, makeGame } from '../helpers';
 
 describe('pathLabel', () => {
@@ -44,5 +48,45 @@ describe('cityStackTop', () => {
     const b = addUnit(s, 'fighter', 0, 0, 0);
     expect(cityStackTop([a, b])?.id).toBe(b.id);
     expect(cityStackTop([])).toBeNull();
+  });
+});
+
+describe('unit and city label helpers', () => {
+  it('pluralizes unit types', () => {
+    expect(pluralUnit('army', 3)).toBe('Armies');
+    expect(pluralUnit('army', 1)).toBe('Army');
+    expect(pluralUnit('fighter', 1)).toBe('Fighter');
+    expect(pluralUnit('fighter', 2)).toBe('Fighters');
+  });
+
+  it('summarizes cargo in unit type order', () => {
+    expect(cargoSummary([{ type: 'fighter' }, { type: 'army' }, { type: 'army' }])).toBe('2 Armies, 1 Fighter');
+    expect(cargoSummary([{ type: 'army' }, { type: 'army' }, { type: 'army' }])).toBe('3 Armies');
+  });
+
+  it('adds an article', () => {
+    expect(withArticle('Army')).toBe('an Army');
+    expect(withArticle('Fighter')).toBe('a Fighter');
+  });
+
+  it('shows city labels from 20px tiles', () => {
+    expect(cityLabelVisible(19)).toBe(false);
+    expect(cityLabelVisible(20)).toBe(true);
+  });
+
+  it('counts turns to complete and units in production', () => {
+    const s = makeGame(['*#*', '###']);
+    const c = { ...s.cities[0], production: 'army' as const, progress: 2, lastBuilt: 'army' as const };
+    expect(turnsToComplete(c, 'army')).toBe(3);
+    expect(turnsToComplete(c, 'fighter')).toBe(buildTime(c, 'fighter'));
+    expect(inProductionCount([c, { ...c, id: 9 }, { ...c, id: 10, production: 'fighter' }], 'army')).toBe(2);
+  });
+
+  it('writes the status line', () => {
+    const s = makeGame(['*#*', '###']);
+    const a = addUnit(s, 'army', 0, 1, 1, { id: 142 });
+    expect(statusLine(a)).toBe('142nd Army \u00b7 Moves 1/1 \u00b7 Orders: None');
+    const f = addUnit(s, 'fighter', 0, 1, 1, { id: 7, movesLeft: 3, fuel: 14, orders: { kind: 'sentry' } });
+    expect(statusLine(f)).toBe('7th Fighter \u00b7 Moves 3/5 \u00b7 Orders: Sentry \u00b7 Fuel 14/20');
   });
 });

@@ -1,7 +1,7 @@
 export * from './types';
 export type { HouseRules } from './rules';
 export { CLASSIC_RULES, RULES_VERSION } from './rules';
-export { UNIT_STATS, UNIT_TYPES, isCrippled, effectiveMove, cargoCapacity } from './units';
+export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, isCrippled, effectiveMove, cargoCapacity } from './units';
 export type { UnitStats } from './units';
 export { parseAscii } from './ascii';
 export type { ParsedMap } from './ascii';
@@ -14,6 +14,7 @@ export { getPlayerView } from './view';
 export type { PlayerView } from './view';
 export { ordinal, unitDisplayName, defaultCityName, cleanName, NAME_MAX } from './names';
 export { buildTime } from './production';
+export { combatWinChance } from './combat';
 export { areFriendly } from './relations';
 export { Rng } from './rng';
 export type { RandomSource } from './rng';

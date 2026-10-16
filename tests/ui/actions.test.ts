@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { updateFog } from '../../src/engine/fog';
-import { availableActions, describeOrders, loadCandidates } from '../../src/ui/actions';
+import { UNIT_BUTTONS, availableActions, describeOrders, loadCandidates } from '../../src/ui/actions';
 import { addUnit, makeGame } from '../helpers';
 
 // Player 0 starts in the city at (0,0); player 1 at (6,0).
@@ -50,7 +50,7 @@ describe('availableActions', () => {
     const { v, u } = viewOf(s, f.id);
     const acts = availableActions(v, u);
     expect(acts.goHome).toBe(true);
-    expect(acts.patrol).toBe(false);
+    expect(acts.patrol).toBe(true);
     expect(acts.explore).toBe(false);
     expect(acts.sentry).toBe(false);
     expect(acts.load).toBe(false);
@@ -99,5 +99,24 @@ describe('describeOrders', () => {
     expect(describeOrders({ kind: 'goto', target: { x: 34, y: 12 } })).toBe('Go-to 34,12');
     expect(describeOrders({ kind: 'patrol', a: { x: 3, y: 4 }, b: { x: 10, y: 12 }, toB: true })).toBe('Patrol 3,4 ↔ 10,12');
     expect(describeOrders({ kind: 'explore' })).toBe('Explore');
+  });
+});
+
+describe('UNIT_BUTTONS and the new actions', () => {
+  it('lists the unit buttons in order', () => {
+    expect(UNIT_BUTTONS).toEqual([
+      'next', 'skip', 'hold', 'sentry', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+    ]);
+  });
+
+  it('always offers info and fit, and patrol to a fighter', () => {
+    const s = makeGame(M);
+    const f = addUnit(s, 'fighter', 0, 0, 0);
+    const { v, u } = viewOf(s, f.id);
+    const acts = availableActions(v, u);
+    expect(acts.info).toBe(true);
+    expect(acts.fit).toBe(true);
+    expect(acts.patrol).toBe(true);
+    expect(acts.explore).toBe(false);
   });
 });

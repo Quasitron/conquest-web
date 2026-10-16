@@ -339,9 +339,13 @@ export function GameScreen({ session, onQuit }: Props) {
     drawMinimap(c.getContext('2d')!, view, colors, c.width, c.height, cam, w, h);
   });
 
-  const unitTypeOf = (id: number) => view.myUnits.find((u) => u.id === id)?.type;
+  const lookup = {
+    unit: (id: number) => session.unitInfo(view.me, id),
+    city: (id: number) =>
+      view.myCities.find((c) => c.id === id)?.name ?? view.knownCities.find((c) => c.id === id)?.name,
+  };
   const lines = session.log(view.me)
-    .map((entry) => ({ turn: entry.turn, text: describeEvent(entry.event, view.me, names, unitTypeOf) }))
+    .map((entry) => ({ turn: entry.turn, text: describeEvent(entry.event, view.me, names, lookup) }))
     .filter((l): l is { turn: number; text: string } => l.text !== null)
     .slice(-40)
     .reverse();

@@ -29,3 +29,12 @@ export function builtThisTurn(entries: readonly LogEntry[], turn: number): Set<n
   }
   return built;
 }
+
+/** The unit after `id` in `ready`, wrapping; for an id that is no longer ready, the first greater id (else the first). */
+export function nextReadyAfter(ready: readonly Unit[], id: number | null): Unit | null {
+  if (ready.length === 0) return null;
+  if (id === null) return ready[0];
+  const at = ready.findIndex((u) => u.id === id);
+  if (at >= 0) return ready[(at + 1) % ready.length];
+  return ready.find((u) => u.id > id) ?? ready[0];
+}

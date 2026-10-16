@@ -17,6 +17,8 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   disband: { label: 'Disband', key: 'Del' },
   center: { label: 'Center', key: 'F' },
   endTurn: { label: 'End Turn', key: 'Enter' },
+  info: { label: 'Info', key: 'I' },
+  fit: { label: 'Fit', key: 'Z' },
 };
 
 const BAR: ActionId[] = ['next', 'skip', 'hold', 'sentry', 'moveTo', 'center', 'disband', 'load', 'unload'];
