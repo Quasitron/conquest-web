@@ -167,7 +167,8 @@ describe('determinism', () => {
     mark(0, 2, 1, 2);
     const walker = addUnit(initial, 'army', 0, 1, 0);
     addUnit(initial, 'army', 0, 2, 0);
-    const explorer = addUnit(initial, 'army', 0, 1, 2);    const log: Command[] = [];
+    const explorer = addUnit(initial, 'army', 0, 1, 2);
+    const log: Command[] = [];
     let s = initial;
     const play = (cmd: Command) => {
       const r = apply(s, cmd);

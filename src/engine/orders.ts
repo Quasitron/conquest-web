@@ -104,7 +104,7 @@ function ownBlocks(s: GameState, u: Unit, p: Pos): boolean {
 
 /**
  * Runs a unit's moving orders (goto, patrol, explore) until it is out of moves or they end. Never attacks.
- * 	urnStart is true when called from the start-of-turn run: only then does a blocked wait count.
+ * turnStart is true when called from the start-of-turn run: only then does a blocked wait count.
  */
 export function executeOrders(
   s: GameState, rng: RandomSource, u: Unit, events: GameEvent[], turnStart = false,

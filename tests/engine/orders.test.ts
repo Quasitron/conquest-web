@@ -384,8 +384,6 @@ describe('own units and waiting orders', () => {
     state = fullRound(state).state;
     expect(unitById(state, d.id)!.blockedTurns).toBe(1);
     // The plug leaves: the next turn start steps and clears the counter.
-    unitById(state, plug.id)!.x = 3;
-    unitById(state, plug.id)!.y = 1;
     state.units = state.units.filter((u) => u.id !== plug.id);
     const r = fullRound(state);
     expect(unitById(r.state, d.id)).toMatchObject({ blockedTurns: 0 });
@@ -453,6 +451,18 @@ describe('own units and waiting orders', () => {
     const r2 = fullRound(r1.state);
     expect(ended(r2.events)).toHaveLength(0);
     expect(unitById(r2.state, a.id)).toMatchObject({ x: 1, blockedTurns: 1, orders: { kind: 'goto' } });
+  });
+});
+
+describe('explore frontier', () => {
+  it('skips a frontier square holding an own army and explores the next-nearest one', () => {
+    const s = game(['*#######', '#######*']);
+    for (let y = 0; y < 2; y++) for (let x = 5; x < 8; x++) s.fog[0].explored[y * 8 + x] = 0;
+    const a = addUnit(s, 'army', 0, 1, 0);
+    addUnit(s, 'army', 0, 4, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'explore' } });
+    expect(ended(r.events)).toHaveLength(0);
+    expect(unitById(r.state, a.id)).toMatchObject({ x: 2, orders: { kind: 'explore' } });
   });
 });
 

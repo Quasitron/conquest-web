@@ -193,7 +193,9 @@ export function findFrontier(m: PathMap, u: Mobile): Pos | null {
         next.push(n);
       }
     }
-    const hit = next.filter((i) => neighborsOf(m, i).some((n) => m.terrain[n] === null));
+    const hit = next.filter(
+      (i) => enterable(m, u.type, i, true) && neighborsOf(m, i).some((n) => m.terrain[n] === null),
+    );
     if (hit.length > 0) {
       const best = Math.min(...hit);
       return { x: best % m.width, y: Math.floor(best / m.width) };
