@@ -109,7 +109,9 @@ describe('migrations', () => {
   it('a corrupted format-2 history is rejected', () => {
     const bad = format2Save();
     bad.snapshot.turn = 99;
-    expect(parseSave(serializeSave(bad)).ok).toBe(false);
+    const r = parseSave(serializeSave(bad));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/damaged/);
   });
 
   it('format 3 is rejected as unsupported', () => {
@@ -117,13 +119,30 @@ describe('migrations', () => {
     expect(r).toEqual({ ok: false, error: 'unsupported save format' });
   });
 
-  it('a format-2 save with missing or malformed rules is rejected', () => {
-    const noRules = JSON.parse(serializeSave(format2Save())) as Record<string, Record<string, unknown>>;
+  it('a format-2 save with an older rulesVersion loads from its snapshot with the note and an empty history', () => {
+    const r = parseSave(JSON.stringify({ ...format2Save(), rulesVersion: 1 }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.note).toBe(OLDER_VERSION_NOTE);
+    expect(r.save.commands).toEqual([]);
+    expect(r.save.rulesVersion).toBe(RULES_VERSION);
+    expect(r.save.initial).toEqual(r.save.snapshot);
+  });
+
+  it('a save from a newer rulesVersion is rejected', () => {
+    const r = parseSave(JSON.stringify({ ...format2Save(), rulesVersion: RULES_VERSION + 1 }));
+    expect(r).toEqual({ ok: false, error: 'save file is from a newer version of the game' });
+  });
+
+  it('missing or malformed rules are rejected as an invalid game state', () => {
+    const noRules = { ...format2Save(), rulesVersion: 1 } as unknown as Record<string, Record<string, unknown>>;
     delete noRules.snapshot.rules;
-    expect(parseSave(JSON.stringify(noRules)).ok).toBe(false);
-    const badRules = JSON.parse(serializeSave(format2Save())) as Record<string, Record<string, unknown>>;
+    const a = parseSave(JSON.stringify(noRules));
+    expect(a).toEqual({ ok: false, error: 'save file has an invalid game state (invalid house rules)' });
+    const badRules = { ...format2Save(), rulesVersion: 1 } as unknown as Record<string, Record<string, unknown>>;
     badRules.initial.rules = { easierNeutralCities: 1, fairFirstTurn: true, sentriedStayAsGarrison: false };
-    expect(parseSave(JSON.stringify(badRules)).ok).toBe(false);
+    const b = parseSave(JSON.stringify(badRules));
+    expect(b).toEqual({ ok: false, error: 'save file has an invalid game state (invalid house rules)' });
   });
 });
 

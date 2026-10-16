@@ -77,6 +77,7 @@ export function parseSave(text: string): { ok: true; save: SaveFile; note?: stri
   const problem = gameStateProblem(initial) ?? gameStateProblem(snapshot);
   if (problem !== null) return { ok: false, error: `save file has an invalid game state (${problem})` };
   if (seats.length !== (initial.players as unknown[]).length) return { ok: false, error: 'save file seats do not match its players' };
+  if (rulesVersion > RULES_VERSION) return { ok: false, error: 'save file is from a newer version of the game' };
   if (rulesVersion !== RULES_VERSION) {
     // Older rules: the history cannot be replayed faithfully, so the snapshot becomes the new starting point.
     try {
