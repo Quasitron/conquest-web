@@ -29,6 +29,8 @@ export interface DrawOptions {
   route: Pos[] | null;
   /** Drawn near the last route square. */
   routeLabel: string | null;
+  /** The two endpoints of each of the player's patrols, shown while choosing a patrol destination. */
+  patrols?: [Pos, Pos][];
   /** Attack hover: a red crosshair with the label, drawn instead of the hover preview. */
   attack: { at: Pos; label: string } | null;
 }
@@ -220,6 +222,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.fillStyle = '#fff';
         ctx.fillText(city.name, sx + t / 2, sy + t);
       });
+    }
+  }
+
+  // Other patrols: a dashed line between the endpoints, with a ring at each end.
+  for (const pair of o.patrols ?? []) {
+    const pts = unwrapPath(pair);
+    ctx.strokeStyle = '#ffb000';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(cx(p), cy(p), t * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
 

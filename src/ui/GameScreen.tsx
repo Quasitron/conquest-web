@@ -253,6 +253,13 @@ export function GameScreen({ session, onQuit }: Props) {
     return r.path && r.path.length > 0 ? r : null;
   }, [selectedUnit, view, playing]);
 
+  // While choosing a patrol destination, the player's other patrols, so covered stretches are visible.
+  const patrols = useMemo(() => {
+    if (target !== 'patrol') return undefined;
+    return view.myUnits.flatMap((u): [Pos, Pos][] =>
+      u.orders?.kind === 'patrol' && u.id !== selectedUnit?.id ? [[u.orders.a, u.orders.b]] : []);
+  }, [target, view, selectedUnit?.id]);
+
   /** The unit cycle for the current state of the game (not the last render). */
   const readyNow = (h: ReadonlySet<number> = held, s: readonly number[] = skipped): Unit[] => {
     const v = session.view();
@@ -439,6 +446,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (selection?.kind !== 'unit') return;
     const next = nextReadyAfter(readyNow(), selection.id);
     if (next && next.id !== selection.id) selectUnit(next);
+    else if (readyNow().length === 0) setSelection(null);
   };
 
   const moveSelected = (dir: number) => {
@@ -449,6 +457,8 @@ export function GameScreen({ session, onQuit }: Props) {
         // A step that explored new ground has already re-fitted the map (when auto-fit is on).
         if (fitOf(view.me).auto) keepVisible(still);
         else focus(still);
+        // The last ready unit has moved: deselect it (the map stays put) so only End Turn flashes.
+        if (readyNow().length === 0) setSelection(null);
       }
     }
   };
@@ -496,6 +506,7 @@ export function GameScreen({ session, onQuit }: Props) {
         const other = nextAfter(u.id, ready, readyNow(held, next));
         setSkipped(next);
         if (other) selectUnit(other);
+        else if (readyNow(held, next).length === 0) setSelection(null);
         return;
       }
       case 'hold': {
@@ -726,7 +737,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
         />
       </div>

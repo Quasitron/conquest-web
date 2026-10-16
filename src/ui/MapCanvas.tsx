@@ -28,6 +28,7 @@ interface Props {
   pathTarget: Pos | null;
   route: Pos[] | null;
   routeLabel: string | null;
+  patrols?: [Pos, Pos][];
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
   onZoom?: () => void;
@@ -66,7 +67,7 @@ export function MapCanvas(p: Props) {
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
-      route: p.route, routeLabel: p.routeLabel, attack: p.attack,
+      route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, attack: p.attack,
     });
   });
 
