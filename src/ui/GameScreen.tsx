@@ -217,7 +217,7 @@ export function GameScreen({ session, onQuit }: Props) {
           selection={selection}
           onSelectUnit={(id) => setSelection({ kind: 'unit', id })}
           onProduction={(cityId, unitType) => act({ type: 'setProduction', cityId, unitType })}
-          onDisband={(id) => { if (window.confirm('Disband this unit?')) act({ type: 'disband', unitId: id }); }}
+          onAction={() => {}}
         />
         <ol class="log">{log.map((line) => <li>{line}</li>)}</ol>
       </div>

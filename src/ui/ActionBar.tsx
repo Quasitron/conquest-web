@@ -1,0 +1,40 @@
+import type { PlayerView, Unit } from '../engine';
+import { availableActions } from './actions';
+import type { ActionId } from './keys';
+
+export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
+  next: { label: 'Next', key: 'N' },
+  skip: { label: 'Skip', key: 'Space' },
+  hold: { label: 'Hold', key: 'Tab' },
+  sentry: { label: 'Sentry', key: 'S' },
+  moveTo: { label: 'Move To', key: 'T' },
+  patrol: { label: 'Patrol', key: 'P' },
+  goHome: { label: 'Go Home', key: 'H' },
+  explore: { label: 'Explore', key: 'X' },
+  load: { label: 'Load', key: 'L' },
+  unload: { label: 'Unload', key: 'U' },
+  clearOrders: { label: 'Clear Orders', key: 'Ins' },
+  disband: { label: 'Disband', key: 'Del' },
+  center: { label: 'Center', key: 'F' },
+  endTurn: { label: 'End Turn', key: 'Enter' },
+};
+
+const BAR: ActionId[] = ['next', 'skip', 'hold', 'sentry', 'moveTo', 'center', 'disband', 'load', 'unload'];
+
+// After a pointer click, release focus so keys keep going to the map.
+const blur = (e: Event) => (e.currentTarget as HTMLElement).blur();
+
+export function ActionBar({ view, unit, onAction }: {
+  view: PlayerView; unit: Unit; onAction: (id: ActionId) => void;
+}) {
+  const avail = availableActions(view, unit);
+  return (
+    <div class="actions">
+      {BAR.filter((id) => avail[id]).map((id) => (
+        <button key={id} onClick={(e) => { blur(e); onAction(id); }}>
+          {ACTION_LABELS[id].label} ({ACTION_LABELS[id].key})
+        </button>
+      ))}
+    </div>
+  );
+}

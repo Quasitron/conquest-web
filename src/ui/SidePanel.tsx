@@ -1,4 +1,8 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, isCoastal, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, isCoastal, isCrippled, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { ActionBar } from './ActionBar';
+import { describeOrders } from './actions';
+import type { ActionId } from './keys';
+import { healthText } from './labels';
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | null;
 
@@ -7,18 +11,26 @@ interface Props {
   selection: Selection;
   onSelectUnit: (id: number) => void;
   onProduction: (cityId: number, type: UnitType | null) => void;
-  onDisband: (id: number) => void;
+  onAction: (id: ActionId) => void;
 }
 
-function UnitDetails({ u, view }: { u: Unit; view: PlayerView }) {
+function UnitDetails({ u, view, onAction }: { u: Unit; view: PlayerView; onAction: (id: ActionId) => void }) {
   const st = UNIT_STATS[u.type];
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id);
+  const pct = ((st.hits - u.damage) / st.hits) * 100;
   return (
     <div>
       <h3>{st.name} #{u.id}</h3>
-      <p>Moves {u.movesLeft}/{st.move} · Hits {st.hits - u.damage}/{st.hits}</p>
+      <p>Orders: {describeOrders(u.orders)}</p>
+      <p>Moves {u.movesLeft}/{st.move}</p>
+      <div class="health" title={healthText(u)}>
+        <div class="health-bar"><div class={`health-fill${isCrippled(u) ? ' crippled' : ''}`} style={{ width: `${pct}%` }} /></div>
+        <span>{healthText(u)}</span>
+        {isCrippled(u) && <span class="crippled-tag">Crippled</span>}
+      </div>
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
       {cargo.length > 0 && <p>Carrying: {cargo.map((c) => UNIT_STATS[c.type].name).join(', ')}</p>}
+      <ActionBar view={view} unit={u} onAction={onAction} />
     </div>
   );
 }
@@ -61,15 +73,14 @@ function CityDetails({ city, view, onProduction, onSelectUnit }: {
   );
 }
 
-export function SidePanel({ view, selection, onSelectUnit, onProduction, onDisband }: Props) {
+export function SidePanel({ view, selection, onSelectUnit, onProduction, onAction }: Props) {
   if (!selection) return <aside class="panel"><p>Select a unit or city.</p></aside>;
   if (selection.kind === 'unit') {
     const u = view.myUnits.find((x) => x.id === selection.id);
     if (!u) return <aside class="panel"><p>That unit is gone.</p></aside>;
     return (
       <aside class="panel">
-        <UnitDetails u={u} view={view} />
-        <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onDisband(u.id); }}>Disband</button>
+        <UnitDetails u={u} view={view} onAction={onAction} />
       </aside>
     );
   }
