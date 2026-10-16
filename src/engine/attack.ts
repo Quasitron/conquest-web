@@ -78,7 +78,10 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
   spendMove(att);
   const r = resolveCombat(
     { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
-    { defense: CITY_COMBAT.defense, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
+    {
+      defense: s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense,
+      shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0,
+    },
     rng,
   );
   events.push({

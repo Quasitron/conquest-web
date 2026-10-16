@@ -2,11 +2,12 @@ import { parseAscii } from '../src/engine/ascii';
 import { createGame } from '../src/engine/setup';
 import { spawnUnit } from '../src/engine/query';
 import type { RandomSource } from '../src/engine/rng';
+import type { HouseRules } from '../src/engine/rules';
 import type { GameState, PlayerId, Unit, UnitType } from '../src/engine/types';
 
 export function makeGame(
   rows: string[],
-  opts: { wrap?: boolean; players?: number; starts?: number[]; seed?: number } = {},
+  opts: { wrap?: boolean; players?: number; starts?: number[]; seed?: number; rules?: Partial<HouseRules> } = {},
 ): GameState {
   const players = opts.players ?? 2;
   return createGame({
@@ -15,6 +16,7 @@ export function makeGame(
     players: Array.from({ length: players }, (_, i) => ({ name: `P${i}`, kind: 'human' as const })),
     startCityIndices: opts.starts ?? Array.from({ length: players }, (_, i) => i),
     seed: opts.seed ?? 1,
+    rules: opts.rules,
   });
 }
 

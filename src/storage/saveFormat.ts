@@ -33,7 +33,7 @@ const TERRAINS = ['water', 'land', 'city'];
 /** Structural check of a GameState. Returns a problem description, or null when the shape is usable. */
 function gameStateProblem(v: unknown): string | null {
   if (!isObj(v)) return 'game state is not an object';
-  if (v.version !== 1) return 'unsupported game version';
+  if (v.version !== 2) return 'unsupported game version';
   const { width, height, wrap, terrain, cities, units, players, fog, currentPlayer, turn, nextUnitId, rngState, winner, over } = v;
   if (!isInt(width) || !isInt(height) || width < 1 || height < 1) return 'invalid map size';
   if (typeof wrap !== 'boolean') return 'invalid wrap flag';

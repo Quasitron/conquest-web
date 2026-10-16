@@ -1,4 +1,6 @@
 export * from './types';
+export type { HouseRules } from './rules';
+export { CLASSIC_RULES, RULES_VERSION } from './rules';
 export { UNIT_STATS, UNIT_TYPES, isCrippled, effectiveMove, cargoCapacity } from './units';
 export type { UnitStats } from './units';
 export { parseAscii } from './ascii';

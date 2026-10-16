@@ -1,6 +1,9 @@
 import type { ParsedMap } from './ascii';
 import type { GameState } from './types';
+import type { HouseRules } from './rules';
+import { CLASSIC_RULES } from './rules';
 import { updateFog } from './fog';
+import { advanceProduction } from './production';
 
 export interface NewGameOptions {
   map: ParsedMap;
@@ -9,6 +12,7 @@ export interface NewGameOptions {
   /** For each player, the index into map.cities of their starting city. */
   startCityIndices: number[];
   seed: number;
+  rules?: Partial<HouseRules>;
 }
 
 export function createGame(o: NewGameOptions): GameState {
@@ -22,7 +26,8 @@ export function createGame(o: NewGameOptions): GameState {
 
   const size = o.map.width * o.map.height;
   const s: GameState = {
-    version: 1,
+    version: 2,
+    rules: { ...CLASSIC_RULES, ...o.rules },
     width: o.map.width,
     height: o.map.height,
     wrap: o.wrap ?? false,
@@ -45,5 +50,6 @@ export function createGame(o: NewGameOptions): GameState {
     s.cities[ci].production = 'army';
   });
   for (const p of s.players) updateFog(s, p.id);
+  if (!s.rules.fairFirstTurn) advanceProduction(s, 0, []);
   return s;
 }

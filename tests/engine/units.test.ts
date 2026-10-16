@@ -3,7 +3,7 @@ import { UNIT_STATS, UNIT_TYPES, isCrippled, effectiveMove, cargoCapacity } from
 import type { Unit, UnitType } from '../../src/engine/types';
 
 function unit(type: UnitType, damage = 0): Unit {
-  return { id: 1, type, owner: 0, x: 0, y: 0, damage, movesLeft: 0, fuel: null, carriedBy: null, movedThisTurn: false };
+  return { id: 1, type, owner: 0, x: 0, y: 0, damage, movesLeft: 0, fuel: null, carriedBy: null, movedThisTurn: false, orders: null, unloadNextTurn: false };
 }
 
 describe('unit stats', () => {

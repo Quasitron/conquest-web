@@ -12,7 +12,7 @@ function advance(s: ReturnType<typeof makeGame>, pid: number, times: number, eve
 
 describe('production', () => {
   it('builds an army after 6 turns, then repeats every 5', () => {
-    const s = makeGame(P);
+    const s = makeGame(P, { rules: { fairFirstTurn: true } });
     expect(advance(s, 0, 5)).toEqual([]);
     const events = advance(s, 0, 1);
     expect(s.units).toHaveLength(1);
@@ -63,7 +63,7 @@ describe('production', () => {
   });
 
   it('only advances cities of the given player', () => {
-    const s = makeGame(P);
+    const s = makeGame(P, { rules: { fairFirstTurn: true } });
     advance(s, 1, 2);
     expect(s.cities[0].progress).toBe(0);
     expect(s.cities[1].progress).toBe(2);

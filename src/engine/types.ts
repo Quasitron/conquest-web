@@ -1,3 +1,5 @@
+import type { HouseRules } from './rules';
+
 export type UnitType =
   | 'army' | 'fighter' | 'transport' | 'destroyer'
   | 'submarine' | 'cruiser' | 'battleship' | 'carrier';
@@ -25,7 +27,15 @@ export interface Unit {
   /** Id of the transport/carrier holding this unit, or null. */
   carriedBy: number | null;
   movedThisTurn: boolean;
+  orders: Orders | null;
+  unloadNextTurn: boolean;
 }
+
+export type Orders =
+  | { kind: 'sentry' }
+  | { kind: 'goto'; target: Pos }
+  | { kind: 'patrol'; a: Pos; b: Pos; toB: boolean }
+  | { kind: 'explore' };
 
 export interface City {
   id: number;
@@ -61,7 +71,8 @@ export interface PlayerFog {
 }
 
 export interface GameState {
-  version: 1;
+  version: 2;
+  rules: HouseRules;
   width: number;
   height: number;
   wrap: boolean;

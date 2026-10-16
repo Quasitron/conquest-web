@@ -19,15 +19,14 @@ function finishPlayerTurn(s: GameState, pid: PlayerId, events: GameEvent[]): voi
   }
 }
 
-export function checkEliminations(s: GameState, events: GameEvent[]): void {
-  for (const p of s.players) {
-    if (p.eliminated) continue;
-    const hasCity = s.cities.some((c) => c.owner === p.id);
-    const hasUnit = s.units.some((u) => u.owner === p.id);
-    if (!hasCity && !hasUnit) {
-      p.eliminated = true;
-      events.push({ type: 'playerEliminated', player: p.id });
-    }
+export function checkElimination(s: GameState, pid: PlayerId, events: GameEvent[]): void {
+  const p = s.players[pid];
+  if (p.eliminated) return;
+  const hasCity = s.cities.some((c) => c.owner === pid);
+  const hasUnit = s.units.some((u) => u.owner === pid);
+  if (!hasCity && !hasUnit) {
+    p.eliminated = true;
+    events.push({ type: 'playerEliminated', player: pid });
   }
 }
 
@@ -51,8 +50,8 @@ function advanceToNextPlayer(s: GameState): void {
 
 export function startTurn(s: GameState, events: GameEvent[]): void {
   const pid = s.currentPlayer;
-  // Nobody's cities progress on turn 1, so every player's first production tick is on turn 2.
-  if (s.turn > 1) advanceProduction(s, pid, events);
+  // With fairFirstTurn, nobody's cities progress on turn 1, so every player's first production tick is on turn 2.
+  if (s.turn > 1 || !s.rules.fairFirstTurn) advanceProduction(s, pid, events);
   for (const u of s.units) {
     if (u.owner !== pid) continue;
     u.movesLeft = effectiveMove(u);
@@ -62,16 +61,17 @@ export function startTurn(s: GameState, events: GameEvent[]): void {
   events.push({ type: 'turnStarted', player: pid, turn: s.turn });
 }
 
-function passPlay(s: GameState, events: GameEvent[]): void {
-  checkEliminations(s, events);
+function passPlay(s: GameState, endingPid: PlayerId, events: GameEvent[]): void {
+  checkElimination(s, endingPid, events);
   if (checkWinner(s, events)) return;
   advanceToNextPlayer(s);
   startTurn(s, events);
 }
 
 export function endTurn(s: GameState, events: GameEvent[]): void {
-  finishPlayerTurn(s, s.currentPlayer, events);
-  passPlay(s, events);
+  const pid = s.currentPlayer;
+  finishPlayerTurn(s, pid, events);
+  passPlay(s, pid, events);
 }
 
 export function resign(s: GameState, events: GameEvent[]): void {
@@ -86,5 +86,5 @@ export function resign(s: GameState, events: GameEvent[]): void {
   }
   s.players[pid].eliminated = true;
   events.push({ type: 'playerEliminated', player: pid });
-  passPlay(s, events);
+  passPlay(s, pid, events);
 }

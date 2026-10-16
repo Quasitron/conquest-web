@@ -12,7 +12,7 @@ describe('createGame', () => {
   it('assigns start cities with army production', () => {
     const s = makeGame(rows);
     expect(s.cities).toHaveLength(2);
-    expect(s.cities[0]).toMatchObject({ owner: 0, production: 'army', progress: 0 });
+    expect(s.cities[0]).toMatchObject({ owner: 0, production: 'army', progress: 1 });
     expect(s.cities[1]).toMatchObject({ owner: 1, production: 'army' });
     expect(s.turn).toBe(1);
     expect(s.currentPlayer).toBe(0);

@@ -1,4 +1,5 @@
 import type { City, GameState, PlayerId, Terrain, Unit, UnitType } from './types';
+import type { HouseRules } from './rules';
 import { index } from './map';
 import { canPlayerSeeUnit, visibleSquares } from './fog';
 
@@ -19,6 +20,7 @@ export interface PlayerView {
   currentPlayer: PlayerId;
   winner: PlayerId | null;
   over: boolean;
+  rules: HouseRules;
   width: number;
   height: number;
   wrap: boolean;
@@ -41,6 +43,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     currentPlayer: s.currentPlayer,
     winner: s.winner,
     over: s.over,
+    rules: { ...s.rules },
     width: s.width,
     height: s.height,
     wrap: s.wrap,

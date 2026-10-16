@@ -25,15 +25,17 @@ describe('turn sequence', () => {
     expect(d).toMatchObject({ movesLeft: 3, movedThisTurn: false });
   });
 
-  it('advances production only for the player whose turn starts, from turn 2', () => {
+  it('advances production only for the player whose turn starts; classic cities tick on turn 1', () => {
     const s = makeGame(T);
-    endTurn(s, []); // P1 starts turn 1: no production on turn 1
-    expect(s.cities[1].progress).toBe(0);
-    endTurn(s, []); // P0 starts turn 2
-    expect(s.cities[0].progress).toBe(1);
-    expect(s.cities[1].progress).toBe(0);
-    endTurn(s, []); // P1 starts turn 2
+    expect(s.cities[0].progress).toBe(1); // classic: P0's start city ticks at creation
+    endTurn(s, []); // P1 starts turn 1: classic start city ticks
     expect(s.cities[1].progress).toBe(1);
+    expect(s.cities[0].progress).toBe(1);
+    endTurn(s, []); // P0 starts turn 2
+    expect(s.cities[0].progress).toBe(2);
+    expect(s.cities[1].progress).toBe(1);
+    endTurn(s, []); // P1 starts turn 2
+    expect(s.cities[1].progress).toBe(2);
   });
 
   it('in-flight aircraft burn unused moves and crash when out of fuel', () => {
@@ -60,10 +62,13 @@ describe('turn sequence', () => {
 });
 
 describe('elimination and victory', () => {
-  it('a player with no cities and no units is eliminated and the survivor wins', () => {
+  it('a player with no cities and no units is eliminated at the end of their own turn and the survivor wins', () => {
     const s = makeGame(T);
     s.cities[1].owner = 0;
     const events: GameEvent[] = [];
+    endTurn(s, events);
+    expect(s.players[1].eliminated).toBe(false);
+    expect(s.winner).toBeNull();
     endTurn(s, events);
     expect(s.players[1].eliminated).toBe(true);
     expect(s.winner).toBe(0);
@@ -99,15 +104,17 @@ describe('elimination and victory', () => {
     expect(s.winner).toBeNull();
   });
 
-  it('ends the game with no winner when every player is eliminated at once', () => {
+  it('a player with nothing left is eliminated when their own turn ends, leaving the other as winner', () => {
     const s = makeGame(['*#*#*'], { players: 3 });
     s.players[1].eliminated = true;
     for (const c of s.cities) c.owner = null;
     const events: GameEvent[] = [];
     endTurn(s, events);
+    expect(s.players[0].eliminated).toBe(true);
     expect(s.over).toBe(true);
-    expect(s.winner).toBeNull();
-    expect(events).toContainEqual({ type: 'gameOver', winner: null });
+    expect(s.winner).toBe(2);
+    expect(events).toContainEqual({ type: 'playerEliminated', player: 0 });
+    expect(events).toContainEqual({ type: 'gameOver', winner: 2 });
   });
 
   it('a sole survivor sets winner and over', () => {
