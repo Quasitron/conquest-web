@@ -9,7 +9,7 @@ export interface SeatConfig {
 }
 
 export interface SaveFile {
-  format: 2;
+  format: 3;
   rulesVersion: number;
   savedAt: string;
   name: string;
@@ -37,7 +37,7 @@ const TERRAINS = ['water', 'land', 'city'];
 /** Structural check of a GameState. Returns a problem description, or null when the shape is usable. */
 function gameStateProblem(v: unknown): string | null {
   if (!isObj(v)) return 'game state is not an object';
-  if (v.version !== 2) return 'unsupported game version';
+  if (v.version !== 3) return 'unsupported game version';
   const r = v.rules;
   if (!isObj(r) || typeof r.easierNeutralCities !== 'boolean' || typeof r.fairFirstTurn !== 'boolean' || typeof r.sentriedStayAsGarrison !== 'boolean') return 'invalid house rules';
   const { width, height, wrap, terrain, cities, units, players, fog, currentPlayer, turn, nextUnitId, rngState, winner, over } = v;
@@ -45,8 +45,8 @@ function gameStateProblem(v: unknown): string | null {
   if (typeof wrap !== 'boolean') return 'invalid wrap flag';
   const area = width * height;
   if (!Array.isArray(terrain) || terrain.length !== area || !terrain.every((t) => TERRAINS.includes(t as string))) return 'invalid terrain';
-  if (!Array.isArray(cities) || !cities.every(isObj)) return 'invalid cities';
-  if (!Array.isArray(units) || !units.every(isObj)) return 'invalid units';
+  if (!Array.isArray(cities) || !cities.every((c) => isObj(c) && typeof c.name === 'string' && c.name !== '')) return 'invalid cities';
+  if (!Array.isArray(units) || !units.every((u) => isObj(u) && (u.name === null || typeof u.name === 'string') && isInt(u.blockedTurns) && u.blockedTurns >= 0)) return 'invalid units';
   if (!Array.isArray(players) || players.length < 1 || !players.every(isObj)) return 'invalid players';
   const fogOk = (f: unknown) =>
     isObj(f) && Array.isArray(f.explored) && f.explored.length === area && isObj(f.lastSeen) && isObj(f.knownCityOwner);

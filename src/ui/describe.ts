@@ -11,6 +11,8 @@ const REASON: Record<DestroyReason, string | null> = {
 };
 
 const ORDERS_END: Record<OrdersEndReason, string> = {
+  cityFound: 'found a city',
+  returning: 'low on fuel',
   arrived: 'arrived',
   blocked: 'path blocked',
   enemySighted: 'enemy sighted',

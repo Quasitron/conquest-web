@@ -21,7 +21,7 @@ function sampleSave(name = 'slot'): SaveFile {
     if (!r.ok) throw new Error(r.error);
     s = r.state;
   }
-  return { format: 2, rulesVersion: RULES_VERSION, savedAt: '2026-10-14T12:00:00.000Z', name, seats, initial, commands, snapshot: s };
+  return { format: 3, rulesVersion: RULES_VERSION, savedAt: '2026-10-14T12:00:00.000Z', name, seats, initial, commands, snapshot: s };
 }
 
 describe('parseSave', () => {
@@ -33,7 +33,7 @@ describe('parseSave', () => {
   it('rejects bad JSON, wrong format, tampering and seat mismatch', () => {
     const good = sampleSave();
     expect(parseSave('{nope').ok).toBe(false);
-    expect(parseSave(JSON.stringify({ ...good, format: 3 })).ok).toBe(false);
+    expect(parseSave(JSON.stringify({ ...good, format: 4 })).ok).toBe(false);
     expect(parseSave(JSON.stringify({ ...good, commands: 'x' })).ok).toBe(false);
     const tampered = structuredClone(good);
     tampered.snapshot.turn = 99;

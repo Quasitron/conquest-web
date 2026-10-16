@@ -129,7 +129,7 @@ export class GameSession {
 
   toSave(name: string = this.name): SaveFile {
     return {
-      format: 2,
+      format: 3,
       rulesVersion: RULES_VERSION,
       savedAt: new Date().toISOString(),
       name,

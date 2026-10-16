@@ -11,7 +11,7 @@ function game(rows: string[], wrap = false): GameState {
   const s = makeGame(['*.*'], { wrap });
   const map = parseAscii(rows);
   s.width = map.width; s.height = map.height; s.terrain = map.terrain;
-  s.cities = map.cities.map((c, id) => ({ id, x: c.x, y: c.y, owner: null, production: null, progress: 0, lastBuilt: null }));
+  s.cities = map.cities.map((c, id) => ({ id, name: 'C' + id, x: c.x, y: c.y, owner: null, production: null, progress: 0, lastBuilt: null }));
   s.units = [];
   s.fog = s.fog.map(() => ({ explored: map.terrain.map(() => 0), lastSeen: {}, knownCityOwner: {} }));
   return s;
@@ -89,7 +89,7 @@ describe('findPath', () => {
     const c = game(['#*###', '#####']);
     exploreAll(c);
     c.terrain = ['#', '*', '#', '#', '#', '#', '#', '#', '#', '#'].map((ch) => (ch === '*' ? 'city' : 'land')) as GameState['terrain'];
-    c.cities = [{ id: 0, x: 1, y: 0, owner: 0, production: null, progress: 0, lastBuilt: null }];
+    c.cities = [{ id: 0, name: 'C0', x: 1, y: 0, owner: 0, production: null, progress: 0, lastBuilt: null }];
     addUnit(c, 'army', 0, 1, 0);
     const p = findPath(pm(c), { type: 'army', x: 0, y: 0 }, { x: 2, y: 0 })!;
     expect(p).toEqual([{ x: 1, y: 0 }, { x: 2, y: 0 }]);

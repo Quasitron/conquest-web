@@ -14,4 +14,4 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
 };
 
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;

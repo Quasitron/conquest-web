@@ -34,7 +34,7 @@ export function spawnUnit(s: GameState, type: UnitType, owner: PlayerId, x: numb
   const u: Unit = {
     id: s.nextUnitId++, type, owner, x, y,
     damage: 0, movesLeft: st.move, fuel: st.range, carriedBy: null, movedThisTurn: false,
-    orders: null, unloadNextTurn: false,
+    orders: null, unloadNextTurn: false, name: null, blockedTurns: 0,
   };
   s.units.push(u);
   return u;

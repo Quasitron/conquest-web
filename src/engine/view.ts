@@ -31,7 +31,7 @@ export interface PlayerView {
   players: { id: PlayerId; name: string; eliminated: boolean }[];
   myUnits: Unit[];
   myCities: City[];
-  knownCities: { id: number; x: number; y: number; owner: PlayerId | null }[];
+  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null }[];
   enemies: EnemyMarker[];
 }
 
@@ -54,7 +54,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     myCities: structuredClone(s.cities.filter((c) => c.owner === me)),
     knownCities: s.cities
       .filter((c) => fog.explored[index(s, c.x, c.y)])
-      .map((c) => ({ id: c.id, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null) })),
+      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null) })),
     enemies: Object.values(fog.lastSeen)
       .sort((a, b) => a.y - b.y || a.x - b.x || a.turnSeen - b.turnSeen || a.type.localeCompare(b.type))
       .map((e, markerId) => {

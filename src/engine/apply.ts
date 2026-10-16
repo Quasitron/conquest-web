@@ -8,6 +8,7 @@ import { endTurn, resign } from './turn';
 import { updateFog } from './fog';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders } from './orders';
+import { cleanName } from './names';
 
 function validDir(dir: unknown): boolean {
   return typeof dir === 'number' && Number.isInteger(dir) && dir >= 0 && dir <= 7;
@@ -81,6 +82,25 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       if (!u) error = 'no such unit';
       else if (u.owner !== actor) error = 'not your unit';
       else destroyUnit(s, u, 'disbanded', events);
+      break;
+    }
+    case 'renameCity': {
+      const c = s.cities.find((x) => x.id === cmd.cityId);
+      const name = cleanName(cmd.name);
+      if (!c) error = 'no such city';
+      else if (c.owner !== actor) error = 'not your city';
+      else if (name === null || name === '') error = 'invalid name';
+      else if (s.cities.some((x) => x !== c && x.name.toLowerCase() === name.toLowerCase())) error = 'name already in use';
+      else c.name = name;
+      break;
+    }
+    case 'renameUnit': {
+      const u = unitById(s, cmd.unitId);
+      const name = cmd.name === null ? '' : cleanName(cmd.name);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else if (name === null) error = 'invalid name';
+      else u.name = name === '' ? null : name;
       break;
     }
     case 'endTurn': {

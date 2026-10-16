@@ -29,6 +29,10 @@ export interface Unit {
   movedThisTurn: boolean;
   orders: Orders | null;
   unloadNextTurn: boolean;
+  /** Player-given name, or null to show the default ordinal name. */
+  name: string | null;
+  /** Consecutive turns an order has been blocked (used by explore/goto retry logic). */
+  blockedTurns: number;
 }
 
 export type Orders =
@@ -37,10 +41,11 @@ export type Orders =
   | { kind: 'patrol'; a: Pos; b: Pos; toB: boolean }
   | { kind: 'explore' };
 
-export type OrdersEndReason = 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore';
+export type OrdersEndReason = 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning';
 
 export interface City {
   id: number;
+  name: string;
   x: number;
   y: number;
   owner: PlayerId | null;
@@ -73,7 +78,7 @@ export interface PlayerFog {
 }
 
 export interface GameState {
-  version: 2;
+  version: 3;
   rules: HouseRules;
   width: number;
   height: number;
@@ -100,6 +105,8 @@ export type Command =
   | { type: 'unload'; player: PlayerId; transportId: number; unitIds: number[] | null }
   | { type: 'setOrders'; player: PlayerId; unitId: number; orders: Orders | null }
   | { type: 'goHome'; player: PlayerId; unitId: number }
+  | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
+  | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }
   | { type: 'endTurn'; player: PlayerId }
   | { type: 'resign'; player: PlayerId };
 

@@ -12,6 +12,7 @@ export { replay } from './replay';
 export { hashState } from './hash';
 export { getPlayerView } from './view';
 export type { PlayerView } from './view';
+export { ordinal, unitDisplayName, defaultCityName, cleanName, NAME_MAX } from './names';
 export { buildTime } from './production';
 export { areFriendly } from './relations';
 export { Rng } from './rng';

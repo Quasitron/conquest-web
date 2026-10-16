@@ -3,7 +3,7 @@ import { GameSession } from '../../src/app/session';
 import { RULES_VERSION, apply, type Command, type GameState } from '../../src/engine';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
 import {
-  MemorySaveStore, OLDER_VERSION_NOTE, migrateSave, migrateState1to2, parseSave, serializeSave, type SaveFile,
+  MemorySaveStore, OLDER_VERSION_NOTE, migrateSave, migrateState1to2, migrateState2to3, parseSave, serializeSave, type SaveFile,
 } from '../../src/storage';
 import { addUnit, makeGame } from '../helpers';
 
@@ -36,6 +36,21 @@ function format1Save(): Record<string, unknown> {
   return { format: 1, savedAt: '2026-10-14T12:00:00.000Z', name: 'old', seats, initial: downgrade(initial), commands: cmds, snapshot: downgrade(s) };
 }
 
+/** Turns a current save into what 2b wrote: no names, no blockedTurns, state version 2, format 2. */
+function toFormat2(save: SaveFile): Record<string, unknown> {
+  const strip = (st: GameState): Record<string, unknown> => {
+    const o = structuredClone(st) as unknown as Record<string, unknown>;
+    o.version = 2;
+    for (const c of o.cities as Record<string, unknown>[]) delete c.name;
+    for (const u of o.units as Record<string, unknown>[]) {
+      delete u.name;
+      delete u.blockedTurns;
+    }
+    return o;
+  };
+  return { ...save, format: 2, rulesVersion: 2, initial: strip(save.initial), snapshot: strip(save.snapshot) };
+}
+
 function format2Save(): SaveFile {
   const initial = makeGame(['*##...*', '###...#', '##*....']);
   const u = addUnit(initial, 'army', 0, 1, 1);
@@ -46,7 +61,7 @@ function format2Save(): SaveFile {
     if (!r.ok) throw new Error(r.error);
     s = r.state;
   }
-  return { format: 2, rulesVersion: RULES_VERSION, savedAt: '2026-10-16T12:00:00.000Z', name: 'new', seats, initial, commands, snapshot: s };
+  return { format: 3, rulesVersion: RULES_VERSION, savedAt: '2026-10-16T12:00:00.000Z', name: 'new', seats, initial, commands, snapshot: s };
 }
 
 describe('migrations', () => {
@@ -65,13 +80,13 @@ describe('migrations', () => {
     }
   });
 
-  it('migrateSave upgrades format 1, passes format 2 through and rejects others', () => {
+  it('migrateSave upgrades formats 1 and 2, passes format 3 through and rejects others', () => {
     const up = migrateSave(format1Save());
-    expect(up.ok && up.save.format).toBe(2);
+    expect(up.ok && up.save.format).toBe(3);
     expect(up.ok && up.save.rulesVersion).toBe(1);
     const same = migrateSave({ ...format2Save() });
     expect(same.ok && same.save.rulesVersion).toBe(RULES_VERSION);
-    expect(migrateSave({ format: 3 })).toEqual({ ok: false, error: 'unsupported save format' });
+    expect(migrateSave({ format: 4 })).toEqual({ ok: false, error: 'unsupported save format' });
   });
 
   it('a format-1 save loads from its snapshot with the note and an empty history', () => {
@@ -80,7 +95,7 @@ describe('migrations', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.note).toBe(OLDER_VERSION_NOTE);
-    expect(r.save.format).toBe(2);
+    expect(r.save.format).toBe(3);
     expect(r.save.rulesVersion).toBe(RULES_VERSION);
     expect(r.save.commands).toEqual([]);
     expect(r.save.initial).toEqual(r.save.snapshot);
@@ -114,8 +129,8 @@ describe('migrations', () => {
     if (!r.ok) expect(r.error).toMatch(/damaged/);
   });
 
-  it('format 3 is rejected as unsupported', () => {
-    const r = parseSave(JSON.stringify({ ...format2Save(), format: 3 }));
+  it('format 4 is rejected as unsupported', () => {
+    const r = parseSave(JSON.stringify({ ...format2Save(), format: 4 }));
     expect(r).toEqual({ ok: false, error: 'unsupported save format' });
   });
 
@@ -146,6 +161,56 @@ describe('migrations', () => {
   });
 });
 
+describe('format 3 (names)', () => {
+  it('migrateState2to3 fills names and blockedTurns, identically for initial and snapshot', () => {
+    const save = toFormat2(format2Save());
+    const a = migrateState2to3(save.initial as Record<string, unknown>);
+    const b = migrateState2to3(save.snapshot as Record<string, unknown>);
+    expect(a.version).toBe(3);
+    const names = (st: Record<string, unknown>) => (st.cities as { name: string }[]).map((c) => c.name);
+    expect(names(a).every((n) => typeof n === 'string' && n.length > 0)).toBe(true);
+    expect(names(a)).toEqual(names(b));
+    for (const u of a.units as Record<string, unknown>[]) {
+      expect(u.name).toBeNull();
+      expect(u.blockedTurns).toBe(0);
+    }
+  });
+
+  it('a 2b (format 2) save loads from its snapshot with the note and named cities', () => {
+    const r = parseSave(JSON.stringify(toFormat2(format2Save())));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.note).toBe(OLDER_VERSION_NOTE);
+    expect(r.save.commands.length).toBe(0);
+    expect(r.save.format).toBe(3);
+    expect(r.save.snapshot.cities.every((c) => typeof c.name === 'string' && c.name.length > 0)).toBe(true);
+  });
+
+  it('a current session round-trips with no note', () => {
+    const world = { ...DEFAULT_WORLD, ...SIZE_PRESETS.small };
+    const session = GameSession.create({ world, seed: 9, seats }, null);
+    const r = parseSave(serializeSave(session.toSave()));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.note).toBeUndefined();
+  });
+
+  it('a 2b save made from a played session loads', () => {
+    const world = { ...DEFAULT_WORLD, ...SIZE_PRESETS.small };
+    const session = GameSession.create({ world, seed: 9, seats }, null);
+    const r = parseSave(JSON.stringify(toFormat2(session.toSave())));
+    expect(r.ok && r.note).toBe(OLDER_VERSION_NOTE);
+  });
+
+  it('rejects a unit with negative blockedTurns and a nameless city', () => {
+    const bad = format2Save();
+    bad.snapshot.units[0].blockedTurns = -1;
+    expect(parseSave(serializeSave(bad))).toEqual({ ok: false, error: 'save file has an invalid game state (invalid units)' });
+    const bad2 = format2Save();
+    (bad2.snapshot.cities[0] as unknown as Record<string, unknown>).name = '';
+    expect(parseSave(serializeSave(bad2))).toEqual({ ok: false, error: 'save file has an invalid game state (invalid cities)' });
+  });
+});
+
 describe('GameSession and house rules', () => {
   const world = { ...DEFAULT_WORLD, ...SIZE_PRESETS.small };
 
@@ -153,7 +218,7 @@ describe('GameSession and house rules', () => {
     const s = GameSession.create({ world, seed: 5, seats, rules: { easierNeutralCities: true } }, null);
     expect(s.state.rules).toEqual({ easierNeutralCities: true, fairFirstTurn: false, sentriedStayAsGarrison: false });
     expect(s.toSave().rulesVersion).toBe(RULES_VERSION);
-    expect(s.toSave().format).toBe(2);
+    expect(s.toSave().format).toBe(3);
   });
 
   it('fromSave exposes the note as session.notice', () => {

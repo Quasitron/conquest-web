@@ -16,8 +16,8 @@ describe('house rules and state version', () => {
   it('createGame defaults to classic rules', () => {
     const s = makeGame(M);
     expect(s.rules).toEqual(CLASSIC_RULES);
-    expect(s.version).toBe(2);
-    expect(RULES_VERSION).toBe(2);
+    expect(s.version).toBe(3);
+    expect(RULES_VERSION).toBe(3);
   });
 
   it('exposes the rules in the player view', () => {
