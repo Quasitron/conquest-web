@@ -108,6 +108,10 @@ export function GameScreen({ session, onQuit }: Props) {
     return f;
   };
   const [message, setMessage] = useState<string | null>(null);
+  // Errors from commands issued inside a dialog; the top bar is hidden behind it, so they show there.
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  // Bumped when the map is resized, so dialog anchors and leader lines are recomputed.
+  const [, setResizes] = useState(0);
   // The city screen (by city id) and the turn-start production reports still to be acknowledged.
   const [cityOpen, setCityOpen] = useState<number | null>(null);
   const [reports, setReports] = useState<ProductionReportItem[]>([]);
@@ -166,6 +170,36 @@ export function GameScreen({ session, onQuit }: Props) {
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
   const dialogOpen = openCityObj !== null || reportCity !== null;
+  // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
+  const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
+  useEffect(() => setDialogError(null), [dialogKey]);
+
+  // Re-fit (auto-fit on) or re-clamp (off) the camera when the map canvas changes size, once per frame.
+  const onResize = useRef<() => void>(() => {});
+  onResize.current = () => {
+    if (session.phase !== 'playing') return;
+    const v = session.view();
+    const f = fitOf(v.me);
+    if (f.auto) {
+      f.ceiling = null;
+      const sel = selection?.kind === 'unit' ? v.myUnits.find((u) => u.id === selection.id) ?? null : null;
+      applyAutoFit(v, sel);
+    } else setCam(camNow.current, v);
+    setResizes((n) => n + 1);
+  };
+  useEffect(() => {
+    const el = document.querySelector('canvas.map');
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    let first = true;
+    const ro = new ResizeObserver(() => {
+      if (first) { first = false; return; } // the initial report is not a resize
+      if (frame) return;
+      frame = requestAnimationFrame(() => { frame = 0; onResize.current(); });
+    });
+    ro.observe(el);
+    return () => { ro.disconnect(); if (frame) cancelAnimationFrame(frame); };
+  }, []);
   /** Screen position of a city's center, for the leader line; null when it is off the visible map. */
   const anchorFor = (c: Pos | null) => {
     const el = document.querySelector('canvas.map');
@@ -295,6 +329,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const city = session.view().myCities.find((c) => c.id === id);
     if (!city) return;
     setMessage(null);
+    setDialogError(null);
     setInfoId(null);
     setMenu(null);
     setPicker(null);
@@ -303,10 +338,11 @@ export function GameScreen({ session, onQuit }: Props) {
     setCityOpen(id);
   };
 
-  const act = (cmd: SessionCommand): boolean => {
+  const act = (cmd: SessionCommand, fromDialog = false): boolean => {
     const err = session.act(cmd);
     if (err) {
-      setMessage(err);
+      if (fromDialog) setDialogError(err);
+      else setMessage(err);
       const stuck = /(\d+) cannot end its turn/.exec(err);
       if (stuck) {
         const id = Number(stuck[1]);
@@ -317,6 +353,7 @@ export function GameScreen({ session, onQuit }: Props) {
       return false;
     }
     setMessage(null);
+    setDialogError(null);
     if (cmd.type !== 'endTurn' && cmd.type !== 'resign') afterOwnAct();
     return true;
   };
@@ -326,20 +363,27 @@ export function GameScreen({ session, onQuit }: Props) {
    * (a lost attack, a sunk transport), and re-fit the map when new squares were explored.
    */
   const afterOwnAct = () => {
-    const captured = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
-    if (captured && captured.type === 'cityCaptured') openCity(captured.cityId);
-    if (session.phase !== 'playing') return;
+    const ev = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
+    const captured = ev && ev.type === 'cityCaptured' ? ev : null;
+    // Last, so that the city screen's focus wins over any selection or auto-fit camera move.
+    const finish = () => { if (captured) openCity(captured.cityId); };
+    if (session.phase !== 'playing') return finish();
     const v = session.view();
-    if (v.me !== view.me) return;
+    if (v.me !== view.me) return finish();
     let selId = selection?.kind === 'unit' ? selection.id : null;
     if (selId !== null && !v.myUnits.some((u) => u.id === selId)) {
-      // The selected unit is gone: keep the combat result in the top bar (the log has it too) and move on.
-      const combat = session.lastEvents.find((e) => e.type === 'combat');
-      const text = combat ? describeEvent(combat, v.me, names, lookup) : null;
-      if (text) setMessage(text);
+      // The selected unit is gone. A capturing army is consumed as the garrison: recover without moving the
+      // camera or showing combat text. Otherwise keep the combat result in the top bar (the log has it too).
+      if (!captured) {
+        const combat = session.lastEvents.find((e) => e.type === 'combat');
+        const text = combat ? describeEvent(combat, v.me, names, lookup) : null;
+        if (text) setMessage(text);
+      }
       const next = nextReadyAfter(readyNow(), selId);
-      if (next) selectUnit(next);
-      else setSelection(null);
+      if (next) {
+        if (captured) setSelection({ kind: 'unit', id: next.id });
+        else selectUnit(next);
+      } else setSelection(null);
       selId = next ? next.id : null;
     }
     const n = exploredCount(v);
@@ -347,6 +391,7 @@ export function GameScreen({ session, onQuit }: Props) {
       exploredAt.current.set(v.me, n);
       applyAutoFit(v, selId !== null ? v.myUnits.find((u) => u.id === selId) ?? null : null);
     }
+    finish();
   };
 
   /** Issues an order command for `u`, then moves the cycle on if `u` is no longer ready. */
@@ -640,7 +685,10 @@ export function GameScreen({ session, onQuit }: Props) {
         </span>
       </header>
       <div class="mapcol">
-        <StatusLine unit={playing ? selectedUnit : null} onFit={requestFit} />
+        <StatusLine
+          unit={playing ? selectedUnit : null} onFit={requestFit}
+          canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
+        />
         <MapCanvas
           view={view} cam={cam} setCam={setCamRaw} selected={selectedPos} targets={targets} colors={colors}
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
@@ -715,25 +763,31 @@ export function GameScreen({ session, onQuit }: Props) {
                 setMessage(r);
                 return;
               }
-              const kind = pluralUnit(cargo.find((c) => ids.includes(c.id))?.type ?? 'army', r.landed);
-              setMessage(`${unitDisplayName(pickerUnit)} landed ${r.landed} ${kind}${r.aboard > 0 ? `; ${r.aboard} still aboard` : ''}.`);
+              const cargoType = cargo.find((c) => ids.includes(c.id))?.type ?? 'army';
+              if (UNIT_STATS[pickerUnit.type].carries === 'army') {
+                const kind = pluralUnit(cargoType, r.landed);
+                setMessage(`${unitDisplayName(pickerUnit)} landed ${r.landed} ${kind}${r.aboard > 0 ? `; ${r.aboard} still aboard` : ''}.`);
+              } else {
+                // Aircraft do not land anywhere: a carrier's cargo is just woken.
+                setMessage(`${unitDisplayName(pickerUnit)} unloaded ${ids.length} ${pluralUnit(cargoType, ids.length)}.`);
+              }
             }}
           />
         </div>
       )}
       {openCityObj && (
         <CityScreen
-          key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} error={message}
-          onPick={(unitType) => { act({ type: 'setProduction', cityId: openCityObj.id, unitType }); }}
-          onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }); }}
+          key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} error={dialogError}
+          onPick={(unitType) => { act({ type: 'setProduction', cityId: openCityObj.id, unitType }, true); }}
+          onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }, true); }}
           onSelectUnit={(id) => { const u = view.myUnits.find((x) => x.id === id); if (u) selectUnit(u); }}
           onClose={() => setCityOpen(null)}
         />
       )}
       {report && reportCity && (
         <ProductionReport
-          key={report.unitId} view={view} report={report} anchor={anchorFor(reportCity)} error={message}
-          onRename={(name) => { act({ type: 'renameUnit', unitId: report.unitId, name: name.trim() === '' ? null : name.trim() }); }}
+          key={report.unitId} view={view} report={report} anchor={anchorFor(reportCity)} error={dialogError}
+          onRename={(name) => { act({ type: 'renameUnit', unitId: report.unitId, name: name.trim() === '' ? null : name.trim() }, true); }}
           onProd={() => openCity(reportCity.id)}
           onOk={nextReport}
         />

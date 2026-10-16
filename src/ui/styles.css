@@ -19,17 +19,19 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-.title { position: relative; min-height: 100vh; isolation: isolate; background: url('/title.webp') top center / contain no-repeat; display: flex; flex-direction: column; }
-.title-art { display: none; width: 100%; height: auto; }
-.title::before { content: ''; position: absolute; inset: 0; z-index: -1; background: url('/title.webp') center / cover no-repeat; filter: blur(24px) brightness(0.5); }
-.title-menu { width: min(420px, 40vw); min-height: 100vh; max-height: 100vh; overflow-y: auto; background: rgba(18,22,28,0.82); backdrop-filter: blur(6px); padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; align-self: flex-start; }
+.title { --menu-w: min(420px, 40vw); position: relative; min-height: 100vh; isolation: isolate; display: flex; flex-direction: column; }
+/* Sharp art sits in the space right of the menu column so the baked-in title is never covered. */
+.title-art { position: absolute; top: 0; left: var(--menu-w); width: calc(100% - var(--menu-w)); height: 100%; object-fit: contain; object-position: top center; z-index: -1; }
+.title::before { content: ''; position: absolute; inset: 0; z-index: -2; background: url('/title.webp') center / cover no-repeat; filter: blur(24px) brightness(0.5); }
+.title-menu { width: var(--menu-w); min-height: 100vh; max-height: 100vh; overflow-y: auto; background: rgba(18,22,28,0.82); backdrop-filter: blur(6px); padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; align-self: flex-start; }
 .title section { background: var(--panel); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 799px), (orientation: portrait) {
   .title { background: var(--bg); }
   .title::before { display: none; }
-  .title-art { display: block; }
+  .title-art { position: static; display: block; width: 100%; height: auto; z-index: auto; }
   .title-menu { width: auto; min-height: 0; max-height: none; overflow: visible; align-self: stretch; background: transparent; backdrop-filter: none; }
-}.title h2 { margin: 0; font-size: 1.1rem; }
+}
+.title h2 { margin: 0; font-size: 1.1rem; }
 .seats td { padding: 2px 6px 2px 0; }
 .house-rules { border: 1px solid #333c48; border-radius: 6px; margin: 0; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
 .house-rules legend { padding: 0 4px; }
@@ -44,7 +46,7 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .statusline { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px; background: var(--panel); border-bottom: 1px solid #333c48; font-size: 0.9rem; }
 .statusline-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.statusline button { padding: 2px 10px; }
+.statusline button { padding: 2px 10px; flex: 0 0 auto; }
 canvas.map { width: 100%; flex: 1 1 0; min-height: 0; display: block; touch-action: none; cursor: pointer; }
 .side { display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--panel); overflow: hidden; }
 canvas.minimap { flex: 0 0 auto; width: 100%; aspect-ratio: 200 / 140; border-radius: 6px; cursor: pointer; }
@@ -58,8 +60,9 @@ canvas.minimap { flex: 0 0 auto; width: 100%; aspect-ratio: 200 / 140; border-ra
 .card { background: var(--panel); padding: 24px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 260px; text-align: center; }
 
 @media (max-width: 760px) {
-  .game { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
-  .side { max-height: 40vh; }
+  .game { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .side { max-height: 34vh; }
+  canvas.minimap { width: auto; height: 80px; align-self: flex-start; }
 }
 
 .muted { color: var(--muted); font-size: 0.85rem; }
