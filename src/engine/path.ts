@@ -220,7 +220,7 @@ export function dirBetween(m: Pick<PathMap, 'width' | 'height' | 'wrap'>, from: 
   return null;
 }
 
-/** Whether an aircraft with uel can safely make a go-to of steps to 	arget: it must keep a unit of fuel, unless it ends at a refuel point it knows (own city, or own carrier with room). */
+/** Whether an aircraft with `fuel` can safely make a go-to of `steps` to `target`: it must keep one unit of fuel, unless it ends at a refuel point it knows (own city, or own carrier with room). */
 export function aircraftCanReach(m: PathMap, steps: number, fuel: number, target: Pos): boolean {
   if (steps < fuel) return true;
   if (steps > fuel) return false;
