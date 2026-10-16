@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+﻿import { useEffect, useRef } from 'preact/hooks';
 import type { PlayerView, Pos } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
@@ -12,7 +12,15 @@ interface Props {
   targets: StepTarget[];
   colors: string[];
   onSquare: (p: Pos) => void;
-  onDeselect: () => void;
+  /** Pointer over a square; null when it leaves the map. */
+  onHover: (p: Pos | null) => void;
+  /** Right-click, or a long-press on touch; client is in viewport coordinates. */
+  onContext: (p: Pos, client: { x: number; y: number }) => void;
+  activeId: number | null;
+  blinkOn: boolean;
+  path: Pos[] | null;
+  pathOk: boolean;
+  pathLabel: string | null;
 }
 
 export function MapCanvas(p: Props) {
@@ -20,6 +28,8 @@ export function MapCanvas(p: Props) {
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const dragged = useRef(false);
   const pinchDist = useRef(0);
+  const pressTimer = useRef<number | undefined>(undefined);
+  const longPressed = useRef(false);
   const camRef = useRef(p.cam);
   camRef.current = p.cam;
 
@@ -42,7 +52,7 @@ export function MapCanvas(p: Props) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
-      activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null, // wired in Task 9
+      activeId: p.activeId, blinkOn: p.blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel,
     });
   });
 
@@ -51,6 +61,15 @@ export function MapCanvas(p: Props) {
     window.addEventListener('resize', redraw);
     return () => window.removeEventListener('resize', redraw);
   }, []);
+
+  const clearPress = () => {
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = undefined;
+  };
+  useEffect(() => clearPress, []);
+
+  const squareAt = (pt: { x: number; y: number }) =>
+    screenToMap(camRef.current, p.view.width, p.view.height, p.view.wrap, pt.x, pt.y);
 
   const local = (e: PointerEvent | WheelEvent) => {
     const r = ref.current!.getBoundingClientRect();
@@ -61,7 +80,13 @@ export function MapCanvas(p: Props) {
     <canvas
       ref={ref}
       class="map"
-      onContextMenu={(e) => { e.preventDefault(); p.onDeselect(); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (longPressed.current) return; // the touch long-press already opened it
+        const sq = squareAt(local(e as unknown as PointerEvent));
+        if (sq) p.onContext(sq, { x: e.clientX, y: e.clientY });
+      }}
+      onPointerLeave={() => p.onHover(null)}
       onWheel={(e) => {
         e.preventDefault();
         const pt = local(e);
@@ -71,15 +96,31 @@ export function MapCanvas(p: Props) {
         (e.target as Element).setPointerCapture(e.pointerId);
         pointers.current.set(e.pointerId, local(e));
         dragged.current = false;
+        longPressed.current = false;
+        clearPress();
         if (pointers.current.size === 2) {
           const [a, b] = [...pointers.current.values()];
           pinchDist.current = Math.hypot(a.x - b.x, a.y - b.y);
+        } else if (e.pointerType === 'touch') {
+          const start = local(e);
+          const { clientX, clientY } = e;
+          pressTimer.current = window.setTimeout(() => {
+            pressTimer.current = undefined;
+            const sq = squareAt(start);
+            if (!sq || dragged.current) return;
+            longPressed.current = true;
+            p.onContext(sq, { x: clientX, y: clientY });
+          }, 500);
         }
       }}
       onPointerMove={(e) => {
         const prev = pointers.current.get(e.pointerId);
-        if (!prev) return;
+        if (!prev) {
+          if (e.pointerType !== 'touch') p.onHover(squareAt(local(e)));
+          return;
+        }
         const pt = local(e);
+        if (Math.hypot(pt.x - prev.x, pt.y - prev.y) > 4) clearPress();
         if (pointers.current.size === 2) {
           pointers.current.set(e.pointerId, pt);
           const [a, b] = [...pointers.current.values()];
@@ -98,6 +139,7 @@ export function MapCanvas(p: Props) {
         }
       }}
       onPointerCancel={(e) => {
+        clearPress();
         pointers.current.delete(e.pointerId);
         dragged.current = false;
         pinchDist.current = 0;
@@ -105,12 +147,14 @@ export function MapCanvas(p: Props) {
       onPointerUp={(e) => {
         const wasDrag = dragged.current;
         const pt = local(e);
+        clearPress();
         pointers.current.delete(e.pointerId);
-        if (pointers.current.size === 0 && !wasDrag && e.button === 0) {
-          const sq = screenToMap(p.cam, p.view.width, p.view.height, p.view.wrap, pt.x, pt.y);
+        if (pointers.current.size === 0 && !wasDrag && !longPressed.current && e.button === 0) {
+          const sq = squareAt(pt);
           if (sq) p.onSquare(sq);
         }
       }}
     />
   );
 }
+

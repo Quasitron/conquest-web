@@ -1,4 +1,4 @@
-import { UNIT_STATS, type DestroyReason, type GameEvent, type PlayerId } from '../engine';
+import { UNIT_STATS, type DestroyReason, type GameEvent, type OrdersEndReason, type PlayerId, type UnitType } from '../engine';
 
 const REASON: Record<DestroyReason, string | null> = {
   combat: 'was destroyed in combat',
@@ -10,7 +10,18 @@ const REASON: Record<DestroyReason, string | null> = {
   resigned: null,
 };
 
-export function describeEvent(e: GameEvent, me: PlayerId, names: string[]): string | null {
+const ORDERS_END: Record<OrdersEndReason, string> = {
+  arrived: 'arrived',
+  blocked: 'path blocked',
+  enemySighted: 'enemy sighted',
+  lowFuel: 'low fuel',
+  nothingToExplore: 'nothing left to explore',
+};
+
+/** `unitTypeOf` names units in events that only carry an id; unknown units read as "Unit". */
+export function describeEvent(
+  e: GameEvent, me: PlayerId, names: string[], unitTypeOf?: (unitId: number) => UnitType | undefined,
+): string | null {
   const whose = (owner: PlayerId | null, capital: boolean) =>
     owner === me ? (capital ? 'Your' : 'your') : owner === null ? 'a neutral' : `${names[owner]}'s`;
   switch (e.type) {
@@ -34,11 +45,13 @@ export function describeEvent(e: GameEvent, me: PlayerId, names: string[]): stri
     case 'unitProduced':
       return `New ${UNIT_STATS[e.unitType].name} ready.`;
     case 'cargoUnloaded':
-      return 'Cargo unloaded.';
-    case 'ordersEnded':
-      return null; // Task 9 writes the real text
+      return `Transport ${e.transportId} unloaded ${e.unitIds.length} unit(s).`;
+    case 'ordersEnded': {
+      const type = unitTypeOf?.(e.unitId);
+      return `${type ? UNIT_STATS[type].name : 'Unit'} ${e.unitId} stopped: ${ORDERS_END[e.reason]}.`;
+    }
     case 'turnStarted':
-      return `Turn ${e.turn}: ${names[e.player]}.`;
+      return null;
     case 'playerEliminated':
       return e.player === me ? 'You have been eliminated.' : `${names[e.player]} has been eliminated.`;
     case 'gameOver':

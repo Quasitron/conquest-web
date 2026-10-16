@@ -16,6 +16,27 @@ describe('describeEvent', () => {
     ).toBe('Your Fighter ran out of fuel and crashed.');
   });
 
+  it('turnStarted is not described', () => {
+    expect(describeEvent({ type: 'turnStarted', turn: 3, player: 1 }, 0, names)).toBeNull();
+  });
+
+  it('ordersEnded reasons read as plain text', () => {
+    const text = (reason: 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore') =>
+      describeEvent({ type: 'ordersEnded', unitId: 12, owner: 0, reason }, 0, names, () => 'army');
+    expect(text('arrived')).toBe('Army 12 stopped: arrived.');
+    expect(text('blocked')).toBe('Army 12 stopped: path blocked.');
+    expect(text('enemySighted')).toBe('Army 12 stopped: enemy sighted.');
+    expect(text('lowFuel')).toBe('Army 12 stopped: low fuel.');
+    expect(text('nothingToExplore')).toBe('Army 12 stopped: nothing left to explore.');
+    expect(describeEvent({ type: 'ordersEnded', unitId: 12, owner: 0, reason: 'arrived' }, 0, names)).toBe('Unit 12 stopped: arrived.');
+  });
+
+  it('cargoUnloaded counts units', () => {
+    expect(describeEvent({ type: 'cargoUnloaded', transportId: 5, owner: 0, unitIds: [1, 2, 3] }, 0, names)).toBe(
+      'Transport 5 unloaded 3 unit(s).',
+    );
+  });
+
   it('describes combat', () => {
     const text = describeEvent(
       {
