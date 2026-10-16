@@ -5,6 +5,7 @@ import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type Size
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
 import { pickFileText } from './exportFile';
+import { VERSION_LABEL } from './version';
 
 interface Props {
   store: SaveStore;
@@ -108,7 +109,7 @@ export function TitleScreen({ store, onStart }: Props) {
       <div class="title-menu">
         {panel === 'menu' && (
           <section>
-            <div class="row">
+            <div class="title-buttons">
               {autosave && (
                 <button class="primary" onClick={() => load('autosave')}>Continue (turn {autosave.turn})</button>
               )}
@@ -212,6 +213,7 @@ export function TitleScreen({ store, onStart }: Props) {
         )}
         {error && <p class="error" role="alert">{error}</p>}
       </div>
+      <p class="title-version">{VERSION_LABEL}</p>
     </main>
   );
 }
