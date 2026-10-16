@@ -9,7 +9,25 @@ import { moveUnit } from './movement';
 import { unloadCargo } from './cargo';
 import { aircraftCanReach, dirBetween, findFrontier, findPath, pathMapFromState } from './path';
 
-const NO_AIR_MOVING = 'aircraft cannot patrol or explore yet';
+const NO_AIR_EXPLORE = 'aircraft cannot explore yet';
+const NO_PATROL_BASE = 'patrol must start or end at a city or carrier';
+
+/** True when `p` holds an own city, or an own carrier with room for one more aircraft (or u aboard it). */
+function isRefuelBase(s: GameState, u: Unit, p: Pos): boolean {
+  if (cityAt(s, p.x, p.y)?.owner === u.owner) return true;
+  return topLevelUnitsAt(s, p.x, p.y).some(
+    (c) =>
+      c.owner === u.owner && UNIT_STATS[c.type].carries === u.type &&
+      (u.carriedBy === c.id || cargoOf(s, c).length < cargoCapacity(c)),
+  );
+}
+
+/** The patrol end an aircraft refuels at: a if it holds an own city or usable own carrier, else b, else null. */
+export function patrolBase(s: GameState, u: Unit, o: { a: Pos; b: Pos }): Pos | null {
+  if (isRefuelBase(s, u, o.a)) return o.a;
+  if (isRefuelBase(s, u, o.b)) return o.b;
+  return null;
+}
 
 function validSquare(s: GameState, u: Unit, p: unknown): p is Pos {
   if (typeof p !== 'object' || p === null) return false;
@@ -28,7 +46,7 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
       if (air && !isAtRefuelPoint(s, u)) return 'aircraft can only sentry in a city or on a carrier';
       return null;
     case 'explore':
-      return air ? NO_AIR_MOVING : null;
+      return air ? NO_AIR_EXPLORE : null;
     case 'goto': {
       if (!validSquare(s, u, o.target)) return 'target is not an explored square';
       if (o.target.x === u.x && o.target.y === u.y) return 'already there';
@@ -39,11 +57,20 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
       return null;
     }
     case 'patrol': {
-      if (air) return NO_AIR_MOVING;
       if (!validSquare(s, u, o.a) || !validSquare(s, u, o.b)) return 'target is not an explored square';
       if (o.a.x === o.b.x && o.a.y === o.b.y) return 'patrol ends must differ';
-      const path = findPath(pathMapFromState(s, u.owner), u, o.toB ? o.b : o.a);
-      return path === null ? 'no known path' : null;
+      const map = pathMapFromState(s, u.owner);
+      const target = o.toB ? o.b : o.a;
+      const path = findPath(map, u, target);
+      if (path === null) return 'no known path';
+      if (!air) return null;
+      const base = patrolBase(s, u, o);
+      if (base === null) return NO_PATROL_BASE;
+      const far = base === o.a ? o.b : o.a;
+      const leg = findPath(map, { type: u.type, x: base.x, y: base.y }, far);
+      if (leg === null || 2 * leg.length > (UNIT_STATS[u.type].range ?? 0)) return 'out of range';
+      const need = path.length + (target === far ? leg.length : 0);
+      return need > (u.fuel ?? 0) ? 'out of range' : null;
     }
     default:
       return 'unknown orders';
@@ -131,6 +158,25 @@ export function executeOrders(
       if (o.kind === 'goto') return arrive();
       if (o.kind === 'patrol') o.toB = !o.toB;
       continue;
+    }
+    if (o.kind === 'patrol' && u.fuel !== null) {
+      // Aircraft: the base may be gone, or the fuel too low for the next leg plus the way back.
+      const base = patrolBase(s, u, o);
+      const toTarget = findPath(map, u, target);
+      let need = Infinity;
+      if (base !== null && toTarget !== null) {
+        const far = base === o.a ? o.b : o.a;
+        const leg = target === far ? findPath(map, { type: u.type, x: base.x, y: base.y }, far) : [];
+        if (leg !== null) need = toTarget.length + leg.length;
+      }
+      if (need > u.fuel) {
+        const home = chooseHome(s, u);
+        if (home === null) return endOrders(u, 'lowFuel', events);
+        u.orders = { kind: 'goto', target: { x: home.city.x, y: home.city.y } };
+        u.blockedTurns = 0;
+        events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'returning' });
+        continue;
+      }
     }
     const path = findPath(map, u, target);
     if (path === null || path.length === 0) return endOrders(u, 'blocked', events);

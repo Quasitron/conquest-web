@@ -124,6 +124,7 @@ describe('determinism', () => {
     const walker = addUnit(initial, 'army', 0, 2, 0);
     const patroller = addUnit(initial, 'destroyer', 0, 6, 1);
     const flyer = addUnit(initial, 'fighter', 0, 4, 0);
+    const scout = addUnit(initial, 'fighter', 0, 4, 0);
     const ids = armies.map((a) => a.id);
 
     const script: Command[] = [
@@ -133,6 +134,7 @@ describe('determinism', () => {
       { type: 'setOrders', player: 0, unitId: transport.id, orders: { kind: 'goto', target: { x: 4, y: 0 } } },
       { type: 'setOrders', player: 0, unitId: patroller.id, orders: { kind: 'patrol', a: { x: 5, y: 1 }, b: { x: 7, y: 1 }, toB: true } },
       { type: 'setOrders', player: 0, unitId: flyer.id, orders: { kind: 'goto', target: { x: 7, y: 1 } } },
+      { type: 'setOrders', player: 0, unitId: scout.id, orders: { kind: 'patrol', a: { x: 4, y: 0 }, b: { x: 6, y: 1 }, toB: true } },
       { type: 'goHome', player: 0, unitId: walker.id },
     ];
     let s = initial;
@@ -152,6 +154,7 @@ describe('determinism', () => {
       if (i === 2) play({ type: 'goHome', player: 0, unitId: flyer.id });
     }
     expect(s.units.find((u) => u.id === transport.id)).toMatchObject({ x: 4, y: 0, orders: null });
+    expect(s.units.find((u) => u.id === scout.id)).toMatchObject({ orders: { kind: 'patrol' } });
     expect(hashState(replay(initial, log))).toBe(hashState(s));
   });
 

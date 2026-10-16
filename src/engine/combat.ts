@@ -23,3 +23,23 @@ export function resolveCombat(
   }
   return { attackerWon: dd >= def.hits, attackerDamage: ad, defenderDamage: dd };
 }
+
+/** The exact chance the attacker wins, over the same round model as resolveCombat. */
+export function combatWinChance(
+  att: { attack: number; shot: number; hits: number; damage: number },
+  def: { defense: number; shot: number; hits: number; damage: number },
+): number {
+  const p = att.attack / (att.attack + def.defense);
+  const memo = new Map<string, number>();
+  const win = (ad: number, dd: number): number => {
+    if (dd >= def.hits) return 1;
+    if (ad >= att.hits) return 0;
+    const key = `${ad},${dd}`;
+    const known = memo.get(key);
+    if (known !== undefined) return known;
+    const v = p * win(ad, dd + att.shot) + (1 - p) * win(ad + def.shot, dd);
+    memo.set(key, v);
+    return v;
+  };
+  return win(att.damage, def.damage);
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveCombat } from '../../src/engine/combat';
+import { combatWinChance, resolveCombat } from '../../src/engine/combat';
 import { Rng } from '../../src/engine/rng';
 import { fixedRng } from '../helpers';
 
@@ -35,5 +35,30 @@ describe('resolveCombat', () => {
     let wins = 0;
     for (let i = 0; i < 2000; i++) if (resolveCombat(bs, { ...army, defense: 1 }, rng).attackerWon) wins++;
     expect(wins / 2000).toBeGreaterThan(0.99);
+  });
+});
+
+describe('combatWinChance', () => {
+  const att = { attack: 2, shot: 1, hits: 1, damage: 0 };
+
+  it('is 0.5 for equal strength and one hit each', () => {
+    expect(combatWinChance(att, { defense: 2, shot: 1, hits: 1, damage: 0 })).toBe(0.5);
+  });
+
+  it('is 2/3 when the attacker is twice as strong', () => {
+    expect(combatWinChance(att, { defense: 1, shot: 1, hits: 1, damage: 0 })).toBeCloseTo(2 / 3, 9);
+  });
+
+  it('win and lose chances sum to 1', () => {
+    const a = { attack: 3, shot: 1, hits: 3, damage: 1 };
+    const d = { defense: 2, shot: 2, hits: 3, damage: 0 };
+    const win = combatWinChance(a, d);
+    const lose = combatWinChance(
+      { attack: d.defense, shot: d.shot, hits: d.hits, damage: d.damage },
+      { defense: a.attack, shot: a.shot, hits: a.hits, damage: a.damage },
+    );
+    expect(win + lose).toBeCloseTo(1, 12);
+    expect(win).toBeGreaterThan(0);
+    expect(win).toBeLessThan(1);
   });
 });

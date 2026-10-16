@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
-import { chooseHome, executeOrders, wakeSentries } from '../../src/engine/orders';
+import { chooseHome, executeOrders, patrolBase, wakeSentries } from '../../src/engine/orders';
 import { findPath, pathMapFromState } from '../../src/engine/path';
 import { unitById } from '../../src/engine/query';
 import type { Command, GameEvent, GameState, Orders, OrdersEndReason } from '../../src/engine/types';
@@ -214,12 +214,88 @@ describe('aircraft', () => {
     expect(setOrders(s, f.id, { kind: 'goto', target: { x: 10, y: 0 } }).ok).toBe(true);
   });
 
-  it('aircraft: patrol/explore rejected', () => {
+  it('aircraft: explore rejected', () => {
     const s = game(AIR);
     const f = addUnit(s, 'fighter', 0, 0, 0);
-    const msg = 'aircraft cannot patrol or explore yet';
-    expect(setOrders(s, f.id, { kind: 'explore' })).toEqual({ ok: false, error: msg });
-    expect(setOrders(s, f.id, { kind: 'patrol', a: { x: 0, y: 0 }, b: { x: 5, y: 0 }, toB: true })).toEqual({ ok: false, error: msg });
+    expect(setOrders(s, f.id, { kind: 'explore' })).toEqual({ ok: false, error: 'aircraft cannot explore yet' });
+  });
+
+  describe('patrol', () => {
+    const patrol = (b: number, a = 0): Orders => ({ kind: 'patrol', a: { x: a, y: 0 }, b: { x: b, y: 0 }, toB: true });
+
+    it('is accepted up to half the range from a city and rejected beyond', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      expect(setOrders(s, f.id, patrol(5)).ok).toBe(true);
+      expect(setOrders(s, f.id, patrol(10)).ok).toBe(true);
+      expect(setOrders(s, f.id, patrol(11))).toEqual({ ok: false, error: 'out of range' });
+    });
+
+    it('needs a city or carrier at one end', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      expect(setOrders(s, f.id, patrol(8, 3))).toEqual({
+        ok: false, error: 'patrol must start or end at a city or carrier',
+      });
+    });
+
+    it('can be based on an own carrier with room', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      addUnit(s, 'carrier', 0, 5, 0);
+      expect(setOrders(s, f.id, patrol(10, 5)).ok).toBe(true);
+    });
+
+    it('patrolBase prefers a, then b, and skips a full carrier unless aboard', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      const carrier = addUnit(s, 'carrier', 0, 5, 0);
+      const o = { a: { x: 0, y: 0 }, b: { x: 5, y: 0 } };
+      expect(patrolBase(s, f, o)).toEqual({ x: 0, y: 0 });
+      expect(patrolBase(s, f, { a: o.b, b: o.a })).toEqual({ x: 5, y: 0 });
+      expect(patrolBase(s, f, { a: { x: 3, y: 0 }, b: { x: 8, y: 0 } })).toBeNull();
+      for (let i = 0; i < 8; i++) addUnit(s, 'fighter', 0, 5, 0, { carriedBy: carrier.id });
+      expect(patrolBase(s, f, { a: { x: 5, y: 0 }, b: { x: 9, y: 0 } })).toBeNull();
+      const aboard = s.units.find((u) => u.carriedBy === carrier.id)!;
+      expect(patrolBase(s, aboard, { a: { x: 5, y: 0 }, b: { x: 9, y: 0 } })).toEqual({ x: 5, y: 0 });
+    });
+
+    it('flies out, flips, returns, refuels and keeps patrolling', () => {
+      let s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      s = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: patrol(8) }).state;
+      let farthest = 0;
+      let refueled = false;
+      for (let i = 0; i < 6 && !refueled; i++) {
+        s = fullRound(s).state;
+        const u = unitById(s, f.id)!;
+        farthest = Math.max(farthest, u.x);
+        if (u.x === 0 && u.fuel === 20 && i > 0) refueled = true;
+      }
+      expect(farthest).toBeGreaterThanOrEqual(6);
+      expect(refueled).toBe(true);
+      expect(unitById(s, f.id)!.orders).toMatchObject({ kind: 'patrol' });
+    });
+
+    it('falls back to a city with reason returning when the base is gone', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 8, 0, { fuel: 12 });
+      f.orders = { kind: 'patrol', a: { x: 5, y: 0 }, b: { x: 10, y: 0 }, toB: false };
+      const events: GameEvent[] = [];
+      executeOrders(s, fixedRng(0.5), f, events);
+      expect(f.orders).toEqual({ kind: 'goto', target: { x: 0, y: 0 } });
+      expect(ended(events).map((e) => e.reason)).toEqual(['returning']);
+    });
+
+    it('ends lowFuel when the base is gone and no city is in reach', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 8, 0, { fuel: 3 });
+      f.orders = { kind: 'patrol', a: { x: 5, y: 0 }, b: { x: 10, y: 0 }, toB: false };
+      const events: GameEvent[] = [];
+      executeOrders(s, fixedRng(0.5), f, events);
+      expect(f.orders).toBeNull();
+      expect(ended(events).map((e) => e.reason)).toEqual(['lowFuel']);
+    });
   });
 
   it('aircraft: sentry only at a refuel point', () => {
