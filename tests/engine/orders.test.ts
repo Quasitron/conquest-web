@@ -277,6 +277,20 @@ describe('aircraft', () => {
       expect(unitById(s, f.id)!.orders).toMatchObject({ kind: 'patrol' });
     });
 
+    it('a carrier-based patrol keeps its orders and refuels after landing on the carrier', () => {
+      let s = game(AIR);
+      const carrier = addUnit(s, 'carrier', 0, 5, 0);
+      const f = addUnit(s, 'fighter', 0, 5, 0, { carriedBy: carrier.id });
+      const first = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: patrol(10, 5) });
+      const round = fullRound(first.state);
+      s = round.state;
+      const flights = [...first.events, ...round.events].filter((e) => e.type === 'unitMoved').length;
+      expect(flights).toBeGreaterThanOrEqual(10);
+      const u = unitById(s, f.id)!;
+      expect(u).toMatchObject({ x: 5, carriedBy: carrier.id, fuel: 20 });
+      expect(u.orders).toMatchObject({ kind: 'patrol' });
+    });
+
     it('falls back to a city with reason returning when the base is gone', () => {
       const s = game(AIR);
       const f = addUnit(s, 'fighter', 0, 8, 0, { fuel: 12 });

@@ -207,6 +207,7 @@ export function executeOrders(
     const cityBefore = o.kind === 'explore' ? adjacentForeignCities(s, u) : null;
     if (dir === null || moveUnit(s, rng, u, dir, events) !== null) return endOrders(u, 'blocked', events);
     if (!s.units.includes(u)) return;
+    if (o.kind === 'patrol' && u.carriedBy !== null) u.orders = o; // boarding made it a sentry; a patrol keeps flying
     u.blockedTurns = 0;
     updateFog(s, u.owner);
     if (o.kind === 'goto' && u.x === o.target.x && u.y === o.target.y) return arrive();
