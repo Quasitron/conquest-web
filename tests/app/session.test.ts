@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { GameSession } from '../../src/app/session';
 import { RULES_VERSION, unitDisplayName } from '../../src/engine';
 import { describeEvent } from '../../src/ui/describe';
+import { unloadAndLand } from '../../src/app/unloadAndLand';
 import { addUnit, makeGame } from '../helpers';
 import { hashState } from '../../src/engine/hash';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
@@ -162,5 +163,75 @@ describe('GameSession unit roster', () => {
     expect(s.unitInfo(0, a.id)?.name).toBe('Secret');
     expect(s.unitInfo(1, b.id)?.type).toBe('army');
     expect(s.unitInfo(1, a.id)).toBeUndefined();
+  });
+});
+describe('unloadAndLand', () => {
+  function setup(at: { x: number; y: number }) {
+    const g = makeGame(['*#.#.', '.....', '....*']);
+    const t = addUnit(g, 'transport', 0, at.x, at.y, { orders: { kind: 'goto', target: { x: 4, y: 1 } } });
+    const armies = [1, 2, 3].map(() => addUnit(g, 'army', 0, at.x, at.y, { carriedBy: t.id, orders: { kind: 'sentry' } }));
+    const seats = [human('Ann'), human('Ben')];
+    const s = GameSession.fromSave(
+      { format: 3, rulesVersion: RULES_VERSION, savedAt: '', name: 't', seats, initial: g, commands: [], snapshot: g },
+      null,
+    );
+    s.confirmHandoff();
+    return { s, t, armies };
+  }
+
+  it('at sea clears the orders, lands what fits ashore and leaves the rest aboard awake', () => {
+    const { s, t, armies } = setup({ x: 2, y: 1 });
+    expect(unloadAndLand(s, t.id, null)).toEqual({ landed: 2, aboard: 1 });
+    const units = s.view().myUnits;
+    expect(units.find((u) => u.id === t.id)!.orders).toBeNull();
+    const landed = armies.map((a) => units.find((u) => u.id === a.id)!).filter((u) => u.carriedBy === null);
+    expect(landed).toHaveLength(2);
+    expect(landed.every((u) => [1, 3].includes(u.x) && u.y === 0)).toBe(true);
+    const left = units.filter((u) => u.carriedBy === t.id);
+    expect(left).toHaveLength(1);
+    expect(left[0].orders).toBeNull();
+  });
+
+  it('only lands the chosen armies', () => {
+    const { s, t, armies } = setup({ x: 2, y: 1 });
+    expect(unloadAndLand(s, t.id, [armies[2].id])).toEqual({ landed: 1, aboard: 2 });
+  });
+
+  it('in an own city behaves like a plain unload and clears the orders', () => {
+    const { s, t, armies } = setup({ x: 0, y: 0 });
+    expect(unloadAndLand(s, t.id, null)).toEqual({ landed: 3, aboard: 0 });
+    const units = s.view().myUnits;
+    expect(units.find((u) => u.id === t.id)!.orders).toBeNull();
+    for (const a of armies) {
+      const u = units.find((x) => x.id === a.id)!;
+      expect(u.carriedBy).toBeNull();
+      expect([u.x, u.y]).toEqual([0, 0]);
+    }
+  });
+
+  it('returns the engine error when there is nothing to unload', () => {
+    const { s, t } = setup({ x: 2, y: 1 });
+    expect(unloadAndLand(s, t.id, null)).toEqual({ landed: 2, aboard: 1 });
+    expect(unloadAndLand(s, t.id, [9999])).toMatch(/not aboard|nothing/);
+  });
+});
+describe('cargo seen by the UI after a transport leaves a city', () => {
+  it('the very next view shows the army that auto-loaded aboard, at the new square', () => {
+    const g = makeGame(['*..', '...', '..*']);
+    const t = addUnit(g, 'transport', 0, 0, 0);
+    const a = addUnit(g, 'army', 0, 0, 0);
+    const seats = [human('Ann'), human('Ben')];
+    const s = GameSession.fromSave(
+      { format: 3, rulesVersion: RULES_VERSION, savedAt: '', name: 't', seats, initial: g, commands: [], snapshot: g },
+      null,
+    );
+    s.confirmHandoff();
+    expect(s.view().myUnits.filter((u) => u.carriedBy === t.id)).toHaveLength(0);
+    expect(s.act({ type: 'move', unitId: t.id, dir: 2 })).toBeNull();
+    const units = s.view().myUnits;
+    const army = units.find((u) => u.id === a.id)!;
+    expect(army.carriedBy).toBe(t.id);
+    expect([army.x, army.y]).toEqual([1, 0]);
+    expect(units.filter((u) => u.carriedBy === t.id)).toHaveLength(1);
   });
 });
