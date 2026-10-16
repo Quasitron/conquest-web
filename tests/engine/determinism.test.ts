@@ -5,7 +5,7 @@ import { replay } from '../../src/engine/replay';
 import { Rng } from '../../src/engine/rng';
 import { UNIT_STATS, UNIT_TYPES, cargoCapacity } from '../../src/engine/units';
 import type { Command, Dir, GameState } from '../../src/engine/types';
-import { makeGame } from '../helpers';
+import { addUnit, makeGame } from '../helpers';
 
 const WORLD = [
   '*##....##*',
@@ -112,6 +112,47 @@ describe('determinism', () => {
     const a = playRandomly(mid, 1500, 99);
     const b = playRandomly(loaded, 1500, 99);
     expect(hashState(b.final)).toBe(hashState(a.final));
+  });
+
+  it('replay with setOrders/goHome/load/unload reproduces the hash', () => {
+    const initial = makeGame(['*##.*...*', '.........'], { starts: [0, 2], seed: 7 });
+    for (const c of initial.cities) c.production = null;
+    initial.cities[1].owner = 0;
+    initial.fog[0].explored.fill(1);
+    const transport = addUnit(initial, 'transport', 0, 0, 0);
+    const armies = [1, 2].map(() => addUnit(initial, 'army', 0, 0, 0));
+    const walker = addUnit(initial, 'army', 0, 2, 0);
+    const patroller = addUnit(initial, 'destroyer', 0, 6, 1);
+    const flyer = addUnit(initial, 'fighter', 0, 4, 0);
+    const ids = armies.map((a) => a.id);
+
+    const script: Command[] = [
+      { type: 'load', player: 0, transportId: transport.id, unitIds: ids },
+      { type: 'unload', player: 0, transportId: transport.id, unitIds: null },
+      { type: 'load', player: 0, transportId: transport.id, unitIds: ids },
+      { type: 'setOrders', player: 0, unitId: transport.id, orders: { kind: 'goto', target: { x: 4, y: 0 } } },
+      { type: 'setOrders', player: 0, unitId: patroller.id, orders: { kind: 'patrol', a: { x: 5, y: 1 }, b: { x: 7, y: 1 }, toB: true } },
+      { type: 'setOrders', player: 0, unitId: flyer.id, orders: { kind: 'goto', target: { x: 7, y: 1 } } },
+      { type: 'goHome', player: 0, unitId: walker.id },
+    ];
+    let s = initial;
+    const log: Command[] = [];
+    const play = (cmd: Command) => {
+      const r = apply(s, cmd);
+      if (r.ok) {
+        s = r.state;
+        log.push(cmd);
+      }
+      return r.ok;
+    };
+    for (const cmd of script) expect(play(cmd)).toBe(true);
+    for (let i = 0; i < 6; i++) {
+      expect(play({ type: 'endTurn', player: 0 })).toBe(true);
+      expect(play({ type: 'endTurn', player: 1 })).toBe(true);
+      if (i === 2) play({ type: 'goHome', player: 0, unitId: flyer.id });
+    }
+    expect(s.units.find((u) => u.id === transport.id)).toMatchObject({ x: 4, y: 0, orders: null });
+    expect(hashState(replay(initial, log))).toBe(hashState(s));
   });
 
   it('replay reports the first rejected command', () => {

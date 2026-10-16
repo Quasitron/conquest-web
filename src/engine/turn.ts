@@ -1,4 +1,7 @@
 import type { GameEvent, GameState, PlayerId } from './types';
+import type { RandomSource } from './rng';
+import { Rng } from './rng';
+import { runPlayerOrders } from './orders';
 import { UNIT_STATS, effectiveMove } from './units';
 import { cityAt, destroyUnit, isAtRefuelPoint } from './query';
 import { areFriendly } from './relations';
@@ -49,7 +52,7 @@ function advanceToNextPlayer(s: GameState): void {
   s.currentPlayer = p;
 }
 
-export function startTurn(s: GameState, events: GameEvent[]): void {
+export function startTurn(s: GameState, events: GameEvent[], rng: RandomSource = new Rng(s.rngState)): void {
   const pid = s.currentPlayer;
   // With fairFirstTurn, nobody's cities progress on turn 1, so every player's first production tick is on turn 2.
   if (s.turn > 1 || !s.rules.fairFirstTurn) advanceProduction(s, pid, events);
@@ -64,23 +67,24 @@ export function startTurn(s: GameState, events: GameEvent[]): void {
     t.unloadNextTurn = false;
   }
   updateFog(s, pid);
+  runPlayerOrders(s, rng, pid, events);
   events.push({ type: 'turnStarted', player: pid, turn: s.turn });
 }
 
-function passPlay(s: GameState, endingPid: PlayerId, events: GameEvent[]): void {
+function passPlay(s: GameState, endingPid: PlayerId, events: GameEvent[], rng: RandomSource): void {
   checkElimination(s, endingPid, events);
   if (checkWinner(s, events)) return;
   advanceToNextPlayer(s);
-  startTurn(s, events);
+  startTurn(s, events, rng);
 }
 
-export function endTurn(s: GameState, events: GameEvent[]): void {
+export function endTurn(s: GameState, events: GameEvent[], rng: RandomSource = new Rng(s.rngState)): void {
   const pid = s.currentPlayer;
   finishPlayerTurn(s, pid, events);
-  passPlay(s, pid, events);
+  passPlay(s, pid, events, rng);
 }
 
-export function resign(s: GameState, events: GameEvent[]): void {
+export function resign(s: GameState, events: GameEvent[], rng: RandomSource = new Rng(s.rngState)): void {
   const pid = s.currentPlayer;
   for (const u of s.units.filter((x) => x.owner === pid)) destroyUnit(s, u, 'resigned', events);
   for (const c of s.cities) {
@@ -92,5 +96,5 @@ export function resign(s: GameState, events: GameEvent[]): void {
   }
   s.players[pid].eliminated = true;
   events.push({ type: 'playerEliminated', player: pid });
-  passPlay(s, pid, events);
+  passPlay(s, pid, events, rng);
 }

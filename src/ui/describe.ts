@@ -35,6 +35,8 @@ export function describeEvent(e: GameEvent, me: PlayerId, names: string[]): stri
       return `New ${UNIT_STATS[e.unitType].name} ready.`;
     case 'cargoUnloaded':
       return 'Cargo unloaded.';
+    case 'ordersEnded':
+      return null; // Task 9 writes the real text
     case 'turnStarted':
       return `Turn ${e.turn}: ${names[e.player]}.`;
     case 'playerEliminated':

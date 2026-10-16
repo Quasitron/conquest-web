@@ -37,6 +37,8 @@ export type Orders =
   | { kind: 'patrol'; a: Pos; b: Pos; toB: boolean }
   | { kind: 'explore' };
 
+export type OrdersEndReason = 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore';
+
 export interface City {
   id: number;
   x: number;
@@ -96,6 +98,8 @@ export type Command =
   | { type: 'disband'; player: PlayerId; unitId: number }
   | { type: 'load'; player: PlayerId; transportId: number; unitIds: number[] }
   | { type: 'unload'; player: PlayerId; transportId: number; unitIds: number[] | null }
+  | { type: 'setOrders'; player: PlayerId; unitId: number; orders: Orders | null }
+  | { type: 'goHome'; player: PlayerId; unitId: number }
   | { type: 'endTurn'; player: PlayerId }
   | { type: 'resign'; player: PlayerId };
 
@@ -125,6 +129,7 @@ export type GameEvent =
   | { type: 'cityCaptured'; cityId: number; by: PlayerId; from: PlayerId | null }
   | { type: 'unitProduced'; unitId: number; cityId: number; unitType: UnitType }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
+  | { type: 'ordersEnded'; unitId: number; owner: PlayerId; reason: OrdersEndReason }
   | { type: 'turnStarted'; player: PlayerId; turn: number }
   | { type: 'playerEliminated'; player: PlayerId }
   | { type: 'gameOver'; winner: PlayerId | null };

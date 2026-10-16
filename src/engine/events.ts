@@ -44,6 +44,7 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
         break;
       }
       case 'cargoUnloaded':
+      case 'ordersEnded':
         if (mine(e.owner)) out.push(e);
         break;
       case 'unitProduced':

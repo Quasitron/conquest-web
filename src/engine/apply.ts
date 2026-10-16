@@ -7,6 +7,7 @@ import { setProduction } from './production';
 import { endTurn, resign } from './turn';
 import { updateFog } from './fog';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
+import { chooseHome, giveOrders } from './orders';
 
 function validDir(dir: unknown): boolean {
   return typeof dir === 'number' && Number.isInteger(dir) && dir >= 0 && dir <= 7;
@@ -45,6 +46,28 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       else error = unloadCargo(s, t, cmd.unitIds, events);
       break;
     }
+    case 'setOrders': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else if (cmd.orders === null) {
+        u.orders = null;
+        u.unloadNextTurn = false;
+      } else error = giveOrders(s, rng, u, cmd.orders, events);
+      break;
+    }
+    case 'goHome': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else if (cityAt(s, u.x, u.y)?.owner === actor) error = 'already home';
+      else {
+        const home = chooseHome(s, u);
+        if (!home) error = 'no reachable city';
+        else error = giveOrders(s, rng, u, { kind: 'goto', target: { x: home.city.x, y: home.city.y } }, events);
+      }
+      break;
+    }
     case 'setProduction': {
       const c = s.cities.find((x) => x.id === cmd.cityId);
       if (!c) error = 'no such city';
@@ -70,11 +93,11 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
           topLevelUnitsAt(s, u.x, u.y).length > 1,
       );
       if (stuck) error = `${UNIT_STATS[stuck.type].name} ${stuck.id} cannot end its turn on an occupied square`;
-      else endTurn(s, events);
+      else endTurn(s, events, rng);
       break;
     }
     case 'resign':
-      resign(s, events);
+      resign(s, events, rng);
       break;
     default:
       error = 'unknown command';
@@ -82,6 +105,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
 
   if (error) return { ok: false, error };
   s.rngState = rng.state;
-  if (cmd.type === 'move' || cmd.type === 'setProduction' || cmd.type === 'disband' || cmd.type === 'load' || cmd.type === 'unload') updateFog(s, actor);
+  const fogCommands = ['move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
+  if (fogCommands.includes(cmd.type)) updateFog(s, actor);
   return { ok: true, state: s, events };
 }
