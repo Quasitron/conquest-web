@@ -270,7 +270,13 @@ bonus at the highest level. Never via hidden-information cheating.
   - Cities would sit at real locations with their real names, which pairs with the city-name feature.
   - Start positions are balanced per map.
   - These maps need the map/scenario format, so they come with the editor work.
-- Map/scenario editor; player history; sound.
+- **Player history / service record** (the user shared an original screenshot, 2026-10-16):
+  - A "Commanders" screen lists each human player name with missions played, won, lost, resigned, and current rank.
+  - Rank rises with victories, e.g. starting as Ensign / 2nd Lieutenant and rising to Fleet Admiral / General of the Army. The rank names are generic military ranks; the promotion thresholds are our own.
+  - Results are recorded automatically when a game ends (win, loss, resign, no survivors).
+  - The record is stored in the browser (IndexedDB) and can be exported or imported like saves.
+  - Optional extras: a victory screen showing the promotion; per-game stats (cities captured, units lost); best times.
+- Map/scenario editor; sound.
 
 ## 11. Non-goals for v1
 Real-time play, diplomacy beyond the alliance plan above, accounts/login,
