@@ -99,14 +99,16 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   };
 
   /** Top-right badge: a white dot below 16px tiles, else a white circle with a dark count. */
-  const badge = (sx: number, sy: number, count: number) => {
+  const badge = (sx: number, sy: number, count: number, alpha = 1) => {
     const cx = sx + t * 0.8;
     const cy = sy + t * 0.2;
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     if (badgeMode(t) === 'dot') {
       ctx.arc(cx, cy, t * 0.1, 0, Math.PI * 2);
       ctx.fill();
+      ctx.globalAlpha = 1;
       return;
     }
     ctx.arc(cx, cy, t * 0.2, 0, Math.PI * 2);
@@ -116,6 +118,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(count), cx, cy + 1);
+    ctx.globalAlpha = 1;
   };
 
   const ownAlpha = (u: Unit) => (u.id === o.activeId && !o.blinkOn ? 0.25 : u.movesLeft > 0 ? 1 : 0.6);
@@ -136,14 +139,17 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const stack = view.myUnits.filter((u) => u.carriedBy === null && u.x === city.x && u.y === city.y);
     const top = cityStackTop(stack);
     if (top === null) continue;
+    // The active unit represents its stack when it is in one, so the blink shows there too.
+    const shown = stack.find((u) => u.id === o.activeId) ?? top;
+    const alpha = ownAlpha(shown);
     each((mx, my, sx, sy) => {
       if (mx !== city.x || my !== city.y) return;
       if (badgeMode(t) === 'dot') {
-        badge(sx, sy, stack.length);
+        badge(sx, sy, stack.length, alpha);
         return;
       }
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[top.type], ownAlpha(top), 0.6, 0.3, 0.3);
-      if (stack.length >= 2) badge(sx, sy, stack.length);
+      glyph(sx, sy, colors[view.me], UNIT_GLYPH[shown.type], alpha, 0.6, 0.3, 0.3);
+      if (stack.length >= 2) badge(sx, sy, stack.length, alpha);
     });
   }
 
@@ -154,7 +160,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       if (mx !== u.x || my !== u.y) return;
       glyph(sx, sy, colors[view.me], UNIT_GLYPH[u.type], ownAlpha(u));
       const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
-      if (cargo > 0) badge(sx, sy, cargo);
+      if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
       if (isCrippled(u)) {
         ctx.fillStyle = '#ff3b3b';
         ctx.fillRect(sx + t * 0.1, sy + t * 0.1, t * 0.18, t * 0.18);
@@ -170,15 +176,17 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   // Path preview: a dotted polyline through square centres, unwrapped so it never jumps across the seam.
   if (o.path && o.path.length > 0) {
     const raw = o.selected ? [o.selected, ...o.path] : o.path;
-    const pts: Pos[] = [];
-    for (const p of raw) {
-      let x = p.x;
-      if (view.wrap && pts.length > 0) {
-        let d = mod(p.x - pts[pts.length - 1].x, view.width);
+    // Shift the whole path onto the copy of its start nearest the camera (the copy each() draws it in).
+    const shift = view.wrap ? Math.round((cam.x - raw[0].x) / view.width) * view.width : 0;
+    const pts: Pos[] = [{ x: raw[0].x + shift, y: raw[0].y }];
+    for (const p of raw.slice(1)) {
+      const prev = pts[pts.length - 1].x;
+      let d = p.x - prev;
+      if (view.wrap) {
+        d = mod(p.x - prev, view.width);
         if (d > view.width / 2) d -= view.width;
-        x = pts[pts.length - 1].x + d;
       }
-      pts.push({ x, y: p.y });
+      pts.push({ x: prev + d, y: p.y });
     }
     const color = o.pathOk ? '#fff' : '#ff3b3b';
     const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
