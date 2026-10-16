@@ -34,7 +34,7 @@ function fakeCtx() {
 const M = ['*##...*', '###...#', '##*....'];
 
 /** Default new DrawOptions: nothing active, nothing previewed. */
-const NO_OVERLAY = { activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null };
+const NO_OVERLAY = { activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null, pathTarget: null };
 
 /** Draws player 0's view of the game and returns what was recorded. */
 function paint(s: GameState, tile: number, extra: Partial<DrawOptions> = {}, cam = { x: 0, y: 0, tile }) {
@@ -132,6 +132,20 @@ describe('render', () => {
   it('draws no path when the path is null', () => {
     const s = makeGame(M);
     expect(paint(s, 20, { selected: { x: 0, y: 0 }, path: null, pathLabel: null }).strokes).toEqual([]);
+  });
+
+  it('an unreachable hover draws a red mark and the label on the hovered square', () => {
+    const s = makeGame(M);
+    const calls = paint(s, 20, { selected: { x: 0, y: 0 }, path: null, pathLabel: 'no known path', pathTarget: { x: 1, y: 1 } });
+    expect(calls.fillText).toContain('no known path');
+    expect(calls.strokes).toContain('#ff3b3b');
+  });
+
+  it('draws nothing for a null path without a label', () => {
+    const s = makeGame(M);
+    const calls = paint(s, 20, { selected: { x: 0, y: 0 }, path: null, pathLabel: null, pathTarget: { x: 1, y: 1 } });
+    expect(calls.strokes).toEqual([]);
+    expect(calls.fillText).not.toContain('no known path');
   });
 
   it('on a wrapped map the path label lands on the on-screen copy near the camera', () => {

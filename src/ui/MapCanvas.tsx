@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import type { PlayerView, Pos } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
@@ -21,6 +21,7 @@ interface Props {
   path: Pos[] | null;
   pathOk: boolean;
   pathLabel: string | null;
+  pathTarget: Pos | null;
 }
 
 export function MapCanvas(p: Props) {
@@ -52,7 +53,7 @@ export function MapCanvas(p: Props) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
-      activeId: p.activeId, blinkOn: p.blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel,
+      activeId: p.activeId, blinkOn: p.blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
     });
   });
 
@@ -157,4 +158,3 @@ export function MapCanvas(p: Props) {
     />
   );
 }
-

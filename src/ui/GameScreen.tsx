@@ -1,4 +1,4 @@
-﻿import type { JSX } from 'preact';
+import type { JSX } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
 import {
@@ -317,6 +317,9 @@ export function GameScreen({ session, onQuit }: Props) {
       } else if (a.kind === 'action') {
         // Space and Tab would otherwise scroll or move focus.
         e.preventDefault();
+        // An action key dismisses an open menu and cancels target mode before acting.
+        setMenu(null);
+        setTarget(null);
         doAction(a.id);
       }
     };
@@ -348,6 +351,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const current = view.players[view.currentPlayer];
   const nothingLeft = view.myUnits.length === 0 && view.myCities.length === 0;
   const allMoved = playing && ready.length === 0 && !nothingLeft;
+  const endTurnBlinks = playing && ready.length === 0;
 
   const pickerUnit = picker && selectedUnit ? selectedUnit : null;
   const cargo = pickerUnit ? view.myUnits.filter((c) => c.carriedBy === pickerUnit.id).sort((a, b) => a.id - b.id) : [];
@@ -357,7 +361,7 @@ export function GameScreen({ session, onQuit }: Props) {
       <header class="topbar">
         <span>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
-        <button class={allMoved ? 'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
+        <button class={endTurnBlinks ?'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => {
           blur(e);
@@ -380,7 +384,7 @@ export function GameScreen({ session, onQuit }: Props) {
         view={view} cam={cam} setCam={setCamRaw} selected={selectedPos} targets={targets} colors={colors}
         onSquare={onSquare} onHover={onHover} onContext={onContext}
         activeId={playing ? selectedUnit?.id ?? null : null} blinkOn={blinkOn}
-        path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null}
+        path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
       />
       <div class="side">
         <canvas class="minimap" width={200} height={140} onClick={(e) => {

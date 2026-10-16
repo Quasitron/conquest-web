@@ -36,7 +36,11 @@ export function OrdersMenu({ view, unit, at, onAction, onClose }: Props) {
   useEffect(() => {
     if (!shown) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      // Any other key aimed outside the menu (an action key) dismisses it and carries on.
+      if (e.key !== 'Escape') {
+        if (!root.current?.contains(e.target as Node)) close();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       close();

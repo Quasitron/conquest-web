@@ -23,6 +23,8 @@ export interface DrawOptions {
   pathOk: boolean;
   /** Drawn near the last path square. */
   pathLabel: string | null;
+  /** The hovered square; marked in red with the label when `path` is null (unreachable). */
+  pathTarget: Pos | null;
 }
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -209,6 +211,34 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       ctx.fillStyle = color;
       ctx.fillText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
     }
+  }
+
+  // Unreachable hover: no path to draw, so mark the hovered square and say why.
+  if (!o.path && o.pathLabel && o.pathTarget) {
+    const at = o.pathTarget;
+    const label = o.pathLabel;
+    each((mx, my, sx, sy) => {
+      if (mx !== at.x || my !== at.y) return;
+      const m = t * 0.2;
+      ctx.strokeStyle = '#ff3b3b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(sx + m, sy + m);
+      ctx.lineTo(sx + t - m, sy + t - m);
+      ctx.moveTo(sx + t - m, sy + m);
+      ctx.lineTo(sx + m, sy + t - m);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(label, sx + t * 0.9, sy + t * 0.3);
+      ctx.fillStyle = '#ff3b3b';
+      ctx.fillText(label, sx + t * 0.9, sy + t * 0.3);
+    });
   }
 
   // Selection.
