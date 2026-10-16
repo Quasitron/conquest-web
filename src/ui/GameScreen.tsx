@@ -317,8 +317,6 @@ export function GameScreen({ session, onQuit }: Props) {
       return false;
     }
     setMessage(null);
-    const captured = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
-    if (captured && captured.type === 'cityCaptured') openCity(captured.cityId);
     if (cmd.type !== 'endTurn' && cmd.type !== 'resign') afterOwnAct();
     return true;
   };
@@ -328,15 +326,21 @@ export function GameScreen({ session, onQuit }: Props) {
    * (a lost attack, a sunk transport), and re-fit the map when new squares were explored.
    */
   const afterOwnAct = () => {
+    const captured = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
+    if (captured && captured.type === 'cityCaptured') openCity(captured.cityId);
     if (session.phase !== 'playing') return;
     const v = session.view();
     if (v.me !== view.me) return;
-    const selId = selection?.kind === 'unit' ? selection.id : null;
+    let selId = selection?.kind === 'unit' ? selection.id : null;
     if (selId !== null && !v.myUnits.some((u) => u.id === selId)) {
+      // The selected unit is gone: keep the combat result in the top bar (the log has it too) and move on.
+      const combat = session.lastEvents.find((e) => e.type === 'combat');
+      const text = combat ? describeEvent(combat, v.me, names, lookup) : null;
+      if (text) setMessage(text);
       const next = nextReadyAfter(readyNow(), selId);
       if (next) selectUnit(next);
       else setSelection(null);
-      return;
+      selId = next ? next.id : null;
     }
     const n = exploredCount(v);
     if (n > (exploredAt.current.get(v.me) ?? 0)) {
@@ -705,11 +709,12 @@ export function GameScreen({ session, onQuit }: Props) {
               if (ids.length === 0) return;
               setPicker(null);
               const r = unloadAndLand(session, pickerUnit.id, ids.length === cargo.length ? null : ids);
+              // Same refresh as act(), also after a partial run (orders cleared, unload done, a later move failed).
+              afterOwnAct();
               if (typeof r === 'string') {
                 setMessage(r);
                 return;
               }
-              afterOwnAct();
               const kind = pluralUnit(cargo.find((c) => ids.includes(c.id))?.type ?? 'army', r.landed);
               setMessage(`${unitDisplayName(pickerUnit)} landed ${r.landed} ${kind}${r.aboard > 0 ? `; ${r.aboard} still aboard` : ''}.`);
             }}

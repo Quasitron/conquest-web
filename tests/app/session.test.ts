@@ -209,10 +209,9 @@ describe('unloadAndLand', () => {
     }
   });
 
-  it('returns the engine error when there is nothing to unload', () => {
+  it('returns the engine error for a unit that is not aboard', () => {
     const { s, t } = setup({ x: 2, y: 1 });
-    expect(unloadAndLand(s, t.id, null)).toEqual({ landed: 2, aboard: 1 });
-    expect(unloadAndLand(s, t.id, [9999])).toMatch(/not aboard|nothing/);
+    expect(unloadAndLand(s, t.id, [9999])).toBe('nothing to unload');
   });
 });
 describe('cargo seen by the UI after a transport leaves a city', () => {
@@ -233,5 +232,40 @@ describe('cargo seen by the UI after a transport leaves a city', () => {
     expect(army.carriedBy).toBe(t.id);
     expect([army.x, army.y]).toEqual([1, 0]);
     expect(units.filter((u) => u.carriedBy === t.id)).toHaveLength(1);
+  });
+});
+describe('cargo seen after a transport with orders leaves a city', () => {
+  function setup(withOrders: boolean) {
+    const g = makeGame(['*.........', '..........', '.........*']);
+    const t = addUnit(g, 'transport', 0, 0, 0, withOrders ? { orders: { kind: 'goto', target: { x: 1, y: 0 } } } : {});
+    const a = addUnit(g, 'army', 0, 0, 0);
+    const seats = [human('Ann'), idle('Bot')];
+    const s = GameSession.fromSave(
+      { format: 3, rulesVersion: RULES_VERSION, savedAt: '', name: 't', seats, initial: g, commands: [], snapshot: g },
+      null,
+    );
+    return { s, t, a };
+  }
+  const aboard = (s: GameSession, tid: number) => s.view().myUnits.filter((u) => u.carriedBy === tid);
+
+  it('a go-to given with setOrders shows the loaded army in the next view', () => {
+    const { s, t, a } = setup(false);
+    expect(s.act({ type: 'setOrders', unitId: t.id, orders: { kind: 'goto', target: { x: 1, y: 0 } } })).toBeNull();
+    const view = s.view();
+    const tr = view.myUnits.find((u) => u.id === t.id)!;
+    expect(tr.x).toBeGreaterThan(0);
+    const cargo = aboard(s, t.id);
+    expect(cargo.map((c) => c.id)).toEqual([a.id]);
+    expect([cargo[0].x, cargo[0].y]).toEqual([tr.x, tr.y]);
+  });
+
+  it('a standing go-to executed at turn start shows the loaded army in the next view', () => {
+    const { s, t, a } = setup(true);
+    expect(s.act({ type: 'endTurn' })).toBeNull();
+    const tr = s.view().myUnits.find((u) => u.id === t.id)!;
+    expect(tr.x).toBeGreaterThan(0);
+    const cargo = aboard(s, t.id);
+    expect(cargo.map((c) => c.id)).toEqual([a.id]);
+    expect([cargo[0].x, cargo[0].y]).toEqual([tr.x, tr.y]);
   });
 });
