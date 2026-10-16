@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import type { PlayerView, Pos } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
@@ -29,6 +29,8 @@ interface Props {
   route: Pos[] | null;
   routeLabel: string | null;
   attack: { at: Pos; label: string } | null;
+  /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
+  onZoom?: () => void;
 }
 
 export function MapCanvas(p: Props) {
@@ -52,7 +54,8 @@ export function MapCanvas(p: Props) {
     p.setCam(clampCamera(c, p.view.width, p.view.height, w, h, p.view.wrap));
   };
 
-  useEffect(() => {
+  // Layout effect: the canvas is repainted before the browser paints, so it never shows a frame of old props.
+  useLayoutEffect(() => {
     const c = ref.current!;
     const dpr = window.devicePixelRatio || 1;
     const { w, h } = size();
@@ -105,6 +108,7 @@ export function MapCanvas(p: Props) {
       onWheel={(e) => {
         e.preventDefault();
         const pt = local(e);
+        p.onZoom?.();
         setCam(zoomAt(p.cam, Math.pow(1.1, -e.deltaY / 100), pt.x, pt.y));
       }}
       onPointerDown={(e) => {
@@ -140,6 +144,7 @@ export function MapCanvas(p: Props) {
           pointers.current.set(e.pointerId, pt);
           const [a, b] = [...pointers.current.values()];
           const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          if (pinchDist.current > 0) p.onZoom?.();
           if (pinchDist.current > 0) setCam(zoomAt(camRef.current, dist / pinchDist.current, (a.x + b.x) / 2, (a.y + b.y) / 2));
           pinchDist.current = dist;
           dragged.current = true;

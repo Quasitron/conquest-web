@@ -16,12 +16,14 @@ interface Props {
   error?: string | null;
   onPick: (t: UnitType | null) => void;
   onRename: (name: string) => void;
+  /** Mouse-only: selects a unit listed in the City view; the screen then closes. */
+  onSelectUnit?: (id: number) => void;
   onClose: () => void;
 }
 
 const ROWS: (UnitType | null)[] = [null, ...UNIT_TYPES];
 
-export function CityScreen({ view, city, anchor, error, onPick, onRename, onClose }: Props) {
+export function CityScreen({ view, city, anchor, error, onPick, onRename, onSelectUnit, onClose }: Props) {
   const coastal = cityIsCoastal(view, city);
   const usable = (t: UnitType | null) => t === null || coastal || UNIT_STATS[t].domain !== 'sea';
   // The highlight is a pending choice: OK and Enter apply it, Esc drops it.
@@ -112,7 +114,11 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onClos
           <h3>Units inside</h3>
           {here.length === 0
             ? <p class="muted">None.</p>
-            : <ul class="plain-list">{here.map((u) => <li key={u.id}>{unitDisplayName(u)}</li>)}</ul>}
+            : <ul class="plain-list">{here.map((u) => <li key={u.id}>
+                {onSelectUnit
+                  ? <button class="linklike" onClick={(e) => { blur(e); onSelectUnit(u.id); onClose(); }}>{unitDisplayName(u)}</button>
+                  : unitDisplayName(u)}
+              </li>)}</ul>}
           {bar ?? <p class="muted">Not building anything.</p>}
         </>
       )}

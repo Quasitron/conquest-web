@@ -43,16 +43,17 @@ export interface ProductionReportItem { cityId: number; unitId: number; unitType
 
 /**
  * This turn's unitProduced events as turn-start reports, ordered by city id then unit id.
- * When `cities` is given, only cities owned by `me` are reported (the log may hold other seats' events).
+ * Only cities owned by `me` are reported (the log may hold events from cities since lost); `cities` is required
+ * because an event alone does not say who owns its city.
  */
 export function reportQueue(
-  entries: readonly LogEntry[], turn: number, me: PlayerId, cities?: readonly Pick<City, 'id' | 'owner'>[],
+  entries: readonly LogEntry[], turn: number, me: PlayerId, cities: readonly Pick<City, 'id' | 'owner'>[],
 ): ProductionReportItem[] {
-  const mine = cities ? new Set(cities.filter((c) => c.owner === me).map((c) => c.id)) : null;
+  const mine = new Set(cities.filter((c) => c.owner === me).map((c) => c.id));
   const out: ProductionReportItem[] = [];
   for (const e of entries) {
     if (e.turn !== turn || e.event.type !== 'unitProduced') continue;
-    if (mine && !mine.has(e.event.cityId)) continue;
+    if (!mine.has(e.event.cityId)) continue;
     out.push({ cityId: e.event.cityId, unitId: e.event.unitId, unitType: e.event.unitType });
   }
   return out.sort((a, b) => a.cityId - b.cityId || a.unitId - b.unitId);

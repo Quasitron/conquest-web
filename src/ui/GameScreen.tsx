@@ -2,20 +2,22 @@ import type { JSX } from 'preact';
 import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
+import { unloadAndLand } from '../app/unloadAndLand';
 import {
-  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, findPath, pathMapFromView,
-  type Dir, type Orders, type Pos, type Unit, type UnitType,
+  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, findPath, pathMapFromView, unitDisplayName,
+  type Dir, type Orders, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
-import { centerOn, clampCamera, pan, type Camera } from './camera';
+import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
-import { builtThisTurn, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
+import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
 import { downloadSave } from './exportFile';
 import { keyToAction, type ActionId } from './keys';
-import { pathLabel } from './labels';
+import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
+import { approachSquare, attackLabel, cityAttackChance } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas } from './MapCanvas';
 import { OrdersMenu } from './OrdersMenu';
@@ -53,6 +55,25 @@ const GameLog = memo(function GameLog({ lines }: { lines: LogLine[] }) {
   return <ul class="log">{items}</ul>;
 });
 
+/** Path, reachability and label from `u` to `to` (fuel-aware for aircraft). */
+function planPath(view: PlayerView, u: Unit, to: Pos): { path: Pos[] | null; ok: boolean; label: string } {
+  const map = pathMapFromView(view);
+  const path = findPath(map, u, to);
+  const arrival = path ? arrivalTurn(u, path.length, view.turn) : null;
+  const fuel = u.fuel;
+  // Aircraft keep a unit of fuel in hand unless they end at a refuel point.
+  const reach = fuel === null || !path || aircraftCanReach(map, path.length, fuel, to);
+  const fuelLeft = fuel === null || !path ? null : reach ? fuel - path.length : -1;
+  return {
+    path,
+    ok: path !== null && (fuelLeft === null || fuelLeft >= 0),
+    label: pathLabel(view.turn, arrival, fuelLeft),
+  };
+}
+
+const exploredCount = (v: PlayerView) => v.terrain.reduce((n, t) => (t === null ? n : n + 1), 0);
+const samePos = (a: Pos | null, b: Pos | null) => a?.x === b?.x && a?.y === b?.y;
+
 export function GameScreen({ session, onQuit }: Props) {
   const [tick, setTick] = useState(0);
   useEffect(() => session.subscribe(() => setTick((t) => t + 1)), [session]);
@@ -66,7 +87,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const colors = session.seats.map((s) => s.color);
   const names = view.players.map((p) => p.name);
   const [cam, setCamRaw] = useState<Camera>({ x: 0, y: 0, tile: 28 });
-  const [selection, setSelection] = useState<Selection>(null);
+  const [selection, setSelectionRaw] = useState<Selection>(null);
   const [held, setHeld] = useState<Set<number>>(new Set());
   const [skipped, setSkipped] = useState<number[]>([]);
   const [target, setTarget] = useState<TargetMode>(null);
@@ -74,7 +95,18 @@ export function GameScreen({ session, onQuit }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
   const [infoId, setInfoId] = useState<number | null>(null);
-  const setInfo = (on: boolean) => { if (!on) setInfoId(null); };
+  // The square whose hover preview is frozen after an order was given there, until the pointer leaves it.
+  const [frozen, setFrozen] = useState<Pos | null>(null);
+  // A far city click that found no way there: shown as a red "no known path" preview on that square.
+  const [noPath, setNoPath] = useState<Pos | null>(null);
+  // Auto-fit state per seat, and the explored-square count at the last fit check.
+  const fits = useRef(new Map<number, { auto: boolean; ceiling: number | null }>());
+  const exploredAt = useRef(new Map<number, number>());
+  const fitOf = (me: number) => {
+    let f = fits.current.get(me);
+    if (!f) fits.current.set(me, f = { auto: true, ceiling: null });
+    return f;
+  };
   const [message, setMessage] = useState<string | null>(null);
   // The city screen (by city id) and the turn-start production reports still to be acknowledged.
   const [cityOpen, setCityOpen] = useState<number | null>(null);
@@ -90,13 +122,40 @@ export function GameScreen({ session, onQuit }: Props) {
     const el = document.querySelector('canvas.map') as HTMLCanvasElement | null;
     return { w: el?.clientWidth ?? 800, h: el?.clientHeight ?? 600 };
   };
-  const setCam = (c: Camera) => {
+  // The camera as last set, ahead of the next render, so chained camera moves compose.
+  const camNow = useRef(cam);
+  camNow.current = cam;
+  const setCam = (c: Camera, v: PlayerView = view) => {
     const { w, h } = viewport();
-    setCamRaw(clampCamera(c, view.width, view.height, w, h, view.wrap));
+    const next = clampCamera(c, v.width, v.height, w, h, v.wrap);
+    camNow.current = next;
+    setCamRaw(next);
   };
   const focus = (p: Pos) => {
     const { w, h } = viewport();
-    setCam(centerOn(cam, p.x, p.y, w, h));
+    setCam(centerOn(camNow.current, p.x, p.y, w, h));
+  };
+  /** Pans the least needed to keep `p` inside the viewport, the short way round on wrapping maps. */
+  const keepVisible = (p: Pos, v: PlayerView = view) => {
+    const { w, h } = viewport();
+    setCam(keepInViewWrap(camNow.current, p, w, h, v.width, v.wrap), v);
+  };
+  /** Fits the explored area (never zooming in past an earlier fit) when auto-fit is on, then keeps `at` in view. */
+  const applyAutoFit = (v: PlayerView, at: Pos | null) => {
+    const f = fitOf(v.me);
+    if (!f.auto) return;
+    const box = exploredBox(v.terrain, v.width, v.height, v.wrap);
+    if (!box) return;
+    const { w, h } = viewport();
+    const r = autoFit(box, w, h, f.ceiling);
+    f.ceiling = r.ceiling;
+    setCam(r.cam, v);
+    if (at) keepVisible(at, v);
+  };
+  const setSelection = (s: Selection) => {
+    // The info dialog belongs to one unit: any change of selection drops it.
+    if (!(s && selection && s.kind === selection.kind && s.id === selection.id)) setInfoId(null);
+    setSelectionRaw(s);
   };
 
   const selectedUnit = selection?.kind === 'unit' ? view.myUnits.find((u) => u.id === selection.id) ?? null : null;
@@ -121,23 +180,31 @@ export function GameScreen({ session, onQuit }: Props) {
     [selectedUnit, view, playing],
   );
 
-  // Path preview under the pointer.
-  const preview = useMemo(() => {
+  // Attack hover: a crosshair and the odds instead of the path preview.
+  const attack = useMemo(() => {
     if (!selectedUnit || !hover || !playing) return null;
+    if (!targets.some((t) => t.attack && t.x === hover.x && t.y === hover.y)) return null;
+    const city = view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== view.me);
+    return { at: hover, label: attackLabel(city ? cityAttackChance(view, selectedUnit, city.owner) : null) };
+  }, [selectedUnit, hover, targets, view, playing]);
+
+  // Path preview under the pointer; held back right after an order was given on that square.
+  const preview = useMemo(() => {
+    if (!selectedUnit || !hover || !playing || attack) return null;
     if (hover.x === selectedUnit.x && hover.y === selectedUnit.y) return null;
-    const map = pathMapFromView(view);
-    const path = findPath(map, selectedUnit, hover);
-    const arrival = path ? arrivalTurn(selectedUnit, path.length, view.turn) : null;
-    const fuel = selectedUnit.fuel;
-    // Aircraft keep a unit of fuel in hand unless they end at a refuel point.
-    const reach = fuel === null || !path || aircraftCanReach(map, path.length, fuel, hover);
-    const fuelLeft = fuel === null || !path ? null : reach ? fuel - path.length : -1;
-    return {
-      path,
-      ok: path !== null && (fuelLeft === null || fuelLeft >= 0),
-      label: pathLabel(view.turn, arrival, fuelLeft),
-    };
-  }, [selectedUnit?.id, hover, view]);
+    if (samePos(frozen, hover)) return null;
+    if (samePos(noPath, hover)) return { path: null, ok: false, label: 'no known path' };
+    return planPath(view, selectedUnit, hover);
+  }, [selectedUnit?.id, hover, view, frozen, noPath, attack]);
+
+  // The committed route of the selected unit's go-to or patrol, from where it stands to its current target.
+  const route = useMemo(() => {
+    const o = selectedUnit?.orders;
+    if (!selectedUnit || !playing || !o || (o.kind !== 'goto' && o.kind !== 'patrol')) return null;
+    const to = o.kind === 'goto' ? o.target : o.toB ? o.b : o.a;
+    const r = planPath(view, selectedUnit, to);
+    return r.path && r.path.length > 0 ? r : null;
+  }, [selectedUnit, view, playing]);
 
   /** The unit cycle for the current state of the game (not the last render). */
   const readyNow = (h: ReadonlySet<number> = held, s: readonly number[] = skipped): Unit[] => {
@@ -180,24 +247,34 @@ export function GameScreen({ session, onQuit }: Props) {
     setTarget(null);
     setMenu(null);
     setPicker(null);
-    setInfo(false);
+    setInfoId(null);
+    setFrozen(null);
+    setNoPath(null);
     setCityOpen(null);
     setReports([]);
     setReportIdx(0);
     if (session.phase !== 'playing') return;
     setHeld(new Set());
     setSkipped([]);
+    exploredAt.current.set(view.me, exploredCount(view));
     // Production reports come first; the unit cycle starts after the last one.
     const queue = reportQueue(session.log(view.me), view.turn, view.me, view.myCities)
       .filter((r) => view.myUnits.some((u) => u.id === r.unitId));
-    if (queue.length > 0) setReports(queue);
-    else startCycle();
+    if (queue.length > 0) {
+      applyAutoFit(view, null);
+      setReports(queue);
+    } else startCycle();
   }, [turnKey]);
 
   /** Selects the first ready unit of a fresh turn (built-this-turn first), else looks at a city. */
   const startCycle = () => {
     const first = readyNow(new Set(), [])[0];
-    if (first) selectUnit(first);
+    if (first) {
+      if (fitOf(view.me).auto) {
+        setSelection({ kind: 'unit', id: first.id });
+        applyAutoFit(view, first);
+      } else selectUnit(first);
+    } else if (fitOf(view.me).auto) applyAutoFit(view, null);
     else if (view.myCities[0]) focus(view.myCities[0]);
   };
   const nextReport = () => {
@@ -218,7 +295,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const city = session.view().myCities.find((c) => c.id === id);
     if (!city) return;
     setMessage(null);
-    setInfo(false);
+    setInfoId(null);
     setMenu(null);
     setPicker(null);
     setTarget(null);
@@ -242,37 +319,81 @@ export function GameScreen({ session, onQuit }: Props) {
     setMessage(null);
     const captured = session.lastEvents.find((e) => e.type === 'cityCaptured' && e.by === view.me);
     if (captured && captured.type === 'cityCaptured') openCity(captured.cityId);
+    if (cmd.type !== 'endTurn' && cmd.type !== 'resign') afterOwnAct();
     return true;
+  };
+
+  /**
+   * Housekeeping after one of the viewer's commands went through: recover from a selected unit that is gone
+   * (a lost attack, a sunk transport), and re-fit the map when new squares were explored.
+   */
+  const afterOwnAct = () => {
+    if (session.phase !== 'playing') return;
+    const v = session.view();
+    if (v.me !== view.me) return;
+    const selId = selection?.kind === 'unit' ? selection.id : null;
+    if (selId !== null && !v.myUnits.some((u) => u.id === selId)) {
+      const next = nextReadyAfter(readyNow(), selId);
+      if (next) selectUnit(next);
+      else setSelection(null);
+      return;
+    }
+    const n = exploredCount(v);
+    if (n > (exploredAt.current.get(v.me) ?? 0)) {
+      exploredAt.current.set(v.me, n);
+      applyAutoFit(v, selId !== null ? v.myUnits.find((u) => u.id === selId) ?? null : null);
+    }
   };
 
   /** Issues an order command for `u`, then moves the cycle on if `u` is no longer ready. */
   const order = (u: Unit, cmd: SessionCommand) => {
     const pre = ready;
-    if (act(cmd)) settle(u.id, pre);
+    // A unit that is gone has already been replaced in the selection by `act`.
+    if (act(cmd) && session.view().myUnits.some((x) => x.id === u.id)) settle(u.id, pre);
   };
   const setOrders = (u: Unit, orders: Orders | null) => order(u, { type: 'setOrders', unitId: u.id, orders });
+
+  /** Go-to or patrol given by a click: the unit stays selected with its route showing, and the preview holds. */
+  const giveRoute = (u: Unit, orders: Orders, at: Pos) => {
+    if (!act({ type: 'setOrders', unitId: u.id, orders })) return;
+    setFrozen(at);
+    setNoPath(null);
+    const still = session.view().myUnits.find((x) => x.id === u.id);
+    if (still) keepVisible(still);
+  };
 
   const moveSelected = (dir: number) => {
     if (!selectedUnit) return;
     if (act({ type: 'move', unitId: selectedUnit.id, dir: dir as Dir })) {
       const still = session.view().myUnits.find((u) => u.id === selectedUnit.id);
-      if (still) focus(still);
+      if (still) {
+        // A step that explored new ground has already re-fitted the map (when auto-fit is on).
+        if (fitOf(view.me).auto) keepVisible(still);
+        else focus(still);
+      }
     }
   };
 
-  /** Fit-to-window hook; auto-fit is wired in here later. */
-  const requestFit = () => {};
+  /** The Fit button and Z: turns auto-fit back on, forgets the old zoom ceiling and fits now. */
+  const requestFit = () => {
+    const v = session.view();
+    const f = fitOf(v.me);
+    f.auto = true;
+    f.ceiling = null;
+    exploredAt.current.set(v.me, exploredCount(v));
+    applyAutoFit(v, selectedUnit ? v.myUnits.find((u) => u.id === selectedUnit.id) ?? null : null);
+  };
 
   const doAction = (id: ActionId) => {
     if (!playing) return;
-    if (id !== 'info') setInfo(false);
+    if (id !== 'info') setInfoId(null);
     if (id === 'endTurn') {
       act({ type: 'endTurn' });
       return;
     }
-    if (id === 'next') {
-      const cur = selectedUnit && ready.some((u) => u.id === selectedUnit.id) ? selectedUnit : null;
-      const next = (cur && nextAfter(cur.id, ready, ready)) ?? (cur ? cur : ready[0]);
+    // Space and Tab on a unit that has orders just move on, leaving its orders alone.
+    if (id === 'next' || ((id === 'skip' || id === 'hold') && selectedUnit?.orders)) {
+      const next = nextReadyAfter(ready, selectedUnit?.id ?? null);
       if (next) selectUnit(next);
       return;
     }
@@ -338,8 +459,8 @@ export function GameScreen({ session, onQuit }: Props) {
       }
       const mode = target;
       setTarget(null);
-      if (mode === 'moveTo') setOrders(selectedUnit, { kind: 'goto', target: p });
-      else setOrders(selectedUnit, { kind: 'patrol', a: { x: selectedUnit.x, y: selectedUnit.y }, b: p, toB: true });
+      if (mode === 'moveTo') giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
+      else giveRoute(selectedUnit, { kind: 'patrol', a: { x: selectedUnit.x, y: selectedUnit.y }, b: p, toB: true }, p);
       return;
     }
     if (selectedUnit && targets.some((t) => t.x === p.x && t.y === p.y)) {
@@ -350,10 +471,24 @@ export function GameScreen({ session, onQuit }: Props) {
     const own = view.myCities.find((c) => c.x === p.x && c.y === p.y);
     if (own && (!selectedUnit || (selectedUnit.x === own.x && selectedUnit.y === own.y))) return openCity(own.id);
     const city = view.knownCities.find((c) => c.x === p.x && c.y === p.y);
-    if (city) return setSelection({ kind: 'city', id: city.id });
+    if (city && !selectedUnit) return setSelection({ kind: 'city', id: city.id });
+    if (city && selectedUnit) {
+      // A city click with a unit selected is an order: go into an own city, or move up to a hostile one.
+      if (city.owner === view.me) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
+      if (dirTo(view, selectedUnit, p) !== null) {
+        setMessage('That unit cannot attack this city now.');
+        return;
+      }
+      const approach = approachSquare(view, selectedUnit, p);
+      if (approach === null) {
+        setNoPath(p);
+        return;
+      }
+      return giveRoute(selectedUnit, { kind: 'goto', target: approach }, p);
+    }
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
     if (unit) return setSelection({ kind: 'unit', id: unit.id });
-    if (selectedUnit && explored) return setOrders(selectedUnit, { kind: 'goto', target: p });
+    if (selectedUnit && explored) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
     setSelection(null);
   };
 
@@ -364,7 +499,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
     if (!unit) return;
     setSelection({ kind: 'unit', id: unit.id });
-    setInfoId(unit.id);
+    setInfoId(unit.id); // after the selection change, which clears it
   };
 
   const onContext = (_p: Pos, client: { x: number; y: number }) => {
@@ -380,7 +515,12 @@ export function GameScreen({ session, onQuit }: Props) {
     });
   };
 
-  const onHover = (p: Pos | null) => setHover((prev) => (prev?.x === p?.x && prev?.y === p?.y ? prev : p));
+  const onHover = (p: Pos | null) => {
+    setHover((prev) => (prev?.x === p?.x && prev?.y === p?.y ? prev : p));
+    // The preview held back after an order resumes once the pointer reaches another square.
+    if (frozen && !samePos(frozen, p)) setFrozen(null);
+    if (noPath && !samePos(noPath, p)) setNoPath(null);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -394,7 +534,7 @@ export function GameScreen({ session, onQuit }: Props) {
       if (a.kind === 'escape') {
         e.preventDefault();
         if (menu) setMenu(null);
-        else if (info) setInfo(false);
+        else if (info) setInfoId(null);
         else if (picker) setPicker(null);
         else if (target) setTarget(null);
         else setSelection(null);
@@ -502,7 +642,8 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={null} routeLabel={null} attack={null}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} attack={attack}
+          onZoom={() => { fitOf(view.me).auto = false; }}
         />
       </div>
       <div class="side">
@@ -532,7 +673,7 @@ export function GameScreen({ session, onQuit }: Props) {
               x: Math.max(0, Math.min(at.x, window.innerWidth - MENU_W)),
               y: Math.max(0, Math.min(at.y, window.innerHeight - MENU_H)),
             })}
-            onClose={() => setInfo(false)}
+            onClose={() => setInfoId(null)}
           />
         </div>
       )}
@@ -563,7 +704,14 @@ export function GameScreen({ session, onQuit }: Props) {
             onConfirm={(ids) => {
               if (ids.length === 0) return;
               setPicker(null);
-              act({ type: 'unload', transportId: pickerUnit.id, unitIds: ids.length === cargo.length ? null : ids });
+              const r = unloadAndLand(session, pickerUnit.id, ids.length === cargo.length ? null : ids);
+              if (typeof r === 'string') {
+                setMessage(r);
+                return;
+              }
+              afterOwnAct();
+              const kind = pluralUnit(cargo.find((c) => ids.includes(c.id))?.type ?? 'army', r.landed);
+              setMessage(`${unitDisplayName(pickerUnit)} landed ${r.landed} ${kind}${r.aboard > 0 ? `; ${r.aboard} still aboard` : ''}.`);
             }}
           />
         </div>
@@ -573,6 +721,7 @@ export function GameScreen({ session, onQuit }: Props) {
           key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} error={message}
           onPick={(unitType) => { act({ type: 'setProduction', cityId: openCityObj.id, unitType }); }}
           onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }); }}
+          onSelectUnit={(id) => { const u = view.myUnits.find((x) => x.id === id); if (u) selectUnit(u); }}
           onClose={() => setCityOpen(null)}
         />
       )}

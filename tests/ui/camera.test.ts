@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { centerOn, clampCamera, mapToScreen, screenToMap, zoomAt, MAX_TILE, MIN_TILE, exploredBox, fitTile, autoFit, keepInView } from '../../src/ui/camera';
+import { centerOn, clampCamera, mapToScreen, screenToMap, zoomAt, MAX_TILE, MIN_TILE, exploredBox, fitTile, autoFit, keepInView, keepInViewWrap } from '../../src/ui/camera';
 
 describe('camera', () => {
   const cam = { x: 2, y: 3, tile: 20 };
@@ -88,5 +88,17 @@ describe('auto-fit', () => {
     expect(c.y).toBe(0);
     expect(c.x).toBe(30 + 1 + 1 - 10);
     expect(keepInView(cam, { x: -4, y: 5 }, 200, 200).x).toBe(-5);
+  });
+});
+describe('keepInViewWrap', () => {
+  it('does not pan the long way across the seam', () => {
+    const cam = { x: 56, y: 0, tile: 10 };
+    // 200px / 10 = 20 columns visible: 56..76, i.e. columns 56..59 and 0..15 on a 60-wide map.
+    expect(keepInViewWrap(cam, { x: 2, y: 5 }, 200, 200, 60, true)).toEqual(cam);
+    const c = keepInViewWrap(cam, { x: 20, y: 5 }, 200, 200, 60, true);
+    expect(c.x).toBe(62);
+    // On a flat map it is plain keepInView.
+    expect(keepInViewWrap({ x: 0, y: 0, tile: 10 }, { x: 30, y: 5 }, 200, 200, 60, false))
+      .toEqual(keepInView({ x: 0, y: 0, tile: 10 }, { x: 30, y: 5 }, 200, 200));
   });
 });

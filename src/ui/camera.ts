@@ -122,3 +122,14 @@ export function keepInView(cam: Camera, p: Pos, viewW: number, viewH: number): C
   else if (p.y + 1 > y + vh - 1) y = p.y + 2 - vh;
   return x === cam.x && y === cam.y ? cam : { ...cam, x, y };
 }
+
+/**
+ * keepInView for wrapping maps: p is first moved to the copy of its column nearest the camera, so the pan
+ * never goes the long way round. Run the result through clampCamera to bring x back into range.
+ */
+export function keepInViewWrap(cam: Camera, p: Pos, viewW: number, viewH: number, mapW: number, wrap: boolean): Camera {
+  if (!wrap) return keepInView(cam, p, viewW, viewH);
+  const centre = cam.x + viewW / cam.tile / 2;
+  const x = p.x + mapW * Math.round((centre - p.x - 0.5) / mapW);
+  return keepInView(cam, { x, y: p.y }, viewW, viewH);
+}
