@@ -1,7 +1,8 @@
-import { UNIT_STATS, isCrippled, type PlayerView, type Pos } from '../engine';
+import { UNIT_STATS, isCrippled, type PlayerView, type Pos, type Unit } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
+import { badgeMode, cityStackTop } from './labels';
 
 export interface DrawOptions {
   view: PlayerView;
@@ -12,6 +13,16 @@ export interface DrawOptions {
   targets: StepTarget[];
   /** Color per seat, indexed by PlayerId. */
   colors: string[];
+  /** The blinking unit. */
+  activeId: number | null;
+  /** False draws the active unit at alpha 0.25. */
+  blinkOn: boolean;
+  /** Preview path from the selected unit (excluding its start square). */
+  path: Pos[] | null;
+  /** False draws the path preview in red. */
+  pathOk: boolean;
+  /** Drawn near the last path square. */
+  pathLabel: string | null;
 }
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -70,19 +81,44 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     });
   }
 
-  const glyph = (sx: number, sy: number, color: string, text: string, alpha: number) => {
+  /** A glyph disc centred at (ox, oy) within the square, scaled by `scale`. */
+  const glyph = (sx: number, sy: number, color: string, text: string, alpha: number, scale = 1, ox = 0.5, oy = 0.5) => {
+    const cx = sx + t * ox;
+    const cy = sy + t * oy;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(sx + t / 2, sy + t / 2, t * 0.38, 0, Math.PI * 2);
+    ctx.arc(cx, cy, t * 0.38 * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.round(t * 0.5)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.round(t * 0.5 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, sx + t / 2, sy + t / 2 + 1);
+    ctx.fillText(text, cx, cy + 1);
     ctx.globalAlpha = 1;
   };
+
+  /** Top-right badge: a white dot below 16px tiles, else a white circle with a dark count. */
+  const badge = (sx: number, sy: number, count: number) => {
+    const cx = sx + t * 0.8;
+    const cy = sy + t * 0.2;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    if (badgeMode(t) === 'dot') {
+      ctx.arc(cx, cy, t * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.arc(cx, cy, t * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.font = `bold ${Math.round(t * 0.25)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(count), cx, cy + 1);
+  };
+
+  const ownAlpha = (u: Unit) => (u.id === o.activeId && !o.blinkOn ? 0.25 : u.movesLeft > 0 ? 1 : 0.6);
 
   // Enemy markers (fade with age).
   for (const e of view.enemies) {
@@ -93,18 +129,32 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     });
   }
 
-  // Own top-level units outside cities (units in cities are listed in the side panel).
-  const cityAt = (x: number, y: number) => view.knownCities.some((c) => c.x === x && c.y === y);
+  // Own city stacks: the top unit at 60% in the top-left, a count badge when 2 or more (dot below 16px tiles).
+  const inOwnCity = (x: number, y: number) => view.knownCities.some((c) => c.x === x && c.y === y && c.owner === view.me);
+  for (const city of view.knownCities) {
+    if (city.owner !== view.me) continue;
+    const stack = view.myUnits.filter((u) => u.carriedBy === null && u.x === city.x && u.y === city.y);
+    const top = cityStackTop(stack);
+    if (top === null) continue;
+    each((mx, my, sx, sy) => {
+      if (mx !== city.x || my !== city.y) return;
+      if (badgeMode(t) === 'dot') {
+        badge(sx, sy, stack.length);
+        return;
+      }
+      glyph(sx, sy, colors[view.me], UNIT_GLYPH[top.type], ownAlpha(top), 0.6, 0.3, 0.3);
+      if (stack.length >= 2) badge(sx, sy, stack.length);
+    });
+  }
+
+  // Own top-level units outside own cities.
   for (const u of view.myUnits) {
-    if (u.carriedBy !== null || cityAt(u.x, u.y)) continue;
+    if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
       if (mx !== u.x || my !== u.y) return;
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[u.type], u.movesLeft > 0 ? 1 : 0.6);
-      const hasCargo = view.myUnits.some((c) => c.carriedBy === u.id);
-      if (hasCargo) {
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(sx + t * 0.7, sy + t * 0.1, t * 0.18, t * 0.18);
-      }
+      glyph(sx, sy, colors[view.me], UNIT_GLYPH[u.type], ownAlpha(u));
+      const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
+      if (cargo > 0) badge(sx, sy, cargo);
       if (isCrippled(u)) {
         ctx.fillStyle = '#ff3b3b';
         ctx.fillRect(sx + t * 0.1, sy + t * 0.1, t * 0.18, t * 0.18);
@@ -115,6 +165,42 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.fillRect(sx + t * 0.1, sy + t * 0.72, t * 0.18, t * 0.18);
       }
     });
+  }
+
+  // Path preview: a dotted polyline through square centres, unwrapped so it never jumps across the seam.
+  if (o.path && o.path.length > 0) {
+    const raw = o.selected ? [o.selected, ...o.path] : o.path;
+    const pts: Pos[] = [];
+    for (const p of raw) {
+      let x = p.x;
+      if (view.wrap && pts.length > 0) {
+        let d = mod(p.x - pts[pts.length - 1].x, view.width);
+        if (d > view.width / 2) d -= view.width;
+        x = pts[pts.length - 1].x + d;
+      }
+      pts.push({ x, y: p.y });
+    }
+    const color = o.pathOk ? '#fff' : '#ff3b3b';
+    const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
+    const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (o.pathLabel) {
+      const last = pts[pts.length - 1];
+      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+      ctx.fillStyle = color;
+      ctx.fillText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+    }
   }
 
   // Selection.

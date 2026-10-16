@@ -40,7 +40,10 @@ export function MapCanvas(p: Props) {
     c.height = Math.round(h * dpr);
     const ctx = c.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawMap(ctx, { view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors });
+    drawMap(ctx, {
+      view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
+      activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null, // wired in Task 9
+    });
   });
 
   useEffect(() => {
