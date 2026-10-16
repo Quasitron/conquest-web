@@ -18,6 +18,8 @@ export interface PathMap {
   enemy: Set<number>;
   /** Own top-level units on non-city squares; room[type] = free cargo space on hosts there that carry `type`. */
   own: Map<number, { count: number; room: Partial<Record<UnitType, number>> }>;
+  /** When true, non-air units treat squares holding own units (without room) as walls. */
+  blockOwn: boolean;
 }
 
 /** Geometry only: normalize and chebyshev never read terrain. */
@@ -46,7 +48,7 @@ function buildOwn(
   return own;
 }
 
-export function pathMapFromState(s: GameState, pid: PlayerId): PathMap {
+export function pathMapFromState(s: GameState, pid: PlayerId, opts: { blockOwn?: boolean } = {}): PathMap {
   const fog = s.fog[pid];
   const terrain = s.terrain.map((t, i) => (fog.explored[i] ? t : null));
   const cityOwner = new Map<number, PlayerId | null>();
@@ -62,10 +64,11 @@ export function pathMapFromState(s: GameState, pid: PlayerId): PathMap {
     width: s.width, height: s.height, wrap: s.wrap, me: pid, turn: s.turn,
     terrain, cityOwner, enemy,
     own: buildOwn(m, s.units.filter((u) => u.owner === pid)),
+    blockOwn: opts.blockOwn ?? false,
   };
 }
 
-export function pathMapFromView(v: PlayerView): PathMap {
+export function pathMapFromView(v: PlayerView, opts: { blockOwn?: boolean } = {}): PathMap {
   const cityOwner = new Map<number, PlayerId | null>();
   for (const c of v.knownCities) cityOwner.set(c.y * v.width + c.x, c.owner);
   const enemy = new Set<number>();
@@ -75,6 +78,7 @@ export function pathMapFromView(v: PlayerView): PathMap {
     width: v.width, height: v.height, wrap: v.wrap, me: v.me, turn: v.turn,
     terrain: v.terrain, cityOwner, enemy,
     own: buildOwn(m, v.myUnits),
+    blockOwn: opts.blockOwn ?? false,
   };
 }
 
@@ -89,7 +93,7 @@ function enterable(m: PathMap, t: UnitType, i: number, isTarget: boolean): boole
   if (own && isTarget && (own.room[t] ?? 0) > 0) return true;
   if (domain === 'land' && terrain !== 'land' && city !== m.me) return false;
   if (domain === 'sea' && terrain !== 'water' && city !== m.me) return false;
-  if (own) return !isTarget && domain === 'air';
+  if (own) return isTarget ? false : !m.blockOwn || domain === 'air';
   return true;
 }
 

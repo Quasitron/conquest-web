@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
 import { chooseHome, executeOrders, wakeSentries } from '../../src/engine/orders';
+import { findPath, pathMapFromState } from '../../src/engine/path';
 import { unitById } from '../../src/engine/query';
 import type { Command, GameEvent, GameState, Orders, OrdersEndReason } from '../../src/engine/types';
 import { addUnit, fixedRng, makeGame } from '../helpers';
+import { chebyshev } from '../../src/engine/map';
 
 /** A quiet game: nothing is produced and player 0 has explored the whole map. */
 function game(rows: string[], opts: Parameters<typeof makeGame>[1] = {}): GameState {
@@ -141,6 +143,11 @@ describe('patrol and explore', () => {
       const round = fullRound(state);
       state = round.state;
       reason = ended(round.events)[0]?.reason ?? null;
+      if (reason === 'cityFound') {
+        // Finding the enemy city stops the explorer; carry on exploring from next to it.
+        reason = null;
+        state = run(state, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'explore' } }).state;
+      }
     }
     expect(reason).toBe('nothingToExplore');
     expect(unitById(state, a.id)!.orders).toBeNull();
@@ -172,19 +179,6 @@ describe('interruptions', () => {
     const r2 = fullRound(r1.state);
     expect(ended(r2.events)).toEqual([{ type: 'ordersEnded', unitId: a.id, owner: 0, reason: 'enemySighted' }]);
     expect(unitById(r2.state, a.id)!.orders).toBeNull();
-  });
-
-  it("a goto blocked by an own unit ends 'blocked' the same turn, and never loops", () => {
-    const s = game(LAND);
-    const a = addUnit(s, 'army', 0, 1, 0, { movesLeft: 0 });
-    const r1 = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 4, y: 0 } } });
-    expect(unitById(r1.state, a.id)!.orders).not.toBeNull();
-    addUnit(r1.state, 'army', 0, 2, 0);
-    const r2 = fullRound(r1.state);
-    expect(ended(r2.events)).toEqual([{ type: 'ordersEnded', unitId: a.id, owner: 0, reason: 'blocked' }]);
-    const after = unitById(r2.state, a.id)!;
-    expect(after.orders).toBeNull();
-    expect(after).toMatchObject({ x: 1, movesLeft: 1 });
   });
 
   it("orders never attack: a goto whose next step holds an enemy ends 'blocked'", () => {
@@ -343,5 +337,210 @@ describe('go-to boarding and aircraft range', () => {
     executeOrders(s, fixedRng(0.5), f, events);
     expect(ended(events)).toEqual([{ type: 'ordersEnded', unitId: f.id, owner: 0, reason: 'lowFuel' }]);
     expect(unitById(s, f.id)).toMatchObject({ x: 0, orders: null });
+  });
+});
+
+describe('own units and waiting orders', () => {
+  const unexplore = (s: GameState, xs: number[], h: number) => {
+    for (const x of xs) for (let y = 0; y < h; y++) s.fog[0].explored[y * s.width + x] = 0;
+  };
+  /** A 1-wide water bay with an own destroyer plugging it; the frontier lies beyond the plug. */
+  function bay() {
+    const s = game(['#######', '*.....*', '#######']);
+    unexplore(s, [5, 6], 3);
+    const d = addUnit(s, 'destroyer', 0, 1, 1);
+    const plug = addUnit(s, 'destroyer', 0, 3, 1);
+    return { s, d, plug };
+  }
+  const exploreCmd = (s: GameState, id: number) => run(s, { type: 'setOrders', player: 0, unitId: id, orders: { kind: 'explore' } });
+
+  it('explore behind an own unit in a 1-wide bay waits instead of ending with nothingToExplore', () => {
+    const { s, d } = bay();
+    const r0 = exploreCmd(s, d.id);
+    expect(ended(r0.events)).toHaveLength(0);
+    expect(unitById(r0.state, d.id)).toMatchObject({ x: 2, orders: { kind: 'explore' }, blockedTurns: 0 });
+    const r1 = fullRound(r0.state);
+    expect(ended(r1.events)).toHaveLength(0);
+    expect(unitById(r1.state, d.id)).toMatchObject({ x: 2, orders: { kind: 'explore' }, blockedTurns: 1 });
+  });
+
+  it("a blocked order waits two turn starts, then ends 'blocked' on the third", () => {
+    const { s, d } = bay();
+    let state = exploreCmd(s, d.id).state;
+    for (const n of [1, 2]) {
+      const r = fullRound(state);
+      state = r.state;
+      expect(ended(r.events)).toHaveLength(0);
+      expect(unitById(state, d.id)).toMatchObject({ orders: { kind: 'explore' }, blockedTurns: n });
+    }
+    const r3 = fullRound(state);
+    expect(ended(r3.events)).toEqual([{ type: 'ordersEnded', unitId: d.id, owner: 0, reason: 'blocked' }]);
+    expect(unitById(r3.state, d.id)).toMatchObject({ orders: null, blockedTurns: 0 });
+  });
+
+  it('a successful step resets blockedTurns, and setOrders resets it', () => {
+    const { s, d, plug } = bay();
+    let state = exploreCmd(s, d.id).state;
+    state = fullRound(state).state;
+    expect(unitById(state, d.id)!.blockedTurns).toBe(1);
+    // The plug leaves: the next turn start steps and clears the counter.
+    unitById(state, plug.id)!.x = 3;
+    unitById(state, plug.id)!.y = 1;
+    state.units = state.units.filter((u) => u.id !== plug.id);
+    const r = fullRound(state);
+    expect(unitById(r.state, d.id)).toMatchObject({ blockedTurns: 0 });
+    expect(unitById(r.state, d.id)!.x).toBeGreaterThan(2);
+
+    const again = bay();
+    let st = exploreCmd(again.s, again.d.id).state;
+    st = fullRound(st).state;
+    expect(unitById(st, again.d.id)!.blockedTurns).toBe(1);
+    const cleared = run(st, { type: 'setOrders', player: 0, unitId: again.d.id, orders: null });
+    expect(unitById(cleared.state, again.d.id)!.blockedTurns).toBe(0);
+    const reset = fullRound(cleared.state);
+    const regiven = run(reset.state, { type: 'setOrders', player: 0, unitId: again.d.id, orders: { kind: 'explore' } });
+    expect(unitById(regiven.state, again.d.id)!.blockedTurns).toBe(0);
+    const waited = fullRound(regiven.state);
+    expect(unitById(waited.state, again.d.id)!.blockedTurns).toBe(1);
+    const resetAgain = run(waited.state, { type: 'setOrders', player: 0, unitId: again.d.id, orders: { kind: 'sentry' } });
+    expect(unitById(resetAgain.state, again.d.id)!.blockedTurns).toBe(0);
+  });
+
+  it('a new order blocked by an own unit is kept and does not count a blocked turn', () => {
+    const s = game(['*#####*']);
+    const a = addUnit(s, 'army', 0, 1, 0);
+    addUnit(s, 'army', 0, 2, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 5, y: 0 } } });
+    expect(ended(r.events)).toHaveLength(0);
+    expect(unitById(r.state, a.id)).toMatchObject({ x: 1, blockedTurns: 0, orders: { kind: 'goto' } });
+  });
+
+  it('a goto steps around an own unit on the direct next square and arrives', () => {
+    const s = game(['*######*', '########', '########']);
+    const a = addUnit(s, 'army', 0, 1, 1);
+    const target = { x: 6, y: 1 };
+    const direct = findPath(pathMapFromState(s, 0), a, target)!;
+    const blocker = addUnit(s, 'army', 0, direct[0].x, direct[0].y);
+    let state = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target } }).state;
+    expect(unitById(state, a.id)).toMatchObject({ movesLeft: 0, blockedTurns: 0, orders: { kind: 'goto' } });
+    const first = unitById(state, a.id)!;
+    expect([first.x, first.y]).not.toEqual([1, 1]);
+    expect([first.x, first.y]).not.toEqual([blocker.x, blocker.y]);
+    let reason: OrdersEndReason | null = null;
+    for (let i = 0; i < 10 && reason === null; i++) {
+      const round = fullRound(state);
+      state = round.state;
+      reason = ended(round.events)[0]?.reason ?? null;
+    }
+    expect(reason).toBe('arrived');
+    expect(unitById(state, a.id)).toMatchObject({ x: 6, y: 1 });
+  });
+
+  it("a goto whose only route holds a visible enemy ends 'blocked' at once", () => {
+    const s = game(['*#####*']);
+    const a = addUnit(s, 'army', 0, 1, 0);
+    addUnit(s, 'army', 1, 2, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 5, y: 0 } } });
+    expect(ended(r.events).map((e) => e.reason)).toEqual(['blocked']);
+    expect(unitById(r.state, a.id)).toMatchObject({ orders: null, blockedTurns: 0 });
+  });
+
+  it('an own unit in a corridor leaves the order waiting at the next turn start (counter 1)', () => {
+    const s = game(['*#####*']);
+    const a = addUnit(s, 'army', 0, 1, 0, { movesLeft: 0 });
+    const r1 = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 4, y: 0 } } });
+    addUnit(r1.state, 'army', 0, 2, 0);
+    const r2 = fullRound(r1.state);
+    expect(ended(r2.events)).toHaveLength(0);
+    expect(unitById(r2.state, a.id)).toMatchObject({ x: 1, blockedTurns: 1, orders: { kind: 'goto' } });
+  });
+});
+
+describe('explore stops at cities', () => {
+  const MAP = ['*####*#####', '###########', '##########*'];
+  const cityGame = () => {
+    const s = makeGame(MAP, { starts: [0, 2] });
+    for (const c of s.cities) c.production = null;
+    return s;
+  };
+
+  it("explore ends with 'cityFound' on stepping next to a neutral city that was not adjacent before", () => {
+    const s = cityGame();
+    const a = addUnit(s, 'army', 0, 0, 0);
+    let state = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'explore' } }).state;
+    let reason: OrdersEndReason | null = null;
+    for (let i = 0; i < 40 && reason === null; i++) {
+      const round = fullRound(state);
+      state = round.state;
+      reason = ended(round.events)[0]?.reason ?? null;
+    }
+    expect(reason).toBe('cityFound');
+    const u = unitById(state, a.id)!;
+    expect(u.orders).toBeNull();
+    expect(chebyshev(state, u, { x: 5, y: 0 })).toBe(1);
+  });
+
+  it('starting Explore while already next to the city does not stop for that city', () => {
+    const s = cityGame();
+    s.fog[0].explored.fill(0);
+    for (let x = 3; x <= 6; x++) for (let y = 0; y < 3; y++) s.fog[0].explored[y * s.width + x] = 1;
+    s.fog[0].knownCityOwner[1] = null;
+    const a = addUnit(s, 'army', 0, 4, 1);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'explore' } });
+    expect(ended(r.events)).toHaveLength(0);
+    expect(unitById(r.state, a.id)!.orders).toEqual({ kind: 'explore' });
+  });
+
+  it('an own city never triggers cityFound', () => {
+    const s = cityGame();
+    s.cities[1].owner = 0;
+    s.fog[0].knownCityOwner[1] = 0;
+    const a = addUnit(s, 'army', 0, 0, 0);
+    let state = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'explore' } }).state;
+    const reasons: OrdersEndReason[] = [];
+    for (let i = 0; i < 40 && reasons.length === 0; i++) {
+      const round = fullRound(state);
+      state = round.state;
+      reasons.push(...ended(round.events).map((e) => e.reason));
+    }
+    // Only the far enemy city at (10,2) can stop it.
+    expect(reasons).toEqual(['cityFound']);
+    expect(chebyshev(state, unitById(state, a.id)!, { x: 10, y: 2 })).toBe(1);
+  });
+
+  it('a goto passing next to a neutral city does not stop', () => {
+    const s = cityGame();
+    s.fog[0].explored.fill(1);
+    s.fog[0].knownCityOwner[1] = null;
+    const a = addUnit(s, 'army', 0, 2, 1);
+    let state = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 8, y: 1 } } }).state;
+    const reasons: OrdersEndReason[] = [];
+    for (let i = 0; i < 12 && reasons.length === 0; i++) {
+      const round = fullRound(state);
+      state = round.state;
+      reasons.push(...ended(round.events).map((e) => e.reason));
+    }
+    expect(reasons).toEqual(['arrived']);
+  });
+});
+
+describe('ordersEnded is logged once', () => {
+  it('a destroyer exploring a bay that ends nothingToExplore produces exactly one ordersEnded across a turn', () => {
+    const s = game(['#####', '*...*', '#####']);
+    for (const c of s.cities) c.production = null;
+    s.fog[0].explored.fill(0);
+    for (const x of [0, 1, 2]) for (let y = 0; y < 3; y++) s.fog[0].explored[y * 5 + x] = 1;
+    const d = addUnit(s, 'destroyer', 0, 1, 1);
+    const first = run(s, { type: 'setOrders', player: 0, unitId: d.id, orders: { kind: 'explore' } });
+    let state = first.state;
+    const events: GameEvent[] = [...first.events];
+    for (let i = 0; i < 6; i++) {
+      for (const pid of [0, 1] as const) {
+        const r = run(state, { type: 'endTurn', player: pid });
+        state = r.state;
+        events.push(...r.events);
+      }
+    }
+    expect(ended(events).filter((e) => e.unitId === d.id)).toHaveLength(1);
   });
 });

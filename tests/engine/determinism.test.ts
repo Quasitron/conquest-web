@@ -155,6 +155,45 @@ describe('determinism', () => {
     expect(hashState(replay(initial, log))).toBe(hashState(s));
   });
 
+  it('replay with a waiting goto and an Explore that ends cityFound reproduces the hash', () => {
+    // Row 0 is a 1-wide corridor plugged by an own army; row 2 holds a neutral city for the explorer.
+    const initial = makeGame(['*#########*', '...........', '#####*#####'], { starts: [0, 1], seed: 9 });
+    for (const c of initial.cities) c.production = null;
+    initial.fog[0].explored.fill(0);
+    const mark = (x0: number, x1: number, y0: number, y1: number) => {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) initial.fog[0].explored[y * initial.width + x] = 1;
+    };
+    mark(0, 4, 0, 0);
+    mark(0, 2, 1, 2);
+    const walker = addUnit(initial, 'army', 0, 1, 0);
+    addUnit(initial, 'army', 0, 2, 0);
+    const explorer = addUnit(initial, 'army', 0, 1, 2);    const log: Command[] = [];
+    let s = initial;
+    const play = (cmd: Command) => {
+      const r = apply(s, cmd);
+      if (r.ok) {
+        s = r.state;
+        log.push(cmd);
+      }
+      return r.ok;
+    };
+    expect(play({ type: 'setOrders', player: 0, unitId: walker.id, orders: { kind: 'goto', target: { x: 3, y: 0 } } })).toBe(true);
+    expect(play({ type: 'setOrders', player: 0, unitId: explorer.id, orders: { kind: 'explore' } })).toBe(true);
+    const reasons: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      for (const player of [0, 1]) {
+        const r = apply(s, { type: 'endTurn', player });
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        s = r.state;
+        log.push({ type: 'endTurn', player });
+        for (const e of r.events) if (e.type === 'ordersEnded') reasons.push(e.reason);
+      }
+    }
+    expect(reasons).toContain('cityFound');
+    expect(reasons).toContain('blocked');
+    expect(hashState(replay(initial, log))).toBe(hashState(s));
+  });
   it('replay reports the first rejected command', () => {
     const initial = makeGame(WORLD, { starts: [0, 5] });
     expect(() => replay(initial, [{ type: 'move', player: 0, unitId: 12345, dir: 0 }])).toThrow(/command 0/);

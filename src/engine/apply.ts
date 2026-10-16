@@ -32,6 +32,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       else if (!validDir(cmd.dir)) error = 'invalid direction';
       else {
         u.orders = null;
+        u.blockedTurns = 0;
         error = moveUnit(s, rng, u, cmd.dir, events);
         if (!error && u.type === 'transport' && inOwnCity(s, u) && cargoOf(s, u).length > 0) u.unloadNextTurn = true;
       }
@@ -53,6 +54,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       else if (u.owner !== actor) error = 'not your unit';
       else if (cmd.orders === null) {
         u.orders = null;
+        u.blockedTurns = 0;
         u.unloadNextTurn = false;
       } else error = giveOrders(s, rng, u, cmd.orders, events);
       break;

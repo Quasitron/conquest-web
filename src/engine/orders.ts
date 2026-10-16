@@ -1,8 +1,8 @@
 import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS } from './units';
+import { UNIT_STATS, cargoCapacity } from './units';
 import { chebyshev, index, isCoastal } from './map';
-import { cityAt, isAtRefuelPoint, topLevelUnitsAt } from './query';
+import { cargoOf, cityAt, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { canPlayerSeeUnit, updateFog } from './fog';
 import { moveUnit } from './movement';
@@ -68,6 +68,7 @@ export function chooseHome(s: GameState, u: Unit): { city: City; steps: number }
 
 function endOrders(u: Unit, reason: OrdersEndReason, events: GameEvent[]): void {
   u.orders = null;
+  u.blockedTurns = 0;
   events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason });
 }
 
@@ -78,8 +79,36 @@ function enemyAdjacent(s: GameState, u: Unit): boolean {
   );
 }
 
-/** Runs a unit's moving orders (goto, patrol, explore) until it is out of moves or they end. Never attacks. */
-export function executeOrders(s: GameState, rng: RandomSource, u: Unit, events: GameEvent[]): void {
+/** Ids of known cities next to u that are not its own (neutral or enemy), as the owner knows them. */
+function adjacentForeignCities(s: GameState, u: Unit): Set<number> {
+  const fog = s.fog[u.owner];
+  const out = new Set<number>();
+  for (const c of s.cities) {
+    if (chebyshev(s, u, c) > 1 || !fog.explored[index(s, c.x, c.y)]) continue;
+    const owner = c.owner === u.owner ? u.owner : (fog.knownCityOwner[c.id] ?? null);
+    if (!areFriendly(s, owner, u.owner)) out.add(c.id);
+  }
+  return out;
+}
+
+/**
+ * True when a land or sea unit would have to stop on p: an own unit stands there, it is not a city,
+ * and no own host there has room for u. Aircraft may pass over.
+ */
+function ownBlocks(s: GameState, u: Unit, p: Pos): boolean {
+  if (UNIT_STATS[u.type].domain === 'air' || cityAt(s, p.x, p.y)) return false;
+  const here = topLevelUnitsAt(s, p.x, p.y).filter((o) => o.owner === u.owner && o !== u);
+  if (here.length === 0) return false;
+  return !here.some((h) => UNIT_STATS[h.type].carries === u.type && cargoOf(s, h).length < cargoCapacity(h));
+}
+
+/**
+ * Runs a unit's moving orders (goto, patrol, explore) until it is out of moves or they end. Never attacks.
+ * 	urnStart is true when called from the start-of-turn run: only then does a blocked wait count.
+ */
+export function executeOrders(
+  s: GameState, rng: RandomSource, u: Unit, events: GameEvent[], turnStart = false,
+): void {
   const arrive = (): void => {
     if (UNIT_STATS[u.type].carries === 'army' && cityAt(s, u.x, u.y)?.owner === u.owner) {
       unloadCargo(s, u, null, events); // 'nothing to unload' is fine
@@ -109,7 +138,18 @@ export function executeOrders(s: GameState, rng: RandomSource, u: Unit, events: 
       return endOrders(u, 'lowFuel', events);
     }
     if (u.fuel !== null && o.kind !== 'goto' && path.length > u.fuel) return endOrders(u, 'lowFuel', events);
-    const next = path[0];
+    let next = path[0];
+    if (ownBlocks(s, u, next)) {
+      const detour = findPath(pathMapFromState(s, u.owner, { blockOwn: true }), u, target);
+      if (detour && detour.length > 0 && !ownBlocks(s, u, detour[0])) next = detour[0];
+      else {
+        if (turnStart) {
+          u.blockedTurns += 1;
+          if (u.blockedTurns >= 3) return endOrders(u, 'blocked', events);
+        }
+        return; // wait: orders kept
+      }
+    }
     const city = cityAt(s, next.x, next.y);
     if (
       (city && !areFriendly(s, city.owner, u.owner)) ||
@@ -118,11 +158,16 @@ export function executeOrders(s: GameState, rng: RandomSource, u: Unit, events: 
       return endOrders(u, 'blocked', events);
     }
     const dir = dirBetween(s, u, next);
+    const cityBefore = o.kind === 'explore' ? adjacentForeignCities(s, u) : null;
     if (dir === null || moveUnit(s, rng, u, dir, events) !== null) return endOrders(u, 'blocked', events);
     if (!s.units.includes(u)) return;
+    u.blockedTurns = 0;
     updateFog(s, u.owner);
     if (o.kind === 'goto' && u.x === o.target.x && u.y === o.target.y) return arrive();
     if (u.carriedBy === null && enemyAdjacent(s, u)) return endOrders(u, 'enemySighted', events);
+    if (cityBefore && [...adjacentForeignCities(s, u)].some((id) => !cityBefore.has(id))) {
+      return endOrders(u, 'cityFound', events);
+    }
   }
 }
 
@@ -143,7 +188,7 @@ export function runPlayerOrders(s: GameState, rng: RandomSource, pid: PlayerId, 
     .sort((a, b) => a - b);
   for (const id of ids) {
     const u = s.units.find((x) => x.id === id);
-    if (u) executeOrders(s, rng, u, events);
+    if (u) executeOrders(s, rng, u, events, true);
   }
   updateFog(s, pid);
 }
@@ -155,6 +200,7 @@ export function giveOrders(
   const error = validateOrders(s, u, orders);
   if (error) return error;
   u.orders = structuredClone(orders);
+  u.blockedTurns = 0;
   u.unloadNextTurn = false;
   if (u.movesLeft > 0) executeOrders(s, rng, u, events);
   return null;

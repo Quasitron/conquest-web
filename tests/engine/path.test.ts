@@ -80,19 +80,43 @@ describe('findPath', () => {
     expect(findPath(pm(s), { type: 'army', x: 0, y: 1 }, { x: 4, y: 1 })).toHaveLength(4);
   });
 
-  it('an own army outside a city blocks another army; inside an own city it does not', () => {
+  it('with blockOwn, an own army outside a city blocks another army; inside an own city it does not', () => {
     const s = game(['#####', '#####', '#####']);
     exploreAll(s);
     for (const y of [0, 1, 2]) addUnit(s, 'army', 0, 2, y);
-    expect(findPath(pm(s), { type: 'army', x: 0, y: 1 }, { x: 4, y: 1 })).toBeNull();
+    expect(findPath(pathMapFromState(s, 0, { blockOwn: true }), { type: 'army', x: 0, y: 1 }, { x: 4, y: 1 })).toBeNull();
+    expect(findPath(pm(s), { type: 'army', x: 0, y: 1 }, { x: 4, y: 1 })).toHaveLength(4);
 
     const c = game(['#*###', '#####']);
     exploreAll(c);
     c.terrain = ['#', '*', '#', '#', '#', '#', '#', '#', '#', '#'].map((ch) => (ch === '*' ? 'city' : 'land')) as GameState['terrain'];
     c.cities = [{ id: 0, name: 'C0', x: 1, y: 0, owner: 0, production: null, progress: 0, lastBuilt: null }];
     addUnit(c, 'army', 0, 1, 0);
-    const p = findPath(pm(c), { type: 'army', x: 0, y: 0 }, { x: 2, y: 0 })!;
+    const p = findPath(pathMapFromState(c, 0, { blockOwn: true }), { type: 'army', x: 0, y: 0 }, { x: 2, y: 0 })!;
     expect(p).toEqual([{ x: 1, y: 0 }, { x: 2, y: 0 }]);
+  });
+
+  it('a land path passes through a square with an own army unless blockOwn is set', () => {
+    const s = game(['#####', '#####', '#####']);
+    exploreAll(s);
+    const from = { type: 'army' as const, x: 0, y: 1 };
+    const to = { x: 4, y: 1 };
+    const plain = findPath(pm(s), from, to)!;
+    const mid = plain[1];
+    addUnit(s, 'army', 0, mid.x, mid.y);
+    expect(findPath(pm(s), from, to)).toEqual(plain);
+    const around = findPath(pathMapFromState(s, 0, { blockOwn: true }), from, to)!;
+    expect(around).toHaveLength(plain.length);
+    expect(around).not.toContainEqual(mid);
+  });
+
+  it('a target square holding an own army with no room is unreachable either way', () => {
+    const s = game(['#####', '#####', '#####']);
+    exploreAll(s);
+    addUnit(s, 'army', 0, 4, 1);
+    const from = { type: 'army' as const, x: 0, y: 1 };
+    expect(findPath(pm(s), from, { x: 4, y: 1 })).toBeNull();
+    expect(findPath(pathMapFromState(s, 0, { blockOwn: true }), from, { x: 4, y: 1 })).toBeNull();
   });
 
   it('an army may target a transport with room, not a full one', () => {
