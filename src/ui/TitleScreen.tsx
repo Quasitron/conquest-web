@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { GameSession } from '../app/session';
-import { validateMapSize } from '../engine';
+import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
 import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
@@ -10,6 +10,24 @@ interface Props {
   store: SaveStore;
   onStart: (s: GameSession) => void;
 }
+
+const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }[] = [
+  {
+    key: 'easierNeutralCities',
+    label: 'Easier neutral cities',
+    hint: 'Neutral cities defend at half strength (about 2 in 3 attacks succeed).',
+  },
+  {
+    key: 'fairFirstTurn',
+    label: 'Fair first turn',
+    hint: 'No city builds on turn 1, so the first player gets no head start.',
+  },
+  {
+    key: 'sentriedStayAsGarrison',
+    label: 'Sentried armies stay as garrison',
+    hint: "Transports leaving a city don't pick up armies on Sentry.",
+  },
+];
 
 const randomSeed = () => Math.floor(Math.random() * 1_000_000_000);
 const defaultSeats = (n: number, prev: SeatConfig[]): SeatConfig[] =>
@@ -21,6 +39,7 @@ export function TitleScreen({ store, onStart }: Props) {
   const [world, setWorld] = useState<WorldOptions>({ ...DEFAULT_WORLD });
   const [seats, setSeats] = useState<SeatConfig[]>(defaultSeats(2, []));
   const [seed, setSeed] = useState(randomSeed());
+  const [rules, setRules] = useState<HouseRules>({ ...CLASSIC_RULES });
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +58,7 @@ export function TitleScreen({ store, onStart }: Props) {
     const sizeError = validateMapSize(world.width, world.height);
     if (sizeError) return setError(sizeError);
     try {
-      onStart(GameSession.create({ world, seed, seats }, store));
+      onStart(GameSession.create({ world, seed, seats, rules }, store));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -131,6 +150,19 @@ export function TitleScreen({ store, onStart }: Props) {
             </tr>
           ))}
         </table>
+        <fieldset class="house-rules">
+          <legend>House rules</legend>
+          {HOUSE_RULE_OPTIONS.map((o) => (
+            <label class="house-rule">
+              <input type="checkbox" checked={rules[o.key]}
+                onChange={(e) => setRules({ ...rules, [o.key]: (e.target as HTMLInputElement).checked })} />
+              <span>
+                {o.label}
+                <span class="muted hint">{o.hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         <label>Seed{' '}
           <input type="number" value={seed} onInput={(e) => setSeed(Number((e.target as HTMLInputElement).value) | 0)} />
         </label>

@@ -101,6 +101,13 @@ describe('GameSession', () => {
     expect(save.commands.length).toBe(before);
   });
 
+  it('passes house rules through to the game', () => {
+    const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')], rules: { easierNeutralCities: true } }, null);
+    expect(s.view().rules.easierNeutralCities).toBe(true);
+    expect(s.view().rules.fairFirstTurn).toBe(false);
+    expect(s.view().rules.sentriedStayAsGarrison).toBe(false);
+  });
+
   it('validates seats', () => {
     expect(() => GameSession.create({ world, seed: 1, seats: [human('Ann')] }, null)).toThrow(/seat/);
     expect(() => GameSession.create({ world, seed: 1, seats: [idle('A'), idle('B')] }, null)).toThrow(/human/);
