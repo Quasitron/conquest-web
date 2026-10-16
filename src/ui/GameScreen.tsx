@@ -40,6 +40,8 @@ type TargetMode = null | 'moveTo' | 'patrol';
 // Rough size of the context menu, used to keep it on screen.
 const MENU_W = 220;
 const MENU_H = 400;
+// How long a newly given Move To / Patrol route stays on screen before the cycle moves on.
+const ROUTE_PAUSE_MS = 1000;
 
 interface LogLine { turn: number; text: string }
 
@@ -156,7 +158,18 @@ export function GameScreen({ session, onQuit }: Props) {
     setCam(r.cam, v);
     if (at) keepVisible(at, v);
   };
+  // A pending "move on after showing the route" timer; the callback reads the latest render through a ref.
+  const advanceTimer = useRef<number | undefined>(undefined);
+  const advanceNow = useRef<() => void>(() => {});
+  const cancelAdvance = () => {
+    window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = undefined;
+  };
+  useEffect(() => cancelAdvance, []);
+
   const setSelection = (s: Selection) => {
+    // Any change of selection (by the player or the cycle) replaces a pending move-on.
+    cancelAdvance();
     // The info dialog belongs to one unit: any change of selection drops it.
     if (!(s && selection && s.kind === selection.kind && s.id === selection.id)) setInfoId(null);
     setSelectionRaw(s);
@@ -277,6 +290,7 @@ export function GameScreen({ session, onQuit }: Props) {
   // New turn for the viewing player: reset held/skipped and pick the first ready unit.
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
   useEffect(() => {
+    cancelAdvance();
     setSelection(null);
     setTarget(null);
     setMenu(null);
@@ -402,13 +416,29 @@ export function GameScreen({ session, onQuit }: Props) {
   };
   const setOrders = (u: Unit, orders: Orders | null) => order(u, { type: 'setOrders', unitId: u.id, orders });
 
-  /** Go-to or patrol given by a click: the unit stays selected with its route showing, and the preview holds. */
+  /**
+   * Go-to or patrol given by a click: the unit (having made any moves it could) stays selected with its route
+   * showing for ROUTE_PAUSE_MS, then the cycle moves on to the next ready unit, as in the original game.
+   */
   const giveRoute = (u: Unit, orders: Orders, at: Pos) => {
     if (!act({ type: 'setOrders', unitId: u.id, orders })) return;
     setFrozen(at);
     setNoPath(null);
     const still = session.view().myUnits.find((x) => x.id === u.id);
     if (still) keepVisible(still);
+    cancelAdvance();
+    advanceTimer.current = window.setTimeout(() => {
+      advanceTimer.current = undefined;
+      advanceNow.current();
+    }, ROUTE_PAUSE_MS);
+  };
+  // Runs when the route pause ends; reads this render's state. Stays put while a dialog or target mode is open,
+  // or when nothing else is ready (the top bar then shows the end-of-turn prompt).
+  advanceNow.current = () => {
+    if (!playing || target || picker || cityOpen !== null || reports.length > 0 || infoId !== null) return;
+    if (selection?.kind !== 'unit') return;
+    const next = nextReadyAfter(readyNow(), selection.id);
+    if (next && next.id !== selection.id) selectUnit(next);
   };
 
   const moveSelected = (dir: number) => {
