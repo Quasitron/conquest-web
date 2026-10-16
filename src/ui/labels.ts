@@ -39,6 +39,11 @@ export function cargoSummary(cargo: readonly Pick<Unit, 'type'>[]): string {
     .join(', ');
 }
 
+/** A carrier's load as "Carrying: 5/6 Units" (capacity shrinks with damage). */
+export function cargoLoad(used: number, capacity: number): string {
+  return `Carrying: ${used}/${capacity} Units`;
+}
+
 export function withArticle(name: string): string {
   return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
 }

@@ -1,11 +1,11 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
 import { describeOrders } from './actions';
 import type { ActionId } from './keys';
 import { UNIT_GLYPH } from './colors';
-import { cargoSummary, cityIsCoastal } from './labels';
+import { cargoLoad, cargoSummary, cityIsCoastal } from './labels';
 import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 
@@ -35,10 +35,11 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
       <p>Moves {u.movesLeft}/{st.move}</p>
       <HealthBar u={u} />
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
+      {st.carries !== null && cargo.length === 0 && <p>{cargoLoad(0, cargoCapacity(u))}</p>}
       {cargo.length > 0 && (
         <div>
-          <button class="linklike" aria-expanded={open} onClick={(e) => { blur(e); setOpen(!open); }}>
-            Carrying: {cargoSummary(cargo)}
+          <button class="linklike" aria-expanded={open} title={cargoSummary(cargo)} onClick={(e) => { blur(e); setOpen(!open); }}>
+            {cargoLoad(cargo.length, cargoCapacity(u))}
           </button>
           {open && (
             <ul class="cargo-list">

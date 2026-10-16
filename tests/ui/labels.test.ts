@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildTime } from '../../src/engine';
 import {
-  badgeMode, cargoSummary, cityLabelVisible, cityStackTop, healthText, inProductionCount, pathLabel, pluralUnit,
+  badgeMode, cargoLoad, cargoSummary, cityLabelVisible, cityStackTop, healthText, inProductionCount, pathLabel, pluralUnit,
   statusLine, turnsToComplete, withArticle,
 } from '../../src/ui/labels';
 import { addUnit, makeGame } from '../helpers';
@@ -62,6 +62,8 @@ describe('unit and city label helpers', () => {
   it('summarizes cargo in unit type order', () => {
     expect(cargoSummary([{ type: 'fighter' }, { type: 'army' }, { type: 'army' }])).toBe('2 Armies, 1 Fighter');
     expect(cargoSummary([{ type: 'army' }, { type: 'army' }, { type: 'army' }])).toBe('3 Armies');
+    expect(cargoLoad(5, 6)).toBe('Carrying: 5/6 Units');
+    expect(cargoLoad(0, 4)).toBe('Carrying: 0/4 Units');
   });
 
   it('adds an article', () => {

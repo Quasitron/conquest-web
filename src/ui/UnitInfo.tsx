@@ -1,8 +1,8 @@
 import { useState } from 'preact/hooks';
-import { UNIT_STATS, isCrippled, unitDisplayName, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, cargoCapacity, isCrippled, unitDisplayName, type PlayerView, type Unit } from '../engine';
 import { describeOrders } from './actions';
 import { UNIT_GLYPH } from './colors';
-import { cargoSummary, healthText } from './labels';
+import { cargoLoad, cargoSummary, healthText } from './labels';
 import { blur } from './blur';
 
 export function HealthBar({ u }: { u: Unit }) {
@@ -67,7 +67,9 @@ export function UnitInfo({ view, unit, onRename, onOrders, onClose }: Props) {
         {st.name}: move {st.move}, attack {st.attack}, defense {st.defense}, hits {st.hits}
         {st.range !== null ? `, range ${st.range}` : ''}
       </p>
-      {cargo.length > 0 && <p>Carrying: {cargoSummary(cargo)}</p>}
+      {UNIT_STATS[unit.type].carries !== null && (
+        <p>{cargoLoad(cargo.length, cargoCapacity(unit))}{cargo.length > 0 && ` (${cargoSummary(cargo)})`}</p>
+      )}
       <div class="picker-actions">
         <button onClick={(e) => {
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
