@@ -29,6 +29,16 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
   },
 ];
 
+const REGION_OPTIONS: { value: WorldOptions['nameRegion']; label: string }[] = [
+  { value: 'world', label: 'World' },
+  { value: 'europe', label: 'Europe' },
+  { value: 'northAmerica', label: 'North America' },
+  { value: 'latinAmerica', label: 'Latin America' },
+  { value: 'asia', label: 'Asia' },
+  { value: 'africaMiddleEast', label: 'Africa & Middle East' },
+  { value: 'oceania', label: 'Oceania' },
+];
+
 const randomSeed = () => Math.floor(Math.random() * 1_000_000_000);
 const defaultSeats = (n: number, prev: SeatConfig[]): SeatConfig[] =>
   Array.from({ length: n }, (_, i) =>
@@ -42,6 +52,7 @@ export function TitleScreen({ store, onStart }: Props) {
   const [rules, setRules] = useState<HouseRules>({ ...CLASSIC_RULES });
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<'menu' | 'new' | 'load'>('menu');
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -92,12 +103,21 @@ export function TitleScreen({ store, onStart }: Props) {
 
   return (
     <main class="title">
-      <h1 class="hero">
-        <img src="/title.webp" alt="Theater of Conquest: Global Command" width={1376} height={768} />
-      </h1>
-      {autosave && (
-        <button class="primary" onClick={() => load('autosave')}>Continue (turn {autosave.turn})</button>
-      )}
+      <h1 class="sr-only">Theater of Conquest: Global Command</h1>
+      <img class="title-art" src="/title.webp" alt="" width={1376} height={768} />
+      <div class="title-menu">
+        {panel === 'menu' && (
+          <section>
+            <div class="row">
+              {autosave && (
+                <button class="primary" onClick={() => load('autosave')}>Continue (turn {autosave.turn})</button>
+              )}
+              <button onClick={() => setPanel('new')} class={autosave ? '' : 'primary'}>New Game</button>
+              <button onClick={() => setPanel('load')}>Load…</button>
+            </div>
+          </section>
+        )}
+        {panel === 'new' && (
       <section>
         <h2>New game</h2>
         <label>Map size{' '}
@@ -163,22 +183,35 @@ export function TitleScreen({ store, onStart }: Props) {
             </label>
           ))}
         </fieldset>
+        <label>City names{' '}
+          <select value={world.nameRegion} onChange={(e) => setWorld({ ...world, nameRegion: (e.target as HTMLSelectElement).value as WorldOptions['nameRegion'] })}>
+            {REGION_OPTIONS.map((r) => <option value={r.value}>{r.label}</option>)}
+          </select>
+        </label>
         <label>Seed{' '}
           <input type="number" value={seed} onInput={(e) => setSeed(Number((e.target as HTMLInputElement).value) | 0)} />
         </label>
-        <button class="primary" onClick={start}>Start</button>
+        <div class="row">
+          <button class="primary" onClick={start}>Start</button>
+          <button onClick={() => setPanel('menu')}>Back</button>
+        </div>
       </section>
-      <section>
-        <h2>Saved games</h2>
-        {named.length === 0 && <p>No saved games yet.</p>}
-        <ul>
-          {named.map((s) => (
-            <li><button onClick={() => load(s.name)}>{s.name}</button> turn {s.turn} · {new Date(s.savedAt).toLocaleString()}</li>
-          ))}
-        </ul>
-        <button onClick={importFile}>Import save file…</button>
-      </section>
-      {error && <p class="error" role="alert">{error}</p>}
+        )}
+        {panel === 'load' && (
+          <section>
+            <h2>Saved games</h2>
+            {named.length === 0 && <p>No saved games yet.</p>}
+            <ul>
+              {named.map((s) => (
+                <li><button onClick={() => load(s.name)}>{s.name}</button> turn {s.turn} · {new Date(s.savedAt).toLocaleString()}</li>
+              ))}
+            </ul>
+            <button onClick={importFile}>Import save file…</button>
+            <button onClick={() => setPanel('menu')}>Back</button>
+          </section>
+        )}
+        {error && <p class="error" role="alert">{error}</p>}
+      </div>
     </main>
   );
 }
