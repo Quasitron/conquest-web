@@ -1,6 +1,7 @@
 import {
   apply, createGame, eventsFor, getPlayerView,
-  type Command, type GameEvent, type GameState, type PlayerId, type PlayerView,
+  RULES_VERSION,
+  type Command, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView,
 } from '../engine';
 import { generateWorld, type WorldOptions } from '../mapgen';
 import type { SaveFile, SaveStore, SeatConfig } from '../storage';
@@ -19,6 +20,7 @@ export interface NewSessionOptions {
   world: WorldOptions;
   seed: number;
   seats: SeatConfig[];
+  rules?: Partial<HouseRules>;
 }
 
 const IDLE_GUARD = 10_000;
@@ -29,6 +31,8 @@ export class GameSession {
   lastEvents: GameEvent[] = [];
   /** Set when the last turn-change autosave failed; cleared by the next successful autosave. */
   saveError: string | null = null;
+  /** A one-off message about how this game was loaded (e.g. from an older version). */
+  notice: string | null = null;
   private logs: LogEntry[][];
   private listeners = new Set<() => void>();
   private lastHuman: PlayerId;
@@ -55,14 +59,16 @@ export class GameSession {
       players: o.seats.map((s) => ({ name: s.name, kind: s.kind === 'human' ? 'human' : 'ai' })),
       startCityIndices: world.startCityIndices,
       seed: world.seedUsed,
+      rules: o.rules,
     });
     const session = new GameSession(o.seats, initial, initial, [], store, 'autosave');
     session.afterTurnChange();
     return session;
   }
 
-  static fromSave(save: SaveFile, store: SaveStore | null): GameSession {
+  static fromSave(save: SaveFile, store: SaveStore | null, note?: string): GameSession {
     const session = new GameSession(save.seats, save.initial, save.snapshot, [...save.commands], store, save.name);
+    session.notice = note ?? null;
     if (save.snapshot.over) {
       session.phase = 'over';
     } else {
@@ -123,7 +129,8 @@ export class GameSession {
 
   toSave(name: string = this.name): SaveFile {
     return {
-      format: 1,
+      format: 2,
+      rulesVersion: RULES_VERSION,
       savedAt: new Date().toISOString(),
       name,
       seats: this.seats,

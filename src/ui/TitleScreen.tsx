@@ -51,7 +51,7 @@ export function TitleScreen({ store, onStart }: Props) {
       // Re-validate the stored record as if it were an imported file.
       const r = parseSave(serializeSave(save));
       if (!r.ok) return setError(r.error);
-      onStart(GameSession.fromSave(r.save, store));
+      onStart(GameSession.fromSave(r.save, store, r.note));
     } catch (e) {
       setError(`Could not load "${name}": ${(e as Error).message}`);
     }
@@ -62,7 +62,7 @@ export function TitleScreen({ store, onStart }: Props) {
       if (text === null) return;
       const r = parseSave(text);
       if (!r.ok) return setError(r.error);
-      onStart(GameSession.fromSave(r.save, store));
+      onStart(GameSession.fromSave(r.save, store, r.note));
     } catch (e) {
       setError(`Could not import save: ${(e as Error).message}`);
     }

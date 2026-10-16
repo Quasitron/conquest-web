@@ -1,5 +1,6 @@
 import type { Command, GameState } from '../engine';
-import { getPlayerView, hashState, replay } from '../engine';
+import { getPlayerView, hashState, replay, RULES_VERSION } from '../engine';
+import { migrateSave } from './migrations';
 
 export interface SeatConfig {
   name: string;
@@ -8,7 +9,8 @@ export interface SeatConfig {
 }
 
 export interface SaveFile {
-  format: 1;
+  format: 2;
+  rulesVersion: number;
   savedAt: string;
   name: string;
   seats: SeatConfig[];
@@ -16,6 +18,8 @@ export interface SaveFile {
   commands: Command[];
   snapshot: GameState;
 }
+
+export const OLDER_VERSION_NOTE = 'Loaded from an older version; its history could not be verified.';
 
 export function serializeSave(save: SaveFile): string {
   return JSON.stringify(save);
@@ -34,6 +38,8 @@ const TERRAINS = ['water', 'land', 'city'];
 function gameStateProblem(v: unknown): string | null {
   if (!isObj(v)) return 'game state is not an object';
   if (v.version !== 2) return 'unsupported game version';
+  const r = v.rules;
+  if (!isObj(r) || typeof r.easierNeutralCities !== 'boolean' || typeof r.fairFirstTurn !== 'boolean' || typeof r.sentriedStayAsGarrison !== 'boolean') return 'invalid house rules';
   const { width, height, wrap, terrain, cities, units, players, fog, currentPlayer, turn, nextUnitId, rngState, winner, over } = v;
   if (!isInt(width) || !isInt(height) || width < 1 || height < 1) return 'invalid map size';
   if (typeof wrap !== 'boolean') return 'invalid wrap flag';
@@ -52,21 +58,36 @@ function gameStateProblem(v: unknown): string | null {
   return null;
 }
 
-export function parseSave(text: string): { ok: true; save: SaveFile } | { ok: false; error: string } {
-  let raw: unknown;
+export function parseSave(text: string): { ok: true; save: SaveFile; note?: string } | { ok: false; error: string } {
+  let parsed: unknown;
   try {
-    raw = JSON.parse(text);
+    parsed = JSON.parse(text);
   } catch {
     return { ok: false, error: 'not a valid save file (unreadable JSON)' };
   }
-  if (!isObj(raw) || raw.format !== 1) return { ok: false, error: 'unsupported save format' };
-  const { name, savedAt, seats, initial, commands, snapshot } = raw;
+  if (!isObj(parsed)) return { ok: false, error: 'unsupported save format' };
+  const migrated = migrateSave(parsed);
+  if (!migrated.ok) return migrated;
+  const raw = migrated.save;
+  const { name, savedAt, seats, initial, commands, snapshot, rulesVersion } = raw;
   if (typeof name !== 'string' || typeof savedAt !== 'string') return { ok: false, error: 'save file is missing its name or date' };
+  if (!isInt(rulesVersion)) return { ok: false, error: 'save file is missing its rules version' };
   if (!Array.isArray(seats) || !seats.every(isSeat)) return { ok: false, error: 'save file has invalid player seats' };
   if (!isObj(initial) || !isObj(snapshot) || !Array.isArray(commands)) return { ok: false, error: 'save file is incomplete' };
   const problem = gameStateProblem(initial) ?? gameStateProblem(snapshot);
   if (problem !== null) return { ok: false, error: `save file has an invalid game state (${problem})` };
   if (seats.length !== (initial.players as unknown[]).length) return { ok: false, error: 'save file seats do not match its players' };
+  if (rulesVersion !== RULES_VERSION) {
+    // Older rules: the history cannot be replayed faithfully, so the snapshot becomes the new starting point.
+    try {
+      const snap = snapshot as unknown as GameState;
+      for (let p = 0; p < snap.players.length; p++) getPlayerView(snap, p);
+      const save: SaveFile = { ...(raw as unknown as SaveFile), initial: snap, commands: [], rulesVersion: RULES_VERSION };
+      return { ok: true, save, note: OLDER_VERSION_NOTE };
+    } catch {
+      return { ok: false, error: 'save file is damaged (its game state could not be read)' };
+    }
+  }
   try {
     const replayed = replay(initial as unknown as GameState, commands as Command[]);
     if (hashState(replayed) !== hashState(snapshot as unknown as GameState)) {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
+import { RULES_VERSION } from '../../src/engine';
 import type { Command, GameState } from '../../src/engine/types';
 import { MemorySaveStore, parseSave, serializeSave, type SaveFile } from '../../src/storage';
 import { addUnit, makeGame } from '../helpers';
@@ -20,7 +21,7 @@ function sampleSave(name = 'slot'): SaveFile {
     if (!r.ok) throw new Error(r.error);
     s = r.state;
   }
-  return { format: 1, savedAt: '2026-10-14T12:00:00.000Z', name, seats, initial, commands, snapshot: s };
+  return { format: 2, rulesVersion: RULES_VERSION, savedAt: '2026-10-14T12:00:00.000Z', name, seats, initial, commands, snapshot: s };
 }
 
 describe('parseSave', () => {
@@ -32,7 +33,7 @@ describe('parseSave', () => {
   it('rejects bad JSON, wrong format, tampering and seat mismatch', () => {
     const good = sampleSave();
     expect(parseSave('{nope').ok).toBe(false);
-    expect(parseSave(JSON.stringify({ ...good, format: 2 })).ok).toBe(false);
+    expect(parseSave(JSON.stringify({ ...good, format: 3 })).ok).toBe(false);
     expect(parseSave(JSON.stringify({ ...good, commands: 'x' })).ok).toBe(false);
     const tampered = structuredClone(good);
     tampered.snapshot.turn = 99;
