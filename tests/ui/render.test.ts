@@ -16,6 +16,7 @@ function fakeCtx() {
     fillAt: [] as { text: string; x: number }[],
     arcs: [] as { r: number; alpha: number }[],
     strokes: [] as string[],
+    dashes: [] as number[][],
   };
   const target = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: '', textBaseline: '', globalAlpha: 1,
@@ -23,6 +24,7 @@ function fakeCtx() {
     fillText: (t: string, x: number) => { calls.fillText.push(t); calls.fillAt.push({ text: t, x }); },
     arc: (_x: number, _y: number, r: number) => { calls.arcs.push({ r, alpha: target.globalAlpha }); },
     stroke: () => { calls.strokes.push(target.strokeStyle); },
+    setLineDash: (d: number[]) => { calls.dashes.push(d); },
   };
   const ctx = new Proxy(target, {
     get: (t, k) => (k in t ? (t as Record<string | symbol, unknown>)[k] : () => {}),
@@ -34,7 +36,7 @@ function fakeCtx() {
 const M = ['*##...*', '###...#', '##*....'];
 
 /** Default new DrawOptions: nothing active, nothing previewed. */
-const NO_OVERLAY = { activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null, pathTarget: null };
+const NO_OVERLAY = { activeId: null, blinkOn: true, path: null, pathOk: true, pathLabel: null, pathTarget: null, route: null, routeLabel: null, attack: null };
 
 /** Draws player 0's view of the game and returns what was recorded. */
 function paint(s: GameState, tile: number, extra: Partial<DrawOptions> = {}, cam = { x: 0, y: 0, tile }) {
@@ -114,13 +116,39 @@ describe('render', () => {
     expect(on.arcs.map((a) => a.alpha)).toEqual([1, 1]);
   });
 
-  it('an active unit aboard a carrier blinks the carrier instead', () => {
+  it('an active unit aboard a carrier shows its own glyph on the carrier square, blinking, with the cargo badge', () => {
     const s = makeGame(M);
     const transport = addUnit(s, 'transport', 0, 3, 1);
     const army = addUnit(s, 'army', 0, 3, 1, { carriedBy: transport.id });
     const off = paint(s, 20, { activeId: army.id, blinkOn: false });
+    expect(off.fillText).toContain(UNIT_GLYPH.army);
+    expect(off.fillText).not.toContain(UNIT_GLYPH.transport);
+    expect(off.fillText).toContain('1');
     expect(off.arcs.map((a) => a.alpha)).toEqual([0.25, 0.25]);
     expect(paint(s, 20, { activeId: army.id, blinkOn: true }).arcs.map((a) => a.alpha)).toEqual([1, 1]);
+  });
+
+  it('draws city names only at tile sizes where labels are visible', () => {
+    const s = makeGame(M);
+    s.cities[0].name = 'Paris';
+    expect(paint(s, 28).fillText).toContain('Paris');
+    expect(paint(s, 16).fillText).not.toContain('Paris');
+  });
+
+  it('a committed route is a solid line with its label', () => {
+    const s = makeGame(M);
+    const calls = paint(s, 20, { route: [{ x: 0, y: 0 }, { x: 1, y: 0 }], routeLabel: 'Go to' });
+    expect(calls.strokes).toContain('#7fd4ff');
+    expect(calls.dashes).toContainEqual([]);
+    expect(calls.dashes).not.toContainEqual([3, 3]);
+    expect(calls.fillText).toContain('Go to');
+  });
+
+  it('the attack option draws its label', () => {
+    const s = makeGame(M);
+    const calls = paint(s, 20, { attack: { at: { x: 1, y: 1 }, label: 'Attack (50%)' } });
+    expect(calls.fillText).toContain('Attack (50%)');
+    expect(calls.strokes).toContain('#ff3b3b');
   });
   it('the path label is drawn when a path is given, and the preview is red when not ok', () => {
     const s = makeGame(M);

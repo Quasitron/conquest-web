@@ -393,6 +393,7 @@ export function GameScreen({ session, onQuit }: Props) {
         onSquare={onSquare} onHover={onHover} onContext={onContext}
         activeId={playing ? selectedUnit?.id ?? null : null} blinkOn={blinkOn}
         path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
+        route={null} routeLabel={null} attack={null}
       />
       <div class="side">
         <canvas class="minimap" width={200} height={140} onClick={(e) => {

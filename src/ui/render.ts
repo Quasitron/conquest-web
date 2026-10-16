@@ -2,7 +2,7 @@ import { UNIT_STATS, isCrippled, type PlayerView, type Pos, type Unit } from '..
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
-import { badgeMode, cityStackTop } from './labels';
+import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 
 export interface DrawOptions {
   view: PlayerView;
@@ -25,6 +25,12 @@ export interface DrawOptions {
   pathLabel: string | null;
   /** The hovered square; marked in red with the label when `path` is null (unreachable). */
   pathTarget: Pos | null;
+  /** The committed Go-to/Patrol path, drawn as a solid line. */
+  route: Pos[] | null;
+  /** Drawn near the last route square. */
+  routeLabel: string | null;
+  /** Attack hover: a red crosshair with the label, drawn instead of the hover preview. */
+  attack: { at: Pos; label: string } | null;
 }
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -52,6 +58,24 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       }
     }
   };
+
+  /** Unwraps a path so it never jumps across the seam, on the copy of its start nearest the camera. */
+  const unwrapPath = (raw: Pos[]): Pos[] => {
+    const shift = view.wrap ? Math.round((cam.x - raw[0].x) / view.width) * view.width : 0;
+    const pts: Pos[] = [{ x: raw[0].x + shift, y: raw[0].y }];
+    for (const p of raw.slice(1)) {
+      const prev = pts[pts.length - 1].x;
+      let d = p.x - prev;
+      if (view.wrap) {
+        d = mod(p.x - prev, view.width);
+        if (d > view.width / 2) d -= view.width;
+      }
+      pts.push({ x: prev + d, y: p.y });
+    }
+    return pts;
+  };
+  const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
+  const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
 
   // Terrain, cities and fog.
   each((mx, my, sx, sy) => {
@@ -123,10 +147,14 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.globalAlpha = 1;
   };
 
-  // Cargo is not drawn itself, so an active unit aboard blinks its carrier instead.
-  const activeCarrier = view.myUnits.find((u) => u.id === o.activeId)?.carriedBy ?? null;
+  // Cargo is not drawn itself, so an active unit aboard shows its own glyph on its carrier's square.
+  const activeUnit = view.myUnits.find((u) => u.id === o.activeId);
+  const activeCargo = activeUnit && activeUnit.carriedBy !== null ? activeUnit : null;
+  const activeCarrier = activeCargo ? activeCargo.carriedBy : null;
+  /** The unit whose glyph and alpha represent u on the map. */
+  const face = (u: Unit): Unit => (activeCargo && u.id === activeCarrier ? activeCargo : u);
   const blinking = (u: Unit) => u.id === o.activeId || u.id === activeCarrier;
-  const ownAlpha = (u: Unit) => (blinking(u) && !o.blinkOn ? 0.25 : u.movesLeft > 0 ? 1 : 0.6);
+  const ownAlpha = (u: Unit) => (blinking(u) && !o.blinkOn ? 0.25 : face(u).movesLeft > 0 ? 1 : 0.6);
 
   // Enemy markers (fade with age).
   for (const e of view.enemies) {
@@ -153,7 +181,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         badge(sx, sy, stack.length, alpha);
         return;
       }
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[shown.type], alpha, 0.6, 0.3, 0.3);
+      glyph(sx, sy, colors[view.me], UNIT_GLYPH[face(shown).type], alpha, 0.6, 0.3, 0.3);
       if (stack.length >= 2) badge(sx, sy, stack.length, alpha);
     });
   }
@@ -163,7 +191,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
       if (mx !== u.x || my !== u.y) return;
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[u.type], ownAlpha(u));
+      glyph(sx, sy, colors[view.me], UNIT_GLYPH[face(u).type], ownAlpha(u));
       const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
       if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
       if (isCrippled(u)) {
@@ -178,24 +206,49 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     });
   }
 
-  // Path preview: a dotted polyline through square centres, unwrapped so it never jumps across the seam.
-  if (o.path && o.path.length > 0) {
-    const raw = o.selected ? [o.selected, ...o.path] : o.path;
-    // Shift the whole path onto the copy of its start nearest the camera (the copy each() draws it in).
-    const shift = view.wrap ? Math.round((cam.x - raw[0].x) / view.width) * view.width : 0;
-    const pts: Pos[] = [{ x: raw[0].x + shift, y: raw[0].y }];
-    for (const p of raw.slice(1)) {
-      const prev = pts[pts.length - 1].x;
-      let d = p.x - prev;
-      if (view.wrap) {
-        d = mod(p.x - prev, view.width);
-        if (d > view.width / 2) d -= view.width;
-      }
-      pts.push({ x: prev + d, y: p.y });
+  // City names, on top of the units.
+  if (cityLabelVisible(t)) {
+    ctx.font = `bold ${Math.round(t * 0.32)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.lineWidth = 3;
+    for (const city of view.knownCities) {
+      each((mx, my, sx, sy) => {
+        if (mx !== city.x || my !== city.y) return;
+        ctx.strokeStyle = '#000';
+        ctx.strokeText(city.name, sx + t / 2, sy + t);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(city.name, sx + t / 2, sy + t);
+      });
     }
+  }
+
+  // Committed route: a solid line, unwrapped like the preview.
+  if (o.route && o.route.length > 0) {
+    const pts = unwrapPath(o.route);
+    ctx.strokeStyle = '#7fd4ff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
+    ctx.stroke();
+    if (o.routeLabel) {
+      const last = pts[pts.length - 1];
+      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+      ctx.fillStyle = '#7fd4ff';
+      ctx.fillText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+    }
+  }
+
+  // Path preview: a dotted polyline through square centres, unwrapped so it never jumps across the seam.
+  if (!o.attack && o.path && o.path.length > 0) {
+    const pts = unwrapPath(o.selected ? [o.selected, ...o.path] : o.path);
     const color = o.pathOk ? '#fff' : '#ff3b3b';
-    const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
-    const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.setLineDash([3, 3]);
@@ -217,7 +270,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   }
 
   // Unreachable hover: no path to draw, so mark the hovered square and say why.
-  if (!o.path && o.pathLabel && o.pathTarget) {
+  if (!o.attack && !o.path && o.pathLabel && o.pathTarget) {
     const at = o.pathTarget;
     const label = o.pathLabel;
     each((mx, my, sx, sy) => {
@@ -233,6 +286,35 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       ctx.lineTo(sx + m, sy + t - m);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(label, sx + t * 0.9, sy + t * 0.3);
+      ctx.fillStyle = '#ff3b3b';
+      ctx.fillText(label, sx + t * 0.9, sy + t * 0.3);
+    });
+  }
+
+  // Attack hover: a red crosshair (circle plus cross) with the label.
+  if (o.attack) {
+    const at = o.attack.at;
+    const label = o.attack.label;
+    each((mx, my, sx, sy) => {
+      if (mx !== at.x || my !== at.y) return;
+      const hx = sx + t / 2;
+      const hy = sy + t / 2;
+      ctx.strokeStyle = '#ff3b3b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(hx, hy, t * 0.35, 0, Math.PI * 2);
+      ctx.moveTo(hx - t * 0.48, hy);
+      ctx.lineTo(hx + t * 0.48, hy);
+      ctx.moveTo(hx, hy - t * 0.48);
+      ctx.lineTo(hx, hy + t * 0.48);
+      ctx.stroke();
       ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom';
