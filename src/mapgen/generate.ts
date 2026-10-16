@@ -7,11 +7,13 @@ import { heightField } from './noise';
 import { labelLand, thresholdLand } from './land';
 import { placeCities } from './cities';
 import { chooseStarts } from './starts';
+import { assignCityNames } from './names';
 
 export interface GeneratedWorld {
   map: ParsedMap;
   startCityIndices: number[];
   seedUsed: number;
+  cityNames: string[];
 }
 
 const ATTEMPTS = 50;
@@ -28,7 +30,12 @@ function attempt(o: WorldOptions, seed: number, minOthers: number): GeneratedWor
   if (!starts) return null;
   const terrain: Terrain[] = land.map((l) => (l ? 'land' : 'water'));
   for (const c of cities) terrain[c.y * width + c.x] = 'city';
-  return { map: { width, height, terrain, cities }, startCityIndices: starts, seedUsed: seed };
+  return {
+    map: { width, height, terrain, cities },
+    startCityIndices: starts,
+    seedUsed: seed,
+    cityNames: assignCityNames(cities.length, seed, o.nameRegion),
+  };
 }
 
 export function generateWorld(o: WorldOptions, seed: number): GeneratedWorld {

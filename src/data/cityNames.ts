@@ -46,11 +46,11 @@ const LATIN_AMERICA = [
   'Lima', 'Cusco', 'Arequipa', 'Trujillo', 'Iquitos', 'Chiclayo', 'Piura', 'Puno', 'Callao', 'Huancayo',
   'Bogota', 'Medellin', 'Cali', 'Cartagena', 'Barranquilla', 'Bucaramanga', 'Cucuta', 'Pereira', 'Santa Marta', 'Manizales',
   'Caracas', 'Maracaibo', 'Puerto La Cruz', 'Barquisimeto', 'Cumana', 'Ciudad Bolivar', 'Maturin', 'Quito', 'Guayaquil', 'Cuenca',
-  'La Paz Bolivia', 'Santa Cruz', 'Cochabamba', 'Sucre', 'Potosi', 'Oruro', 'Asuncion', 'Encarnacion', 'Montevideo', 'Punta del Este',
-  'Colonia', 'Paysandu', 'Georgetown', 'Paramaribo', 'Cayenne', 'San Jose Costa Rica', 'San Salvador', 'Tegucigalpa', 'Managua', 'Panama City',
-  'Colon', 'David', 'Leon Nicaragua', 'Granada Nicaragua', 'San Pedro Sula', 'Puerto Limon', 'Quetzaltenango', 'Antigua', 'Port of Spain', 'Castries',
+  'Tarija', 'Santa Cruz', 'Cochabamba', 'Sucre', 'Potosi', 'Oruro', 'Asuncion', 'Encarnacion', 'Montevideo', 'Punta del Este',
+  'Colonia', 'Paysandu', 'Georgetown', 'Paramaribo', 'Cayenne', 'Cartago', 'San Salvador', 'Tegucigalpa', 'Managua', 'Panama City',
+  'Colon', 'David', 'Masaya', 'Chinandega', 'San Pedro Sula', 'Puerto Limon', 'Quetzaltenango', 'Antigua', 'Port of Spain', 'Castries',
   'Puerto Montt', 'Chiloe', 'Rancagua', 'Talca', 'Copiapo', 'Calama', 'Neuquen', 'Bahia Blanca', 'Comodoro Rivadavia', 'Rio Gallegos',
-  'Resistencia', 'Corrientes', 'Posadas', 'Parana', 'Santa Fe Argentina', 'Jujuy', 'Ibague', 'Popayan', 'Pasto', 'Tunja',
+  'Resistencia', 'Corrientes', 'Posadas', 'Parana', 'Chimbote', 'Jujuy', 'Ibague', 'Popayan', 'Pasto', 'Tunja',
   'Villavicencio', 'Riohacha', 'Monteria', 'Sincelejo', 'Ambato', 'Loja', 'Manta', 'Machala', 'Esmeraldas', 'Tacna',
 ];
 

@@ -7,6 +7,8 @@ import { chooseStarts } from '../../src/mapgen/starts';
 import { generateWorld } from '../../src/mapgen/generate';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen/options';
 import { Rng } from '../../src/engine/rng';
+import { assignCityNames } from '../../src/mapgen/names';
+import { CITY_NAMES } from '../../src/data/cityNames';
 import { createGame } from '../../src/engine/setup';
 
 describe('grid helpers', () => {
@@ -168,5 +170,35 @@ describe('generateWorld', () => {
     const t0 = performance.now();
     generateWorld({ ...opts, ...SIZE_PRESETS.huge, players: 6 }, 3);
     expect(performance.now() - t0).toBeLessThan(1000);
+  });
+});
+
+describe('assignCityNames', () => {
+  const euro = CITY_NAMES.filter((n) => n.region === 'europe').map((n) => n.name);
+  it('gives distinct names from the chosen region, repeatably', () => {
+    const a = assignCityNames(10, 42, 'europe');
+    expect(new Set(a).size).toBe(10);
+    for (const n of a) expect(euro).toContain(n);
+    expect(assignCityNames(10, 42, 'europe')).toEqual(a);
+  });
+  it('spills into other regions once the region is used up', () => {
+    const a = assignCityNames(euro.length + 5, 3, 'europe');
+    for (const n of a.slice(0, euro.length)) expect(euro).toContain(n);
+    for (const n of a.slice(euro.length)) expect(euro).not.toContain(n);
+  });
+  it('adds roman suffixes past the list and stays unique', () => {
+    const L = CITY_NAMES.length;
+    const a = assignCityNames(L * 2 + 3, 1, 'world');
+    expect(new Set(a.map((n) => n.toLowerCase())).size).toBe(a.length);
+    expect(a[L].endsWith(' II')).toBe(true);
+    expect(a[2 * L].endsWith(' III')).toBe(true);
+    expect(a[0].endsWith(' II')).toBe(false);
+  });
+  it('generateWorld returns one name per city and does not change the map', () => {
+    const w = generateWorld({ ...DEFAULT_WORLD, nameRegion: 'asia' }, 7);
+    expect(w.cityNames.length).toBe(w.map.cities.length);
+    const w2 = generateWorld(DEFAULT_WORLD, 7);
+    expect(w2.map).toEqual(w.map);
+    expect(w2.startCityIndices).toEqual(w.startCityIndices);
   });
 });

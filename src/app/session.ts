@@ -59,6 +59,7 @@ export class GameSession {
       players: o.seats.map((s) => ({ name: s.name, kind: s.kind === 'human' ? 'human' : 'ai' })),
       startCityIndices: world.startCityIndices,
       seed: world.seedUsed,
+      cityNames: world.cityNames,
       rules: o.rules,
     });
     const session = new GameSession(o.seats, initial, initial, [], store, 'autosave');

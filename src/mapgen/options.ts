@@ -1,3 +1,5 @@
+import type { NameRegion } from '../data/cityNames';
+
 export type SizePreset = 'small' | 'medium' | 'large' | 'huge';
 export type Landmass = 'islands' | 'mixed' | 'continents';
 export type CityDensity = 'low' | 'normal' | 'high';
@@ -19,6 +21,8 @@ export interface WorldOptions {
   cityDensity: CityDensity;
   /** 2..6 */
   players: number;
+  /** Which region's city names come first. */
+  nameRegion: NameRegion | 'world';
 }
 
 export const DEFAULT_WORLD: WorldOptions = {
@@ -28,6 +32,7 @@ export const DEFAULT_WORLD: WorldOptions = {
   landmass: 'mixed',
   cityDensity: 'normal',
   players: 2,
+  nameRegion: 'world',
 };
 
 /** Land squares per city. */
