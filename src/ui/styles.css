@@ -38,7 +38,8 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 }
 .save-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .save-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
-.save-list li > button:first-child { text-align: left; }
+.save-list li > button:first-child { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.title-buttons button { overflow-wrap: anywhere; }
 .save-list li > .muted { grid-column: 1 / span 2; grid-row: 2; font-size: 0.8rem; }
 .save-list li > .delete { grid-column: 2; grid-row: 1; }
 .title h2 { margin: 0; font-size: 1.1rem; }

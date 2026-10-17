@@ -108,6 +108,9 @@ export function TitleScreen({ store, onStart }: Props) {
     }
   };
 
+  /** Keeps a long game name from stretching the button. */
+  const shorten = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+
   const autosave = saves.find((s) => s.name === 'autosave');
   const named = saves.filter((s) => s.name !== 'autosave');
 
@@ -120,7 +123,7 @@ export function TitleScreen({ store, onStart }: Props) {
           <section>
             <div class="title-buttons">
               {autosave && (
-                <button class="primary" onClick={() => load('autosave')}>Continue Last Save{autosave.gameName ? ` "${autosave.gameName}"` : ''} (turn {autosave.turn})</button>
+                <button class="primary" onClick={() => load('autosave')}>Continue Last Save{autosave.gameName ? ` "${shorten(autosave.gameName, 20)}"` : ''} (turn {autosave.turn})</button>
               )}
               <button onClick={() => setPanel('new')} class={autosave ? '' : 'primary'}>New Game</button>
               <button onClick={() => setPanel('load')}>Load…</button>
