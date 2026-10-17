@@ -196,7 +196,9 @@ export function executeOrders(
         if (home === null) return endOrders(u, 'lowFuel', events);
         u.orders = { kind: 'goto', target: { x: home.city.x, y: home.city.y } };
         u.blockedTurns = 0;
-        events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'returning' });
+        // A patrol tied to a carrier says why it gave up: the carrier is gone or full, or it sailed out of range.
+        const why = o.carrier ? (base === null ? 'baseLost' : 'baseOutOfRange') : 'returning';
+        events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: why });
         continue;
       }
     }

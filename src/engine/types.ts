@@ -58,7 +58,8 @@ export type Orders =
   | { kind: 'explore' };
 
 export type OrdersEndReason =
-  | 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning' | 'destinationLost';
+  | 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning' | 'destinationLost'
+  | 'baseLost' | 'baseOutOfRange';
 
 /** A city's standing route: matching units it builds head for another city of the owner. */
 export interface CityRoute {

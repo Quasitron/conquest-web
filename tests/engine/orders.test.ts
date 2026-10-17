@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
 import { chooseHome, executeOrders, patrolBase, wakeSentries } from '../../src/engine/orders';
@@ -301,6 +301,19 @@ describe('aircraft', () => {
       // The fighter keeps its patrol over the next turns instead of giving up for lack of a base.
       for (let i = 0; i < 3; i++) s = fullRound(s).state;
       expect(unitById(s, f.id)!.orders?.kind).toBe('patrol');
+    });
+
+    it('a carrier patrol that gives up says the base carrier is out of range', () => {
+      const s = game(AIR);
+      const carrier = addUnit(s, 'carrier', 0, 5, 0);
+      const f = addUnit(s, 'fighter', 0, 5, 0, {
+        carriedBy: carrier.id,
+        fuel: 6,
+        orders: { kind: 'patrol', a: { x: 5, y: 0 }, b: { x: 10, y: 0 }, toB: true, carrier: { id: carrier.id, end: 'a' } },
+      });
+      const events: GameEvent[] = [];
+      executeOrders(s, fixedRng(0.5), f, events);
+      expect(ended(events)[0].reason).toBe('baseOutOfRange');
     });
 
     it('a patrol based on a city is not tied to anything', () => {
