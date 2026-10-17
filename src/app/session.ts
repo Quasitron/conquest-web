@@ -72,7 +72,9 @@ export class GameSession {
   }
 
   static fromSave(save: SaveFile, store: SaveStore | null, note?: string): GameSession {
-    const session = new GameSession(save.seats, save.initial, save.snapshot, [...save.commands], store, save.name);
+    // An autosave carries the name of the game it came from, so Save keeps writing to that name.
+    const name = save.name === 'autosave' && save.gameName ? save.gameName : save.name;
+    const session = new GameSession(save.seats, save.initial, save.snapshot, [...save.commands], store, name);
     session.notice = note ?? null;
     if (save.snapshot.over) {
       session.phase = 'over';
@@ -143,6 +145,7 @@ export class GameSession {
       rulesVersion: RULES_VERSION,
       savedAt: new Date().toISOString(),
       name,
+      ...(name === 'autosave' && this.name !== 'autosave' ? { gameName: this.name } : {}),
       seats: this.seats,
       initial: this.initial,
       commands: [...this.commands],

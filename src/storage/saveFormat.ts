@@ -13,6 +13,8 @@ export interface SaveFile {
   rulesVersion: number;
   savedAt: string;
   name: string;
+  /** On an autosave: the name the game was saved or loaded under, so Continue can show and keep it. */
+  gameName?: string;
   seats: SeatConfig[];
   initial: GameState;
   commands: Command[];

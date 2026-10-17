@@ -87,6 +87,15 @@ export function TitleScreen({ store, onStart }: Props) {
       setError(`Could not load "${name}": ${(e as Error).message}`);
     }
   };
+  const remove = async (name: string) => {
+    if (!window.confirm(`Delete the saved game "${name}"? This cannot be undone.`)) return;
+    try {
+      await store.delete(name);
+      setSaves(await store.list());
+    } catch (e) {
+      setError(`Could not delete "${name}": ${(e as Error).message}`);
+    }
+  };
   const importFile = async () => {
     try {
       const text = await pickFileText();
@@ -111,7 +120,7 @@ export function TitleScreen({ store, onStart }: Props) {
           <section>
             <div class="title-buttons">
               {autosave && (
-                <button class="primary" onClick={() => load('autosave')}>Continue (turn {autosave.turn})</button>
+                <button class="primary" onClick={() => load('autosave')}>Continue{autosave.gameName ? ` "${autosave.gameName}"` : ''} (turn {autosave.turn})</button>
               )}
               <button onClick={() => setPanel('new')} class={autosave ? '' : 'primary'}>New Game</button>
               <button onClick={() => setPanel('load')}>Load…</button>
@@ -204,7 +213,10 @@ export function TitleScreen({ store, onStart }: Props) {
             {named.length === 0 && <p>No saved games yet.</p>}
             <ul>
               {named.map((s) => (
-                <li><button onClick={() => load(s.name)}>{s.name}</button> turn {s.turn} · {new Date(s.savedAt).toLocaleString()}</li>
+                <li>
+                  <button onClick={() => load(s.name)}>{s.name}</button> turn {s.turn} · {new Date(s.savedAt).toLocaleString()}{' '}
+                  <button onClick={() => remove(s.name)} aria-label={`Delete ${s.name}`}>Delete</button>
+                </li>
               ))}
             </ul>
             <button onClick={importFile}>Import save file…</button>

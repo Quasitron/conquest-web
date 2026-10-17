@@ -96,6 +96,22 @@ describe('GameSession', () => {
     expect(loaded.phase).toBe('playing');
   });
 
+  it('an autosave remembers the game name, and continuing it restores that name', async () => {
+    const store = new MemorySaveStore();
+    const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')] }, store);
+    await s.autosave();
+    expect((await store.get('autosave'))!.gameName).toBeUndefined();
+    await s.saveAs('Rob Test');
+    await s.autosave();
+    const auto = (await store.get('autosave'))!;
+    expect(auto.gameName).toBe('Rob Test');
+    expect(GameSession.fromSave(auto, store).name).toBe('Rob Test');
+    // A named save keeps its own name and carries no gameName.
+    const named = (await store.get('Rob Test'))!;
+    expect(named.gameName).toBeUndefined();
+    expect(GameSession.fromSave(named, store).name).toBe('Rob Test');
+  });
+
   it('toSave does not alias the live command log', () => {
     const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')] }, null);
     s.act({ type: 'endTurn' });

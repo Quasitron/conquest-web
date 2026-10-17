@@ -4,6 +4,7 @@ export interface SaveSummary {
   name: string;
   savedAt: string;
   turn: number;
+  gameName?: string;
 }
 
 export interface SaveStore {
@@ -14,7 +15,7 @@ export interface SaveStore {
 }
 
 export function summarize(save: SaveFile): SaveSummary {
-  return { name: save.name, savedAt: save.savedAt, turn: save.snapshot.turn };
+  return { name: save.name, savedAt: save.savedAt, turn: save.snapshot.turn, gameName: save.gameName };
 }
 
 export function newestFirst(a: SaveSummary, b: SaveSummary): number {
