@@ -56,12 +56,33 @@ export function PlacedDialog({ anchor, label, onKey, children }: Props) {
     };
   }, []);
 
-  const pos = placeDialog(anchor, size, { w: window.innerWidth, h: window.innerHeight });
+  // Dragging the title moves the dialog (and its leader line) so the map underneath can be read.
+  const [drag, setDrag] = useState({ dx: 0, dy: 0 });
+  const grab = useRef<{ px: number; py: number; dx: number; dy: number } | null>(null);
+  const onDown = (e: PointerEvent) => {
+    if (!(e.target as HTMLElement).closest('h2')) return;
+    grab.current = { px: e.clientX, py: e.clientY, dx: drag.dx, dy: drag.dy };
+    ref.current?.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+  const onMove = (e: PointerEvent) => {
+    const g = grab.current;
+    if (g) setDrag({ dx: g.dx + e.clientX - g.px, dy: g.dy + e.clientY - g.py });
+  };
+  const onUp = () => { grab.current = null; };
+
+  const base = placeDialog(anchor, size, { w: window.innerWidth, h: window.innerHeight });
+  // Keep the whole dialog on screen however far it is dragged.
+  const pos = {
+    x: Math.min(Math.max(base.x + drag.dx, 0), Math.max(0, window.innerWidth - size.w)),
+    y: Math.min(Math.max(base.y + drag.dy, 0), Math.max(0, window.innerHeight - size.h)),
+  };
   const edge = anchor ? nearestEdgePoint({ left: pos.x, top: pos.y, w: size.w, h: size.h }, anchor) : null;
   return (
     <>
       {edge && <LeaderLine from={edge} to={anchor} />}
-      <div ref={ref} class="card dialog" role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}>
+      <div ref={ref} class="card dialog" role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         {children}
       </div>
     </>
