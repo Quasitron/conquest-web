@@ -155,6 +155,24 @@ export function findPath(m: PathMap, u: Mobile, to: Pos): Pos[] | null {
   const closed = new Set<number>();
   const heap: HeapItem[] = [];
   let seq = 0;
+  // Among equally short paths, prefer the one that hugs the straight line from start to goal: each square costs a
+  // tiny extra amount for how far it lies from that line. The extra is far too small (even summed over a whole
+  // path) to ever make a longer path win, so path lengths are unchanged.
+  const wrapW = m.wrap ? m.width : 0;
+  let lineDx = to.x - u.x;
+  if (wrapW) lineDx = ((((lineDx + wrapW / 2) % wrapW) + wrapW) % wrapW) - wrapW / 2;
+  const lineDy = to.y - u.y;
+  const lineLen = Math.max(1, Math.abs(lineDx), Math.abs(lineDy));
+  const offLine = (i: number): number => {
+    const x = i % m.width;
+    const dy = Math.floor(i / m.width) - u.y;
+    let best = Infinity;
+    for (const dx of wrapW ? [x - u.x, x - u.x - wrapW, x - u.x + wrapW] : [x - u.x]) {
+      best = Math.min(best, Math.abs(dx * lineDy - dy * lineDx) / lineLen);
+    }
+    return best;
+  };
+  const TIE = 1e-6;
   push(heap, { f: chebyshev(geo(m), u, to), seq: seq++, i: start });
   while (heap.length > 0) {
     const { i } = pop(heap);
@@ -168,7 +186,7 @@ export function findPath(m: PathMap, u: Mobile, to: Pos): Pos[] | null {
     const gi = g.get(i)!;
     for (const n of neighborsOf(m, i)) {
       if (closed.has(n) || !enterable(m, u.type, n, n === goal)) continue;
-      const gn = gi + 1;
+      const gn = gi + 1 + TIE * offLine(n);
       if (gn >= (g.get(n) ?? Infinity)) continue;
       g.set(n, gn);
       from.set(n, i);

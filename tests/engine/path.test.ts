@@ -32,6 +32,30 @@ describe('findPath', () => {
     expect(findPath(pm(s), { type: 'army', x: 0, y: 0 }, { x: 0, y: 0 })).toEqual([]);
   });
 
+  it('among equally short paths, hugs the straight line to the goal', () => {
+    const row = '#'.repeat(30);
+    const s = game(['*' + row.slice(1), row, row, row, row, row, row]);
+    exploreAll(s);
+    for (const goal of [{ x: 12, y: 4 }, { x: 6, y: 6 }, { x: 20, y: 3 }, { x: 5, y: 5 }]) {
+      const p = findPath(pm(s), { type: 'army', x: 0, y: 0 }, goal)!;
+      expect(p).toHaveLength(Math.max(goal.x, goal.y));
+      const len = Math.max(goal.x, goal.y);
+      for (const sq of p) {
+        const off = Math.abs(sq.x * goal.y - sq.y * goal.x) / len;
+        expect(off).toBeLessThanOrEqual(0.75);
+      }
+    }
+  });
+
+  it('the straight-line preference also works across the wrap seam', () => {
+    const row = '#'.repeat(30);
+    const s = game(['*' + row.slice(1), row, row, row, row, row, row], true);
+    exploreAll(s);
+    const p = findPath(pm(s), { type: 'army', x: 2, y: 0 }, { x: 24, y: 5 })!;
+    expect(p).toHaveLength(8);
+    expect(p[p.length - 1]).toEqual({ x: 24, y: 5 });
+  });
+
   it('uses the wrap seam when shorter', () => {
     const s = game(['*#####*', '#######'], true);
     exploreAll(s);
