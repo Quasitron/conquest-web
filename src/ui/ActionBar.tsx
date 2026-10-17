@@ -16,7 +16,7 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   unload: { label: 'Unload', key: 'U' },
   clearOrders: { label: 'Clear Orders', key: 'Ins' },
   disband: { label: 'Disband', key: 'Del' },
-  center: { label: 'Center', key: 'F' },
+  center: { label: 'Center', key: 'C' },
   endTurn: { label: 'End Turn', key: 'Enter' },
   info: { label: 'Info', key: 'I' },
   fit: { label: 'Fit', key: 'Z' },

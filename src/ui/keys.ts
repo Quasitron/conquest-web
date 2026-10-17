@@ -21,7 +21,7 @@ const ARROWS: Record<string, { dir: Dir; dx: number; dy: number }> = {
 };
 const ACTIONS: Record<string, ActionId> = {
   n: 'next', ' ': 'skip', tab: 'hold', s: 'sentry', t: 'moveTo', p: 'patrol', h: 'goHome', x: 'explore',
-  l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', f: 'center', enter: 'endTurn', i: 'info', z: 'fit',
+  l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', c: 'center', enter: 'endTurn', i: 'info', z: 'fit',
 };
 
 export function keyToAction(key: string, code: string): KeyAction | null {
