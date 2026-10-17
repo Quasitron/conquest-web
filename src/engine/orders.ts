@@ -152,6 +152,20 @@ export function executeOrders(
     else pickUpRoute(s, u);
   };
 
+  /**
+   * The way is blocked. An aircraft that is not low on fuel waits one turn for it to clear, keeping its orders;
+   * anything else asks for new orders at once.
+   */
+  const blocked = (): void => {
+    const range = UNIT_STATS[u.type].range;
+    const roomToWait = u.fuel !== null && range !== null && u.fuel > Math.ceil(range / 4);
+    if (!roomToWait) return endOrders(u, 'blocked', events);
+    if (turnStart) {
+      u.blockedTurns += 1;
+      if (u.blockedTurns >= 1) return endOrders(u, 'blocked', events);
+    }
+  };
+
   for (;;) {
     const o = u.orders;
     if (!s.units.includes(u) || o === null || o.kind === 'sentry' || u.movesLeft <= 0) return;
@@ -187,7 +201,7 @@ export function executeOrders(
       }
     }
     const path = findPath(map, u, target);
-    if (path === null || path.length === 0) return endOrders(u, 'blocked', events);
+    if (path === null || path.length === 0) return blocked();
     if (u.fuel !== null && o.kind === 'goto' && !aircraftCanReach(map, path.length, u.fuel, target)) {
       return endOrders(u, 'lowFuel', events);
     }
@@ -209,11 +223,11 @@ export function executeOrders(
       (city && !areFriendly(s, city.owner, u.owner)) ||
       topLevelUnitsAt(s, next.x, next.y).some((x) => !areFriendly(s, x.owner, u.owner))
     ) {
-      return endOrders(u, 'blocked', events);
+      return blocked();
     }
     const dir = dirBetween(s, u, next);
     const cityBefore = o.kind === 'explore' ? adjacentForeignCities(s, u) : null;
-    if (dir === null || moveUnit(s, rng, u, dir, events) !== null) return endOrders(u, 'blocked', events);
+    if (dir === null || moveUnit(s, rng, u, dir, events) !== null) return blocked();
     if (!s.units.includes(u)) return;
     if (o.kind === 'patrol' && u.carriedBy !== null) u.orders = o; // boarding made it a sentry; a patrol keeps flying
     u.blockedTurns = 0;

@@ -214,6 +214,48 @@ describe('aircraft', () => {
     expect(setOrders(s, f.id, { kind: 'goto', target: { x: 10, y: 0 } }).ok).toBe(true);
   });
 
+  describe('blocked aircraft', () => {
+    /** A one-row sky with a visible enemy at x=3, so the way from x=0 to x=8 is shut. */
+    function shut(fuel = 20) {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0, { fuel, orders: { kind: 'goto', target: { x: 8, y: 0 } } });
+      const e = addUnit(s, 'army', 1, 3, 0);
+      s.fog[0].lastSeen[e.id] = { unitId: e.id, type: 'army', owner: 1, x: 3, y: 0, turnSeen: s.turn };
+      return { s, f, e };
+    }
+    const rng = fixedRng(0.5);
+
+    it('waits a turn, keeping its orders, then asks for new ones if still blocked', () => {
+      const { s, f } = shut();
+      const first: GameEvent[] = [];
+      executeOrders(s, rng, f, first);
+      expect(f.orders).toMatchObject({ kind: 'goto' });
+      expect(ended(first)).toHaveLength(0);
+      const second: GameEvent[] = [];
+      executeOrders(s, rng, f, second, true);
+      expect(f.orders).toBeNull();
+      expect(ended(second)).toEqual([{ type: 'ordersEnded', unitId: f.id, owner: 0, reason: 'blocked' }]);
+    });
+
+    it('carries on when the way clears during the wait', () => {
+      const { s, f, e } = shut();
+      executeOrders(s, rng, f, []);
+      delete s.fog[0].lastSeen[e.id];
+      s.units.splice(s.units.indexOf(e), 1);
+      executeOrders(s, rng, f, [], true);
+      expect(f.orders).toMatchObject({ kind: 'goto' });
+      expect(f.x).toBeGreaterThan(0);
+    });
+
+    it('does not wait when low on fuel', () => {
+      const { s, f } = shut(4);
+      const events: GameEvent[] = [];
+      executeOrders(s, rng, f, events);
+      expect(f.orders).toBeNull();
+      expect(ended(events)).toHaveLength(1);
+    });
+  });
+
   it('aircraft: explore rejected', () => {
     const s = game(AIR);
     const f = addUnit(s, 'fighter', 0, 0, 0);
