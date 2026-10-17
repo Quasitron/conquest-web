@@ -17,6 +17,7 @@ const ORDERS_END: Record<Exclude<OrdersEndReason, 'arrived' | 'returning'>, stri
   enemySighted: 'enemy sighted',
   lowFuel: 'low on fuel',
   nothingToExplore: 'nothing left to explore',
+  destinationLost: 'destination city lost',
 };
 
 /** Own units and city names for events that only carry ids. Own units only: names are private to their owner. */

@@ -145,12 +145,18 @@ export function executeOrders(
       events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'arrived' });
       return;
     }
+    const sentry = u.orders?.kind === 'goto' && u.orders.arrival === 'sentry';
     endOrders(u, 'arrived', events);
+    if (sentry) u.orders = { kind: 'sentry' };
   };
 
   for (;;) {
     const o = u.orders;
     if (!s.units.includes(u) || o === null || o.kind === 'sentry' || u.movesLeft <= 0) return;
+    if (o.kind === 'goto' && o.routeCity !== undefined) {
+      const dest = s.cities.find((c) => c.id === o.routeCity);
+      if (!dest || dest.owner !== u.owner) return endOrders(u, 'destinationLost', events);
+    }
     const map = pathMapFromState(s, u.owner);
     const target = o.kind === 'goto' ? o.target : o.kind === 'patrol' ? (o.toB ? o.b : o.a) : findFrontier(map, u);
     if (target === null) return endOrders(u, 'nothingToExplore', events);
@@ -191,7 +197,7 @@ export function executeOrders(
       else {
         if (turnStart) {
           u.blockedTurns += 1;
-          if (u.blockedTurns >= 3) return endOrders(u, 'blocked', events);
+          if (u.blockedTurns >= (o.kind === 'goto' && o.wait ? o.wait : 3)) return endOrders(u, 'blocked', events);
         }
         return; // wait: orders kept
       }

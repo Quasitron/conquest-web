@@ -9,6 +9,7 @@ import { updateFog } from './fog';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders } from './orders';
 import { cleanName } from './names';
+import { validateRoute } from './routes';
 
 function validDir(dir: unknown): boolean {
   return typeof dir === 'number' && Number.isInteger(dir) && dir >= 0 && dir <= 7;
@@ -68,6 +69,20 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
         const home = chooseHome(s, u);
         if (!home) error = 'no reachable city';
         else error = giveOrders(s, rng, u, { kind: 'goto', target: { x: home.city.x, y: home.city.y } }, events);
+      }
+      break;
+    }
+    case 'setRoute': {
+      const c = s.cities.find((x) => x.id === cmd.cityId);
+      if (!c) error = 'no such city';
+      else if (c.owner !== actor) error = 'not your city';
+      else if (cmd.route === null) delete c.route;
+      else {
+        error = validateRoute(s, actor, c, cmd.route);
+        if (!error) {
+          const { destId, types, blockWait, arrival } = cmd.route;
+          c.route = { destId, types: [...types], blockWait, arrival, by: actor };
+        }
       }
       break;
     }

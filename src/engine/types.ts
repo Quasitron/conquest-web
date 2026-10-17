@@ -37,11 +37,34 @@ export interface Unit {
 
 export type Orders =
   | { kind: 'sentry' }
-  | { kind: 'goto'; target: Pos }
+  | {
+      kind: 'goto';
+      target: Pos;
+      /** Set on units following a city route: the destination city. Orders end if it is lost. */
+      routeCity?: number;
+      /** Turns a blocked path is waited out before the orders end (default 3). */
+      wait?: number;
+      /** What the unit does on arrival (default: wait for orders). */
+      arrival?: 'sentry';
+    }
   | { kind: 'patrol'; a: Pos; b: Pos; toB: boolean }
   | { kind: 'explore' };
 
-export type OrdersEndReason = 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning';
+export type OrdersEndReason =
+  | 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning' | 'destinationLost';
+
+/** A city's standing route: matching units it builds head for another city of the owner. */
+export interface CityRoute {
+  destId: number;
+  /** Unit types that follow the route. */
+  types: UnitType[];
+  /** Turns a unit waits when its way is blocked before it asks for orders. */
+  blockWait: number;
+  /** 'wait' leaves the unit awaiting orders at the destination; 'sentry' puts it on sentry. */
+  arrival: 'wait' | 'sentry';
+  /** The player who set the route; it lapses if the city changes hands. */
+  by: PlayerId;
+}
 
 export interface City {
   id: number;
@@ -52,6 +75,7 @@ export interface City {
   production: UnitType | null;
   progress: number;
   lastBuilt: UnitType | null;
+  route?: CityRoute;
 }
 
 export interface Player {
@@ -105,6 +129,7 @@ export type Command =
   | { type: 'unload'; player: PlayerId; transportId: number; unitIds: number[] | null }
   | { type: 'setOrders'; player: PlayerId; unitId: number; orders: Orders | null }
   | { type: 'goHome'; player: PlayerId; unitId: number }
+  | { type: 'setRoute'; player: PlayerId; cityId: number; route: Omit<CityRoute, 'by'> | null }
   | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
   | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }
   | { type: 'endTurn'; player: PlayerId }

@@ -24,5 +24,6 @@ export { eventsFor } from './events';
 export type { EnemyMarker } from './view';
 export { validateMapSize, MIN_MAP, MAX_MAP } from './limits';
 export { validateOrders, chooseHome } from './orders';
+export { routeUnitTypes } from './routes';
 export type { PathMap } from './path';
 export { pathMapFromState, pathMapFromView, findPath, findFrontier, arrivalTurn, dirBetween, aircraftCanReach } from './path';
