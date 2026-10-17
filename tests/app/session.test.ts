@@ -102,7 +102,7 @@ describe('GameSession', () => {
     await s.autosave();
     expect((await store.get('autosave'))!.gameName).toBeUndefined();
     await s.saveAs('Rob Test');
-    await s.autosave();
+    // Saving under a name refreshes the autosave at once, with no turn change needed.
     const auto = (await store.get('autosave'))!;
     expect(auto.gameName).toBe('Rob Test');
     expect(GameSession.fromSave(auto, store).name).toBe('Rob Test');

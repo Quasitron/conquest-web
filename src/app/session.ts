@@ -156,6 +156,8 @@ export class GameSession {
   async saveAs(name: string): Promise<void> {
     if (this.store) await this.store.put(this.toSave(name));
     this.name = name;
+    // Refresh the autosave now, so Continue shows (and restores) the new name without waiting for a turn change.
+    await this.autosave().catch(() => {});
   }
 
   async autosave(): Promise<void> {
