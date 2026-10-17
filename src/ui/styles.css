@@ -36,6 +36,11 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
   .title-menu { width: auto; min-height: 0; max-height: none; overflow: visible; align-self: stretch; background: transparent; backdrop-filter: none; }
   .title-version { position: static; text-align: center; padding: 0 0 12px; }
 }
+.save-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.save-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.save-list li > button:first-child { text-align: left; }
+.save-list li > .muted { grid-column: 1; grid-row: 2; font-size: 0.8rem; }
+.save-list li > .delete { grid-column: 2; grid-row: 1 / span 2; }
 .title h2 { margin: 0; font-size: 1.1rem; }
 .seats td { padding: 2px 6px 2px 0; }
 .house-rules { border: 1px solid #333c48; border-radius: 6px; margin: 0; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }

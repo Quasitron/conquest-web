@@ -211,11 +211,12 @@ export function TitleScreen({ store, onStart }: Props) {
           <section>
             <h2>Saved games</h2>
             {named.length === 0 && <p>No saved games yet.</p>}
-            <ul>
+            <ul class="save-list">
               {named.map((s) => (
                 <li>
-                  <button onClick={() => load(s.name)}>{s.name}</button> turn {s.turn} · {new Date(s.savedAt).toLocaleString()}{' '}
-                  <button onClick={() => remove(s.name)} aria-label={`Delete ${s.name}`}>Delete</button>
+                  <button onClick={() => load(s.name)}>{s.name}</button>
+                  <span class="muted">turn {s.turn} · {new Date(s.savedAt).toLocaleString()}</span>
+                  <button class="delete" onClick={() => remove(s.name)} aria-label={`Delete ${s.name}`}>Delete</button>
                 </li>
               ))}
             </ul>
