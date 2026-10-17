@@ -11,12 +11,18 @@ interface Props {
   /** Production map: units hidden, each city shows what it builds. */
   prodMap: boolean;
   onToggleProdMap: () => void;
+  /** Routes view: arrows from each route city to its destination. */
+  routesMap: boolean;
+  onToggleRoutes: () => void;
 }
 
-export function StatusLine({ unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap }: Props) {
+export function StatusLine({ unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes }: Props) {
   return (
     <div class="statusline">
       <span class="statusline-text">{prodMap ? 'Production map: each city shows what it is building and the turns left.' : unit ? statusLine(unit) : ''}</span>
+      <button class={routesMap ? 'primary' : ''} title="Show the routes set on your cities" onClick={(e) => { blur(e); onToggleRoutes(); }}>
+        {routesMap ? 'Hide Routes' : 'Routes'}
+      </button>
       <button class={prodMap ? 'primary' : ''} title="Show what every city is building and when it finishes" onClick={(e) => { blur(e); onToggleProdMap(); }}>
         {prodMap ? 'Exit Prod. Map' : 'Prod. Map'}
       </button>

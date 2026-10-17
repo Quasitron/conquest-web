@@ -94,6 +94,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [skipped, setSkipped] = useState<number[]>([]);
   const [target, setTarget] = useState<TargetMode>(null);
   const [prodMap, setProdMap] = useState(false);
+  const [routesMap, setRoutesMap] = useState(false);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
@@ -253,6 +254,17 @@ export function GameScreen({ session, onQuit }: Props) {
     const r = planPath(view, selectedUnit, to);
     return r.path && r.path.length > 0 ? r : null;
   }, [selectedUnit, view, playing]);
+
+  // The Routes view: one arrow per city route, from the city to its destination city.
+  const cityRoutes = useMemo(() => {
+    if (!routesMap) return undefined;
+    return view.myCities.flatMap((c) => {
+      const dest = c.route ? view.myCities.find((d) => d.id === c.route!.destId) : undefined;
+      return c.route && dest
+        ? [{ from: { x: c.x, y: c.y }, to: { x: dest.x, y: dest.y }, types: c.route.types }]
+        : [];
+    });
+  }, [routesMap, view]);
 
   // While choosing a patrol destination, the player's other patrols, so covered stretches are visible.
   const patrols = useMemo(() => {
@@ -739,6 +751,7 @@ export function GameScreen({ session, onQuit }: Props) {
       <div class="mapcol">
         <StatusLine
           unit={playing ? selectedUnit : null} onFit={requestFit} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
+          routesMap={routesMap} onToggleRoutes={() => setRoutesMap(!routesMap)}
           canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
         />
         <MapCanvas
@@ -746,7 +759,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
         />
       </div>

@@ -1,4 +1,4 @@
-import { UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit } from '../engine';
+import { UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
@@ -31,6 +31,8 @@ export interface DrawOptions {
   routeLabel: string | null;
   /** The two endpoints of each of the player's patrols, shown while choosing a patrol destination. */
   patrols?: [Pos, Pos][];
+  /** The player's city routes, drawn as arrows from each route city to its destination. */
+  cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   /** Production map: hides the units and shows what each own city is building. */
   productionMap?: boolean;
   /** Attack hover: a red crosshair with the label, drawn instead of the hover preview. */
@@ -255,6 +257,39 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       ctx.beginPath();
       ctx.arc(cx(p), cy(p), t * 0.22, 0, Math.PI * 2);
       ctx.stroke();
+    }
+  }
+
+  // City routes: an arrow from the route city to its destination, with the unit types it serves.
+  for (const r of o.cityRoutes ?? []) {
+    const [from, to] = unwrapPath([r.from, r.to]);
+    ctx.strokeStyle = '#5ee6b8';
+    ctx.fillStyle = '#5ee6b8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(cx(from), cy(from));
+    ctx.lineTo(cx(to), cy(to));
+    ctx.stroke();
+    const ang = Math.atan2(cy(to) - cy(from), cx(to) - cx(from));
+    const head = Math.max(6, t * 0.45);
+    ctx.beginPath();
+    ctx.moveTo(cx(to), cy(to));
+    ctx.lineTo(cx(to) - head * Math.cos(ang - 0.4), cy(to) - head * Math.sin(ang - 0.4));
+    ctx.lineTo(cx(to) - head * Math.cos(ang + 0.4), cy(to) - head * Math.sin(ang + 0.4));
+    ctx.closePath();
+    ctx.fill();
+    if (cityLabelVisible(t)) {
+      const label = r.types.map((ty) => UNIT_GLYPH[ty]).join(' ');
+      const mx = (cx(from) + cx(to)) / 2;
+      const my = (cy(from) + cy(to)) / 2;
+      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(label, mx, my - 2);
+      ctx.fillText(label, mx, my - 2);
     }
   }
 

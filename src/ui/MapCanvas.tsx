@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
-import type { PlayerView, Pos } from '../engine';
+import type { PlayerView, Pos, UnitType } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
 import type { StepTarget } from './targets';
@@ -30,6 +30,7 @@ interface Props {
   routeLabel: string | null;
   patrols?: [Pos, Pos][];
   productionMap?: boolean;
+  cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
   onZoom?: () => void;
@@ -68,7 +69,7 @@ export function MapCanvas(p: Props) {
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
-      route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, attack: p.attack,
+      route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, cityRoutes: p.cityRoutes, attack: p.attack,
     });
   });
 
