@@ -43,7 +43,7 @@ const REGION_OPTIONS: { value: WorldOptions['nameRegion']; label: string }[] = [
 const randomSeed = () => Math.floor(Math.random() * 1_000_000_000);
 const defaultSeats = (n: number, prev: SeatConfig[]): SeatConfig[] =>
   Array.from({ length: n }, (_, i) =>
-    prev[i] ?? { name: i === 0 ? 'Player 1' : `Player ${i + 1}`, kind: i === 0 ? 'human' : 'idle', color: PLAYER_COLORS[i] },
+    prev[i] ?? { name: i === 0 ? 'Player 1' : `Player ${i + 1}`, kind: i === 0 ? 'human' : 'ai', color: PLAYER_COLORS[i] },
   );
 
 export function TitleScreen({ store, onStart }: Props) {
@@ -177,6 +177,7 @@ export function TitleScreen({ store, onStart }: Props) {
               <td>
                 <select value={s.kind} onChange={(e) => updateSeat(i, { kind: (e.target as HTMLSelectElement).value as SeatConfig['kind'] })}>
                   <option value="human">Human</option>
+                  <option value="ai">Computer</option>
                   <option value="idle">Idle</option>
                 </select>
               </td>

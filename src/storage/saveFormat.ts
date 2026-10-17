@@ -4,7 +4,7 @@ import { migrateSave } from './migrations';
 
 export interface SeatConfig {
   name: string;
-  kind: 'human' | 'idle';
+  kind: 'human' | 'idle' | 'ai';
   color: string;
 }
 
@@ -30,7 +30,7 @@ export function serializeSave(save: SaveFile): string {
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 function isSeat(v: unknown): v is SeatConfig {
-  return isObj(v) && typeof v.name === 'string' && (v.kind === 'human' || v.kind === 'idle') && typeof v.color === 'string';
+  return isObj(v) && typeof v.name === 'string' && (v.kind === 'human' || v.kind === 'idle' || v.kind === 'ai') && typeof v.color === 'string';
 }
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);

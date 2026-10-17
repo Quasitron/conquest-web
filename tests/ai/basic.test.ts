@@ -1,0 +1,113 @@
+import { describe, it, expect } from 'vitest';
+import { getPlayerView } from '../../src/engine';
+import type { GameState } from '../../src/engine';
+import { GameSession } from '../../src/app/session';
+import { newMemo, nextAction, portCity, wantedProduction } from '../../src/ai/basic';
+import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
+import type { SeatConfig } from '../../src/storage';
+import { addUnit, makeGame } from '../helpers';
+
+/** Player 1 plays; the whole map is explored so it can plan freely. */
+function game(rows: string[], opts: Parameters<typeof makeGame>[1] = {}): GameState {
+  const s = makeGame(rows, { ...opts });
+  s.currentPlayer = 1;
+  for (const c of s.cities) c.production = c.owner === null ? null : 'army';
+  s.fog[1].explored.fill(1);
+  return s;
+}
+
+const view = (s: GameState) => getPlayerView(s, 1);
+const next = (s: GameState) => nextAction(view(s), newMemo());
+
+describe('AI production', () => {
+  it('a city with nothing in production is set to build armies', () => {
+    const s = game(['*###*']);
+    s.cities[1].production = null;
+    expect(next(s)).toEqual({ type: 'setProduction', cityId: s.cities[1].id, unitType: 'army' });
+  });
+
+  it('the port builds a transport only once an army is idle in a city, other cities keep to armies', () => {
+    const s = game(['..*##*..']);
+    const port0 = portCity(view(s))!;
+    expect(wantedProduction(view(s), port0, port0)).toBe('army');
+    addUnit(s, 'army', 1, port0.x, port0.y, { orders: { kind: 'sentry' } });
+    const v = view(s);
+    const port = portCity(v)!;
+    expect(wantedProduction(v, port, port)).toBe('transport');
+    expect(wantedProduction(v, { ...port, id: port.id + 99 }, port)).toBe('army');
+  });
+});
+
+describe('AI armies', () => {
+  it('attacks a neutral city next to it', () => {
+    const s = game(['**#']);
+    s.cities[0].owner = null;
+    s.cities[0].production = null;
+    s.cities[1].owner = 1;
+    const a = addUnit(s, 'army', 1, 2, 0);
+    // The army stands beside the city at x=1 (its own); a neutral city sits at x=0 two squares away: march on it.
+    const cmd = next(s);
+    expect(cmd).toMatchObject({ type: 'setOrders', unitId: a.id, orders: { kind: 'goto' } });
+  });
+
+  it('steps into a foreign city that is right beside it', () => {
+    const s = game(['*#*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = null;
+    s.fog[1].knownCityOwner[s.cities[1].id] = null;
+    const a = addUnit(s, 'army', 1, 1, 0);
+    expect(next(s)).toMatchObject({ type: 'move', unitId: a.id, dir: 2 });
+  });
+
+  it('explores when there is unknown ground to reach', () => {
+    const s = game(['*####*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0;
+    s.fog[1].explored = s.fog[1].explored.map((_, i) => (i <= 1 ? 1 : 0));
+    const a = addUnit(s, 'army', 1, 0, 0);
+    expect(next(s)).toMatchObject({ type: 'setOrders', unitId: a.id, orders: { kind: 'explore' } });
+  });
+
+  it('does nothing for a unit it has no plan for', () => {
+    const s = game(['*#*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0;
+    addUnit(s, 'fighter', 1, 0, 0);
+    expect(next(s)).toBeNull();
+  });
+});
+
+describe('AI transports', () => {
+  it('stays in port until enough armies are waiting, then sails exploring', () => {
+    const s = game(['*..*', '####']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0;
+    s.turn = 10;
+    const t = addUnit(s, 'transport', 1, 0, 0);
+    for (let i = 0; i < 2; i++) addUnit(s, 'army', 1, 0, 0, { orders: { kind: 'sentry' } });
+    expect(next(s)).toBeNull();
+    addUnit(s, 'army', 1, 0, 0, { orders: { kind: 'sentry' } });
+    expect(next(s)).toMatchObject({ type: 'setOrders', unitId: t.id, orders: { kind: 'explore' } });
+  });
+});
+
+describe('AI seats in a session', () => {
+  const seats: SeatConfig[] = [
+    { name: 'You', kind: 'human', color: '#d7263d' },
+    { name: 'Computer', kind: 'ai', color: '#1b98e0' },
+  ];
+  const world = { ...DEFAULT_WORLD, ...SIZE_PRESETS.small };
+
+  it('plays a whole game of turns against a player who only ends turns, without errors or stalls', () => {
+    const s = GameSession.create({ world, seed: 5, seats }, null);
+    const citiesOf = (pid: number) => s.state.cities.filter((c) => c.owner === pid).length;
+    const start = citiesOf(1);
+    for (let i = 0; i < 80 && s.phase === 'playing'; i++) {
+      expect(s.act({ type: 'endTurn' })).toBeNull();
+    }
+    expect(s.state.turn).toBeGreaterThan(40);
+    // It has built and moved units, and taken some cities beyond its capital.
+    expect(s.state.units.some((u) => u.owner === 1)).toBe(true);
+    expect(citiesOf(1)).toBeGreaterThan(start + 2);
+  }, 60_000);
+});

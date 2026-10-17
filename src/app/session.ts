@@ -3,6 +3,7 @@ import {
   RULES_VERSION, unitDisplayName,
   type Command, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView, type UnitType,
 } from '../engine';
+import { playAiTurn } from '../ai/play';
 import { generateWorld, type WorldOptions } from '../mapgen';
 import type { SaveFile, SaveStore, SeatConfig } from '../storage';
 
@@ -180,8 +181,10 @@ export class GameSession {
 
   private afterTurnChange(): void {
     let guard = 0;
-    while (!this.state.over && this.seats[this.state.currentPlayer].kind === 'idle') {
+    while (!this.state.over && this.seats[this.state.currentPlayer].kind !== 'human') {
       const pid = this.state.currentPlayer;
+      if (this.seats[pid].kind === 'ai') this.runAi(pid);
+      if (this.state.over) break;
       const r = this.applyCommand({ type: 'endTurn', player: pid });
       if (typeof r === 'string') this.applyCommand({ type: 'resign', player: pid });
       if (++guard > IDLE_GUARD) throw new Error('idle players did not finish');
@@ -199,6 +202,21 @@ export class GameSession {
       () => this.setSaveError(null),
       (e: unknown) => this.setSaveError(`autosave failed: ${e instanceof Error ? e.message : String(e)}`),
     );
+  }
+
+  /** Lets the computer player `pid` make all its moves for the turn (the caller then ends the turn). */
+  private runAi(pid: PlayerId): void {
+    try {
+      playAiTurn({
+        view: () => getPlayerView(this.state, pid),
+        act: (cmd) => {
+          const r = this.applyCommand({ ...cmd, player: pid } as Command);
+          return typeof r === 'string' ? r : null;
+        },
+      });
+    } catch {
+      // A bug in the AI must never freeze the game: it simply ends its turn with what it has done.
+    }
   }
 
   private recordRoster(s: GameState): void {
