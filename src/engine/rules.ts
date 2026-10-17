@@ -14,5 +14,5 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
 };
 
-/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. */
-export const RULES_VERSION = 5;
+/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. 6: a patrol tied to a carrier moves with it. */
+export const RULES_VERSION = 6;

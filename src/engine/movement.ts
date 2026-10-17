@@ -42,6 +42,11 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
       a.orders = { kind: 'sentry' };
     }
   }
+  // Aircraft patrols tied to this carrier move with it, as in the original.
+  for (const p of s.units) {
+    const o = p.orders;
+    if (o?.kind === 'patrol' && o.carrier?.id === u.id) o[o.carrier.end] = { x: u.x, y: u.y };
+  }
   events.push({ type: 'unitMoved', unitId: u.id, from, to: { x: to.x, y: to.y } });
 }
 

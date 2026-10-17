@@ -47,7 +47,14 @@ export type Orders =
       /** What the unit does on arrival (default: wait for orders). */
       arrival?: 'sentry';
     }
-  | { kind: 'patrol'; a: Pos; b: Pos; toB: boolean }
+  | {
+      kind: 'patrol';
+      a: Pos;
+      b: Pos;
+      toB: boolean;
+      /** Aircraft patrols: the carrier that one end of the patrol is tied to; that end moves with it. */
+      carrier?: { id: number; end: 'a' | 'b' };
+    }
   | { kind: 'explore' };
 
 export type OrdersEndReason =

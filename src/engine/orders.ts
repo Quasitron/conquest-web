@@ -248,6 +248,21 @@ export function runPlayerOrders(s: GameState, rng: RandomSource, pid: PlayerId, 
   updateFog(s, pid);
 }
 
+/**
+ * An aircraft patrol that starts or ends on an own carrier (not in a city) is tied to that carrier, so the patrol
+ * end sails with it, as in the original ("the path will move with the Carrier").
+ */
+function tieToCarrier(s: GameState, u: Unit, o: Extract<Orders, { kind: 'patrol' }>): void {
+  if (UNIT_STATS[u.type].domain !== 'air') return;
+  const hostAt = (p: Pos): Unit | undefined =>
+    cityAt(s, p.x, p.y) ? undefined
+      : topLevelUnitsAt(s, p.x, p.y).find((c) => c.owner === u.owner && UNIT_STATS[c.type].carries === u.type);
+  const hostA = hostAt(o.a);
+  const hostB = hostAt(o.b);
+  if (hostA) o.carrier = { id: hostA.id, end: 'a' };
+  else if (hostB) o.carrier = { id: hostB.id, end: 'b' };
+}
+
 /** Validates, stores and (with moves left) immediately runs new orders. Shared by setOrders and goHome. */
 export function giveOrders(
   s: GameState, rng: RandomSource, u: Unit, orders: Orders, events: GameEvent[],
@@ -255,6 +270,7 @@ export function giveOrders(
   const error = validateOrders(s, u, orders);
   if (error) return error;
   u.orders = structuredClone(orders);
+  if (u.orders.kind === 'patrol') tieToCarrier(s, u, u.orders);
   u.blockedTurns = 0;
   u.unloadNextTurn = false;
   if (u.movesLeft > 0) executeOrders(s, rng, u, events);

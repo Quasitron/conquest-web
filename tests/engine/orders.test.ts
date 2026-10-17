@@ -246,6 +246,28 @@ describe('aircraft', () => {
       expect(setOrders(s, f.id, patrol(10, 5)).ok).toBe(true);
     });
 
+    it('a patrol tied to a carrier moves with it and keeps going', () => {
+      let s = game(AIR);
+      const carrier = addUnit(s, 'carrier', 0, 5, 0);
+      const f = addUnit(s, 'fighter', 0, 5, 0, { carriedBy: carrier.id });
+      s = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: patrol(10, 5) }).state;
+      expect(unitById(s, f.id)!.orders).toMatchObject({ kind: 'patrol', carrier: { id: carrier.id, end: 'a' } });
+      // Sail the carrier two squares east: the patrol end follows.
+      s = run(s, { type: 'move', player: 0, unitId: carrier.id, dir: 2 }).state;
+      s = run(s, { type: 'move', player: 0, unitId: carrier.id, dir: 2 }).state;
+      expect(unitById(s, f.id)!.orders).toMatchObject({ kind: 'patrol', a: { x: 7, y: 0 } });
+      // The fighter keeps its patrol over the next turns instead of giving up for lack of a base.
+      for (let i = 0; i < 3; i++) s = fullRound(s).state;
+      expect(unitById(s, f.id)!.orders?.kind).toBe('patrol');
+    });
+
+    it('a patrol based on a city is not tied to anything', () => {
+      const s = game(AIR);
+      const f = addUnit(s, 'fighter', 0, 0, 0);
+      const r = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: patrol(5) });
+      expect(unitById(r.state, f.id)!.orders).not.toHaveProperty('carrier');
+    });
+
     it('patrolBase prefers a, then b, and skips a full carrier unless aboard', () => {
       const s = game(AIR);
       const f = addUnit(s, 'fighter', 0, 0, 0);
