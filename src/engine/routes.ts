@@ -48,6 +48,18 @@ export function applyRoute(s: GameState, city: City, u: Unit): void {
   if (validateOrders(s, u, orders) === null) u.orders = orders;
 }
 
+/**
+ * A unit that has just stopped in an own city, with no orders, takes that city's route when its type is on it.
+ * Called for units that arrive by their own orders or by hand. A unit that arrives on sentry keeps it.
+ */
+export function pickUpRoute(s: GameState, u: Unit): void {
+  if (u.orders !== null || u.carriedBy !== null || !s.units.includes(u)) return;
+  const city = s.cities.find((c) => c.x === u.x && c.y === u.y);
+  if (!city || city.owner !== u.owner) return;
+  dropStaleRoute(s, city);
+  applyRoute(s, city, u);
+}
+
 /** Drops a city's route once it no longer holds: the setter lost the city, or the destination is no longer theirs. */
 export function dropStaleRoute(s: GameState, city: City): void {
   const route = city.route;

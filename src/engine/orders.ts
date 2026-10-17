@@ -8,6 +8,7 @@ import { canPlayerSeeUnit, updateFog } from './fog';
 import { moveUnit } from './movement';
 import { unloadCargo } from './cargo';
 import { aircraftCanReach, dirBetween, findFrontier, findPath, pathMapFromState } from './path';
+import { pickUpRoute } from './routes';
 
 const NO_AIR_EXPLORE = 'aircraft cannot explore yet';
 const NO_PATROL_BASE = 'patrol must start or end at a city or carrier';
@@ -148,6 +149,7 @@ export function executeOrders(
     const sentry = u.orders?.kind === 'goto' && u.orders.arrival === 'sentry';
     endOrders(u, 'arrived', events);
     if (sentry) u.orders = { kind: 'sentry' };
+    else pickUpRoute(s, u);
   };
 
   for (;;) {

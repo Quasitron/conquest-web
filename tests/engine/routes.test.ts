@@ -152,3 +152,38 @@ describe('route following', () => {
 });
 
 
+
+describe('route pick-up on arrival', () => {
+  const withRoute = () => run(game(), { type: 'setRoute', player: 0, cityId: 0, route: route() }).state;
+
+  it('sends a unit that arrives in the start city by its own orders', () => {
+    const s = withRoute();
+    const a = addUnit(s, 'army', 0, 1, 0);
+    const r = run(s, { type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 0, y: 0 } } });
+    const u = r.state.units.find((x) => x.id === a.id)!;
+    expect(u).toMatchObject({ x: 0, y: 0, orders: { kind: 'goto', target: { x: 6, y: 0 }, routeCity: 1, wait: 3 } });
+  });
+
+  it('sends a unit moved into the start city by hand', () => {
+    const s = withRoute();
+    const a = addUnit(s, 'army', 0, 1, 0);
+    const r = run(s, { type: 'move', player: 0, unitId: a.id, dir: 6 });
+    expect(r.state.units.find((x) => x.id === a.id)).toMatchObject({ x: 0, orders: { kind: 'goto', routeCity: 1 } });
+  });
+
+  it('leaves other unit types alone', () => {
+    const s = withRoute();
+    const f = addUnit(s, 'fighter', 0, 1, 0);
+    const r = run(s, { type: 'move', player: 0, unitId: f.id, dir: 6 });
+    expect(r.state.units.find((x) => x.id === f.id)!.orders).toBeNull();
+  });
+
+  it('keeps a sentry that was asked for on arrival', () => {
+    const s = withRoute();
+    const a = addUnit(s, 'army', 0, 1, 0);
+    const r = run(s, {
+      type: 'setOrders', player: 0, unitId: a.id, orders: { kind: 'goto', target: { x: 0, y: 0 }, arrival: 'sentry' },
+    });
+    expect(r.state.units.find((x) => x.id === a.id)!.orders).toEqual({ kind: 'sentry' });
+  });
+});

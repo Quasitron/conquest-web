@@ -9,7 +9,7 @@ import { updateFog } from './fog';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders } from './orders';
 import { cleanName } from './names';
-import { validateRoute } from './routes';
+import { pickUpRoute, validateRoute } from './routes';
 
 function validDir(dir: unknown): boolean {
   return typeof dir === 'number' && Number.isInteger(dir) && dir >= 0 && dir <= 7;
@@ -36,6 +36,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
         u.blockedTurns = 0;
         error = moveUnit(s, rng, u, cmd.dir, events);
         if (!error && u.type === 'transport' && inOwnCity(s, u) && cargoOf(s, u).length > 0) u.unloadNextTurn = true;
+        if (!error) pickUpRoute(s, u);
       }
       break;
     }
