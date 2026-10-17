@@ -5,7 +5,7 @@ import { blur } from './blur';
 
 export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   next: { label: 'Next', key: 'N' },
-  skip: { label: 'Skip', key: 'Space' },
+  skip: { label: 'Standby', key: 'Space' },
   hold: { label: 'Hold Position', key: 'Tab' },
   sentry: { label: 'Sentry', key: 'S' },
   moveTo: { label: 'Move To', key: 'T' },
