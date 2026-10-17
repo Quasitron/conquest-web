@@ -39,7 +39,8 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
       a.carriedBy = u.id;
       a.x = to.x;
       a.y = to.y;
-      a.orders = { kind: 'sentry' };
+      // Armies aboard sleep; fighters aboard a carrier wait for orders until the player sentries them.
+      a.orders = UNIT_STATS[a.type].domain === 'air' ? null : { kind: 'sentry' };
     }
   }
   // Aircraft patrols tied to this carrier move with it, as in the original.
@@ -91,7 +92,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   if (host) {
     spendMove(u);
     u.carriedBy = host.id;
-    u.orders = { kind: 'sentry' };
+    u.orders = st.domain === 'air' ? null : { kind: 'sentry' };
     relocate(s, u, to, events);
     settleAircraft(s, u, events);
     return null;

@@ -26,12 +26,12 @@ describe('auto-sentry and auto-load', () => {
     expect(a.orders).toEqual({ kind: 'sentry' });
   });
 
-  it('a fighter landing on a carrier is sentried', () => {
+  it('a fighter landing on a carrier awaits orders instead of sleeping', () => {
     const s = makeGame(M);
     addUnit(s, 'carrier', 0, 3, 1);
     const f = addUnit(s, 'fighter', 0, 2, 1);
     expect(moveUnit(s, rng, f, 2, [])).toBeNull();
-    expect(f.orders).toEqual({ kind: 'sentry' });
+    expect(f.orders).toBeNull();
   });
 
   function cityWithTwoArmies(rules: { sentriedStayAsGarrison: boolean }) {
@@ -79,7 +79,8 @@ describe('carrier auto-load', () => {
     expect(plain.carriedBy).toBe(c.id);
     expect(army.carriedBy).toBeNull();
     expect([sentried.x, sentried.y]).toEqual([c.x, c.y]);
-    expect(sentried.orders).toEqual({ kind: 'sentry' });
+    // Fighters taken aboard wait for orders; the player sentries them when wanted.
+    expect(sentried.orders).toBeNull();
   });
 
   it('takes no more fighters than it can hold', () => {

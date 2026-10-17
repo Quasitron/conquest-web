@@ -142,7 +142,7 @@ export function executeOrders(
       unloadCargo(s, u, null, events); // 'nothing to unload' is fine
     }
     if (u.carriedBy !== null) {
-      // Boarding already made the unit a sentry; keep that.
+      // Boarding already settled the unit's orders: armies sleep, fighters wait for new orders.
       events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'arrived' });
       return;
     }

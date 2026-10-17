@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { eventsFor } from '../../src/engine/events';
 import { chooseHome, executeOrders, patrolBase, wakeSentries } from '../../src/engine/orders';
@@ -472,12 +472,12 @@ describe('go-to boarding and aircraft range', () => {
     expect(ended(r.events)).toEqual([{ type: 'ordersEnded', unitId: a.id, owner: 0, reason: 'arrived' }]);
   });
 
-  it('a fighter going to a carrier ends aboard and sentried', () => {
+  it('a fighter going to a carrier ends aboard and awaiting orders', () => {
     const s = game(['*..*']);
     const c = addUnit(s, 'carrier', 0, 2, 0);
     const f = addUnit(s, 'fighter', 0, 0, 0);
     const r = run(s, { type: 'setOrders', player: 0, unitId: f.id, orders: { kind: 'goto', target: { x: 2, y: 0 } } });
-    expect(unitById(r.state, f.id)).toMatchObject({ carriedBy: c.id, orders: { kind: 'sentry' } });
+    expect(unitById(r.state, f.id)).toMatchObject({ carriedBy: c.id, orders: null });
   });
 
   it('rejects an aircraft go-to to a plain square at exactly its fuel distance', () => {
