@@ -1,4 +1,4 @@
-/** Opt-in house rules. Every flag defaults off, which gives the original Empire Deluxe rules. */
+﻿/** Opt-in house rules. Every flag defaults off, which gives the original Empire Deluxe rules. */
 export interface HouseRules {
   /** Neutral cities defend with strength 1 instead of 2. */
   easierNeutralCities: boolean;
@@ -14,4 +14,5 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
 };
 
-export const RULES_VERSION = 3;
+/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. */
+export const RULES_VERSION = 4;

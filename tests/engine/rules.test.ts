@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { apply } from '../../src/engine/apply';
 import { CLASSIC_RULES, RULES_VERSION } from '../../src/engine';
 import { attackCity } from '../../src/engine/attack';
@@ -17,7 +17,7 @@ describe('house rules and state version', () => {
     const s = makeGame(M);
     expect(s.rules).toEqual(CLASSIC_RULES);
     expect(s.version).toBe(3);
-    expect(RULES_VERSION).toBe(3);
+    expect(RULES_VERSION).toBe(4);
   });
 
   it('exposes the rules in the player view', () => {
