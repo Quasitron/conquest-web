@@ -14,7 +14,7 @@ export function spendMove(u: Unit): void {
 
 export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): void {
   const from = { x: u.x, y: u.y };
-  const carriesArmies = UNIT_STATS[u.type].carries === 'army';
+  const carried = UNIT_STATS[u.type].carries;
   const leaving = cityAt(s, from.x, from.y);
   u.x = to.x;
   u.y = to.y;
@@ -23,11 +23,12 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
     c.x = to.x;
     c.y = to.y;
   }
-  if (carriesArmies && leaving && areFriendly(s, leaving.owner, u.owner)) {
+  // A transport leaving a city takes the armies there, and a carrier the fighters, up to capacity.
+  if (carried && leaving && areFriendly(s, leaving.owner, u.owner)) {
     const room = cargoCapacity(u) - cargoOf(s, u).length;
     const waiting = s.units.filter(
       (a) =>
-        a.type === 'army' &&
+        a.type === carried &&
         a.carriedBy === null &&
         a.owner === u.owner &&
         a.x === from.x &&

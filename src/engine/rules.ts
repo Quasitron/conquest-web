@@ -4,7 +4,7 @@ export interface HouseRules {
   easierNeutralCities: boolean;
   /** No city produces on turn 1, so every player's first tick is on turn 2. */
   fairFirstTurn: boolean;
-  /** A transport leaving a city does not auto-load armies that have orders (Sentry). */
+  /** A transport leaving a city does not auto-load armies that have orders (Sentry); likewise carriers and fighters. */
   sentriedStayAsGarrison: boolean;
 }
 
@@ -14,5 +14,5 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
 };
 
-/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. */
-export const RULES_VERSION = 4;
+/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. */
+export const RULES_VERSION = 5;

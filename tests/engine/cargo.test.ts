@@ -61,6 +61,42 @@ describe('auto-sentry and auto-load', () => {
   });
 });
 
+describe('carrier auto-load', () => {
+  function cityWithCarrier(rules: { sentriedStayAsGarrison: boolean }) {
+    const s = makeGame(M, { rules });
+    s.cities[2].owner = 0;
+    const c = addUnit(s, 'carrier', 0, 2, 2);
+    const sentried = addUnit(s, 'fighter', 0, 2, 2, { orders: { kind: 'sentry' } });
+    const plain = addUnit(s, 'fighter', 0, 2, 2);
+    const army = addUnit(s, 'army', 0, 2, 2);
+    return { s, c, sentried, plain, army };
+  }
+
+  it('a carrier leaving a city takes the fighters there, sentried ones too, but not armies', () => {
+    const { s, c, sentried, plain, army } = cityWithCarrier({ sentriedStayAsGarrison: false });
+    expect(moveUnit(s, rng, c, 2, [])).toBeNull();
+    expect(sentried.carriedBy).toBe(c.id);
+    expect(plain.carriedBy).toBe(c.id);
+    expect(army.carriedBy).toBeNull();
+    expect([sentried.x, sentried.y]).toEqual([c.x, c.y]);
+    expect(sentried.orders).toEqual({ kind: 'sentry' });
+  });
+
+  it('takes no more fighters than it can hold', () => {
+    const { s, c } = cityWithCarrier({ sentriedStayAsGarrison: false });
+    for (let i = 0; i < 9; i++) addUnit(s, 'fighter', 0, 2, 2);
+    moveUnit(s, rng, c, 2, []);
+    expect(cargoOf(s, c)).toHaveLength(8);
+  });
+
+  it('with sentriedStayAsGarrison, leaves sentried fighters behind', () => {
+    const { s, c, sentried, plain } = cityWithCarrier({ sentriedStayAsGarrison: true });
+    moveUnit(s, rng, c, 2, []);
+    expect(sentried.carriedBy).toBeNull();
+    expect(plain.carriedBy).toBe(c.id);
+  });
+});
+
 describe('moving through cities', () => {
   function transportAtSeaWithCargo() {
     const s = makeGame(M);
