@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildTime } from '../../src/engine';
 import {
   badgeMode, cargoLoad, cargoSummary, cityLabelVisible, cityStackTop, healthText, inProductionCount, pathLabel, pluralUnit,
@@ -107,8 +107,8 @@ describe('carrier patrol group', () => {
     expect(patrolsFrom(s.units, c).map((u) => u.id)).toEqual([away.id]);
   });
 
-  it('adds the patrols to the load text only when there are some', () => {
+  it('counts fighters away on patrol in the load, and says how many are away only when some are', () => {
     expect(cargoAndPatrols(2, 8, 0)).toBe('Carrying: 2/8 Units');
-    expect(cargoAndPatrols(0, 8, 5)).toBe('Carrying: 0/8 Units · 5 on patrol');
+    expect(cargoAndPatrols(4, 8, 2)).toBe('Carrying: 6/8 Units · 2 away');
   });
 });
