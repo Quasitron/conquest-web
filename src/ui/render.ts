@@ -1,4 +1,4 @@
-import { UNIT_STATS, isCrippled, type PlayerView, type Pos, type Unit } from '../engine';
+import { UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
@@ -31,6 +31,8 @@ export interface DrawOptions {
   routeLabel: string | null;
   /** The two endpoints of each of the player's patrols, shown while choosing a patrol destination. */
   patrols?: [Pos, Pos][];
+  /** Production map: hides the units and shows what each own city is building. */
+  productionMap?: boolean;
   /** Attack hover: a red crosshair with the label, drawn instead of the hover preview. */
   attack: { at: Pos; label: string } | null;
 }
@@ -159,7 +161,8 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const ownAlpha = (u: Unit) => (blinking(u) && !o.blinkOn ? 0.25 : face(u).movesLeft > 0 ? 1 : 0.6);
 
   // Enemy markers (fade with age).
-  for (const e of view.enemies) {
+  const showUnits = !o.productionMap;
+  for (const e of showUnits ? view.enemies : []) {
     const age = view.turn - e.turnSeen;
     const alpha = e.visibleNow ? 1 : age < 1 ? 0.7 : 0.4;
     each((mx, my, sx, sy) => {
@@ -170,7 +173,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   // Own city stacks: the top unit at 60% in the top-left, a count badge when 2 or more (dot below 16px tiles).
   const inOwnCity = (x: number, y: number) => view.knownCities.some((c) => c.x === x && c.y === y && c.owner === view.me);
   for (const city of view.knownCities) {
-    if (city.owner !== view.me) continue;
+    if (city.owner !== view.me || !showUnits) continue;
     const stack = view.myUnits.filter((u) => u.carriedBy === null && u.x === city.x && u.y === city.y);
     const top = cityStackTop(stack);
     if (top === null) continue;
@@ -189,7 +192,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   }
 
   // Own top-level units outside own cities.
-  for (const u of view.myUnits) {
+  for (const u of showUnits ? view.myUnits : []) {
     if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
       if (mx !== u.x || my !== u.y) return;
@@ -206,6 +209,19 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.fillRect(sx + t * 0.1, sy + t * 0.72, t * 0.18, t * 0.18);
       }
     });
+  }
+
+  // Production map: each own city shows what it is building, with the turns left in the badge.
+  if (o.productionMap) {
+    for (const city of view.myCities) {
+      if (city.production === null) continue;
+      const left = Math.max(1, buildTime(city, city.production) - city.progress);
+      each((mx, my, sx, sy) => {
+        if (mx !== city.x || my !== city.y) return;
+        glyph(sx, sy, colors[view.me], UNIT_GLYPH[city.production!], 1);
+        badge(sx, sy, left, 1);
+      });
+    }
   }
 
   // City names, on top of the units.

@@ -93,6 +93,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [held, setHeld] = useState<Set<number>>(new Set());
   const [skipped, setSkipped] = useState<number[]>([]);
   const [target, setTarget] = useState<TargetMode>(null);
+  const [prodMap, setProdMap] = useState(false);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
@@ -730,7 +731,7 @@ export function GameScreen({ session, onQuit }: Props) {
       </header>
       <div class="mapcol">
         <StatusLine
-          unit={playing ? selectedUnit : null} onFit={requestFit}
+          unit={playing ? selectedUnit : null} onFit={requestFit} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
           canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
         />
         <MapCanvas
@@ -738,7 +739,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
         />
       </div>
