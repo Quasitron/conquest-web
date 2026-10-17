@@ -579,6 +579,13 @@ export function GameScreen({ session, onQuit }: Props) {
       return giveRoute(selectedUnit, { kind: 'goto', target: approach }, p);
     }
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
+    // A host with room for the selected unit (a carrier for a fighter, a transport for an army) is a boarding
+    // order, not a selection. Press Esc first to select the host itself.
+    if (unit && selectedUnit && unit.id !== selectedUnit.id && explored
+      && UNIT_STATS[unit.type].carries === selectedUnit.type
+      && view.myUnits.filter((c) => c.carriedBy === unit.id).length < cargoCapacity(unit)) {
+      return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
+    }
     if (unit) return setSelection({ kind: 'unit', id: unit.id });
     if (selectedUnit && explored) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
     setSelection(null);
