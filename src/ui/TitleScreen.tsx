@@ -230,7 +230,7 @@ export function TitleScreen({ store, onStart }: Props) {
         )}
         {error && <p class="error" role="alert">{error}</p>}
       </div>
-      <p class="title-version">{VERSION_LABEL}</p>
+      <p class="title-version">{VERSION_LABEL} · Anonymous visit counts, no cookies</p>
     </main>
   );
 }
