@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { buildTime } from '../../src/engine';
 import {
   badgeMode, cargoLoad, cargoSummary, cityLabelVisible, cityStackTop, healthText, inProductionCount, pathLabel, pluralUnit,
   statusLine, turnsToComplete, withArticle,
 } from '../../src/ui/labels';
+import { cargoAndPatrols, patrolsFrom } from '../../src/ui/labels';
 import { addUnit, makeGame } from '../helpers';
 
 describe('pathLabel', () => {
@@ -90,5 +91,24 @@ describe('unit and city label helpers', () => {
     expect(statusLine(a)).toBe('142nd Army \u00b7 Moves 1/1 \u00b7 Orders: None');
     const f = addUnit(s, 'fighter', 0, 1, 1, { id: 7, movesLeft: 3, fuel: 14, orders: { kind: 'sentry' } });
     expect(statusLine(f)).toBe('7th Fighter \u00b7 Moves 3/5 \u00b7 Orders: Sentry \u00b7 Fuel 14/20');
+  });
+});
+
+describe('carrier patrol group', () => {
+  it('lists fighters on a patrol tied to the carrier, but not ones aboard or tied elsewhere', () => {
+    const s = makeGame(['*....*']);
+    const c = addUnit(s, 'carrier', 0, 3, 0);
+    const other = addUnit(s, 'carrier', 0, 4, 0);
+    const patrol = (id: number) => ({ kind: 'patrol' as const, a: { x: 3, y: 0 }, b: { x: 5, y: 0 }, toB: true, carrier: { id, end: 'a' as const } });
+    const away = addUnit(s, 'fighter', 0, 5, 0, { orders: patrol(c.id) });
+    addUnit(s, 'fighter', 0, 3, 0, { orders: patrol(c.id), carriedBy: c.id });
+    addUnit(s, 'fighter', 0, 5, 0, { orders: patrol(other.id) });
+    addUnit(s, 'fighter', 0, 5, 0, { orders: { kind: 'sentry' } });
+    expect(patrolsFrom(s.units, c).map((u) => u.id)).toEqual([away.id]);
+  });
+
+  it('adds the patrols to the load text only when there are some', () => {
+    expect(cargoAndPatrols(2, 8, 0)).toBe('Carrying: 2/8 Units');
+    expect(cargoAndPatrols(0, 8, 5)).toBe('Carrying: 0/8 Units · 5 on patrol');
   });
 });

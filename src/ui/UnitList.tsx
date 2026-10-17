@@ -5,7 +5,7 @@ import {
 import { describeOrders } from './actions';
 import { blur } from './blur';
 import { UNIT_GLYPH } from './colors';
-import { cargoLoad } from './labels';
+import { cargoAndPatrols, patrolsFrom } from './labels';
 import { PlacedDialog } from './LeaderLine';
 
 interface Props {
@@ -56,7 +56,7 @@ export function UnitList({ view, onSelect, onClose }: Props) {
                 </button>
                 <span class="muted">
                   {whereIs(view, u)} · {describeOrders(u.orders)}
-                  {UNIT_STATS[u.type].carries !== null && ` · ${cargoLoad(view.myUnits.filter((c) => c.carriedBy === u.id).length, cargoCapacity(u))}`}
+                  {UNIT_STATS[u.type].carries !== null && ` · ${cargoAndPatrols(view.myUnits.filter((c) => c.carriedBy === u.id).length, cargoCapacity(u), patrolsFrom(view.myUnits, u).length)}`}
                 </span>
               </li>
             ))}

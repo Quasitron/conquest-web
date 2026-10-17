@@ -5,7 +5,7 @@ import { ActionBar } from './ActionBar';
 import { describeOrders } from './actions';
 import type { ActionId } from './keys';
 import { UNIT_GLYPH } from './colors';
-import { cargoLoad, cargoSummary, cityIsCoastal } from './labels';
+import { cargoAndPatrols, cargoLoad, cargoSummary, cityIsCoastal, patrolsFrom } from './labels';
 import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 
@@ -28,6 +28,8 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
   const st = UNIT_STATS[u.type];
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).sort((a, b) => a.id - b.id);
   const [open, setOpen] = useState(false);
+  // Fighters out on a patrol tied to this carrier are part of its group even while they are away.
+  const away = st.carries !== null ? patrolsFrom(view.myUnits, u) : [];
   return (
     <div>
       <h3><span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
@@ -35,16 +37,19 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
       <p>Moves {u.movesLeft}/{st.move}</p>
       <HealthBar u={u} />
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
-      {st.carries !== null && cargo.length === 0 && <p>{cargoLoad(0, cargoCapacity(u))}</p>}
-      {cargo.length > 0 && (
+      {st.carries !== null && cargo.length === 0 && away.length === 0 && <p>{cargoLoad(0, cargoCapacity(u))}</p>}
+      {(cargo.length > 0 || away.length > 0) && (
         <div>
           <button class="linklike" aria-expanded={open} title={cargoSummary(cargo)} onClick={(e) => { blur(e); setOpen(!open); }}>
-            {cargoLoad(cargo.length, cargoCapacity(u))}
+            {cargoAndPatrols(cargo.length, cargoCapacity(u), away.length)}
           </button>
           {open && (
             <ul class="cargo-list">
               {cargo.map((c) => (
                 <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {describeOrders(c.orders)}</button></li>
+              ))}
+              {away.map((c) => (
+                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {describeOrders(c.orders)} (away)</button></li>
               ))}
             </ul>
           )}

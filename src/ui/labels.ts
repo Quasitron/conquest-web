@@ -44,6 +44,18 @@ export function cargoLoad(used: number, capacity: number): string {
   return `Carrying: ${used}/${capacity} Units`;
 }
 
+/** Aircraft out on a patrol tied to this carrier (not aboard it right now), by id. */
+export function patrolsFrom(units: readonly Unit[], carrier: Pick<Unit, 'id'>): Unit[] {
+  return units
+    .filter((f) => f.orders?.kind === 'patrol' && f.orders.carrier?.id === carrier.id && f.carriedBy !== carrier.id)
+    .sort((a, b) => a.id - b.id);
+}
+
+/** A carrier's load plus its patrols, e.g. "Carrying: 2/8 Units · 5 on patrol". */
+export function cargoAndPatrols(used: number, capacity: number, patrols: number): string {
+  return cargoLoad(used, capacity) + (patrols > 0 ? ` · ${patrols} on patrol` : '');
+}
+
 export function withArticle(name: string): string {
   return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
 }
