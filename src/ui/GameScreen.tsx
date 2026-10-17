@@ -457,8 +457,9 @@ export function GameScreen({ session, onQuit }: Props) {
         // A step that explored new ground has already re-fitted the map (when auto-fit is on).
         if (fitOf(view.me).auto) keepVisible(still);
         else focus(still);
-        // The last ready unit has moved: deselect it (the map stays put) so only End Turn flashes.
-        if (readyNow().length === 0) setSelection(null);
+        // Out of moves: move on to the next unit that needs orders, or deselect when none is left (the map
+        // stays put) so only End Turn flashes.
+        settle(still.id, ready);
       }
     }
   };
