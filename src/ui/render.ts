@@ -80,6 +80,14 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     }
     return pts;
   };
+  /**
+   * A path drawn once in each copy of the map (left, middle, right) on a wrapping map, so it shows wherever the
+   * camera is; unwrapPath alone picks one copy and that one can be off-screen. One copy on a flat map.
+   */
+  const copiesOf = (raw: Pos[]): Pos[][] => {
+    const base = unwrapPath(raw);
+    return (view.wrap ? [-view.width, 0, view.width] : [0]).map((off) => base.map((p) => ({ x: p.x + off, y: p.y })));
+  };
   const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
   const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
 
@@ -245,51 +253,53 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
 
   // Other patrols: a dashed line between the endpoints, with a ring at each end.
   for (const pair of o.patrols ?? []) {
-    const pts = unwrapPath(pair);
-    ctx.strokeStyle = '#ffb000';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
-    ctx.stroke();
-    ctx.setLineDash([]);
-    for (const p of pts) {
+    for (const pts of copiesOf(pair)) {
+      ctx.strokeStyle = '#ffb000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      ctx.arc(cx(p), cy(p), t * 0.22, 0, Math.PI * 2);
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
       ctx.stroke();
+      ctx.setLineDash([]);
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.arc(cx(p), cy(p), t * 0.22, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
   }
 
   // City routes: an arrow from the route city to its destination, with the unit types it serves.
   for (const r of o.cityRoutes ?? []) {
-    const [from, to] = unwrapPath([r.from, r.to]);
-    ctx.strokeStyle = '#5ee6b8';
-    ctx.fillStyle = '#5ee6b8';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(cx(from), cy(from));
-    ctx.lineTo(cx(to), cy(to));
-    ctx.stroke();
-    const ang = Math.atan2(cy(to) - cy(from), cx(to) - cx(from));
-    const head = Math.max(6, t * 0.45);
-    ctx.beginPath();
-    ctx.moveTo(cx(to), cy(to));
-    ctx.lineTo(cx(to) - head * Math.cos(ang - 0.4), cy(to) - head * Math.sin(ang - 0.4));
-    ctx.lineTo(cx(to) - head * Math.cos(ang + 0.4), cy(to) - head * Math.sin(ang + 0.4));
-    ctx.closePath();
-    ctx.fill();
-    if (cityLabelVisible(t)) {
-      const label = r.types.map((ty) => UNIT_GLYPH[ty]).join(' ');
-      const mx = (cx(from) + cx(to)) / 2;
-      const my = (cy(from) + cy(to)) / 2;
-      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3;
-      ctx.strokeText(label, mx, my - 2);
-      ctx.fillText(label, mx, my - 2);
+    for (const [from, to] of copiesOf([r.from, r.to])) {
+      ctx.strokeStyle = '#5ee6b8';
+      ctx.fillStyle = '#5ee6b8';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(cx(from), cy(from));
+      ctx.lineTo(cx(to), cy(to));
+      ctx.stroke();
+      const ang = Math.atan2(cy(to) - cy(from), cx(to) - cx(from));
+      const head = Math.max(6, t * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(cx(to), cy(to));
+      ctx.lineTo(cx(to) - head * Math.cos(ang - 0.4), cy(to) - head * Math.sin(ang - 0.4));
+      ctx.lineTo(cx(to) - head * Math.cos(ang + 0.4), cy(to) - head * Math.sin(ang + 0.4));
+      ctx.closePath();
+      ctx.fill();
+      if (cityLabelVisible(t)) {
+        const label = r.types.map((ty) => UNIT_GLYPH[ty]).join(' ');
+        const mx = (cx(from) + cx(to)) / 2;
+        const my = (cy(from) + cy(to)) / 2;
+        ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, mx, my - 2);
+        ctx.fillText(label, mx, my - 2);
+      }
     }
   }
 
