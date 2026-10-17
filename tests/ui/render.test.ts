@@ -17,6 +17,7 @@ function fakeCtx() {
     arcs: [] as { r: number; alpha: number }[],
     strokes: [] as string[],
     dashes: [] as number[][],
+    points: [] as { x: number; y: number }[],
   };
   const target = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: '', textBaseline: '', globalAlpha: 1,
@@ -25,6 +26,8 @@ function fakeCtx() {
     arc: (_x: number, _y: number, r: number) => { calls.arcs.push({ r, alpha: target.globalAlpha }); },
     stroke: () => { calls.strokes.push(target.strokeStyle); },
     setLineDash: (d: number[]) => { calls.dashes.push(d); },
+    moveTo: (x: number, y: number) => { calls.points.push({ x, y }); },
+    lineTo: (x: number, y: number) => { calls.points.push({ x, y }); },
   };
   const ctx = new Proxy(target, {
     get: (t, k) => (k in t ? (t as Record<string | symbol, unknown>)[k] : () => {}),
@@ -196,6 +199,13 @@ describe('render', () => {
     expect(label!.x).toBeLessThanOrEqual(140);
   });
 
+  it('on a wrapped map a path is drawn on screen even where its nearest-to-camera copy would be off-screen', () => {
+    const s = makeGame(M, { wrap: true });
+    // Camera at x=0 on a 7-wide map shown whole: the copy of x=5 nearest the camera is at x=-2, off-screen to the
+    // left, but the path must still appear where x=5 really is.
+    const calls = paint(s, 20, { selected: { x: 5, y: 1 }, path: [{ x: 6, y: 1 }] }, { x: 0, y: 0, tile: 20 });
+    expect(calls.points.some((p) => p.x >= 0 && p.x <= 140 && p.y >= 0 && p.y <= 60)).toBe(true);
+  });
   it('a blinking active unit is drawn at alpha 0.25 while blink is off', () => {
     const s = makeGame(M);
     const a = addUnit(s, 'army', 0, 1, 1);

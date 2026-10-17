@@ -89,6 +89,8 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     return (view.wrap ? [-view.width, 0, view.width] : [0]).map((off) => base.map((p) => ({ x: p.x + off, y: p.y })));
   };
   const cx = (p: Pos) => (p.x - cam.x + 0.5) * t;
+  /** A label is drawn only on the copy of a path whose end is actually in view. */
+  const onScreenX = (x: number) => x >= 0 && x <= width;
   const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
 
   // Terrain, cities and fog.
@@ -305,47 +307,49 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
 
   // Committed route: a solid line, unwrapped like the preview.
   if (o.route && o.route.length > 0) {
-    const pts = unwrapPath(o.route);
-    ctx.strokeStyle = '#7fd4ff';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
-    ctx.stroke();
-    if (o.routeLabel) {
-      const last = pts[pts.length - 1];
-      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'bottom';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3;
-      ctx.strokeText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
-      ctx.fillStyle = '#7fd4ff';
-      ctx.fillText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+    for (const pts of copiesOf(o.route)) {
+      ctx.strokeStyle = '#7fd4ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
+      ctx.stroke();
+      if (o.routeLabel && onScreenX(cx(pts[pts.length - 1]))) {
+        const last = pts[pts.length - 1];
+        ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+        ctx.fillStyle = '#7fd4ff';
+        ctx.fillText(o.routeLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+      }
     }
   }
 
   // Path preview: a dotted polyline through square centres, unwrapped so it never jumps across the seam.
   if (!o.attack && o.path && o.path.length > 0) {
-    const pts = unwrapPath(o.selected ? [o.selected, ...o.path] : o.path);
     const color = o.pathOk ? '#fff' : '#ff3b3b';
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
-    ctx.stroke();
-    ctx.setLineDash([]);
-    if (o.pathLabel) {
-      const last = pts[pts.length - 1];
-      ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'bottom';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3;
-      ctx.strokeText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
-      ctx.fillStyle = color;
-      ctx.fillText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+    for (const pts of copiesOf(o.selected ? [o.selected, ...o.path] : o.path)) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(cx(p), cy(p)) : ctx.lineTo(cx(p), cy(p))));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (o.pathLabel && onScreenX(cx(pts[pts.length - 1]))) {
+        const last = pts[pts.length - 1];
+        ctx.font = `bold ${Math.round(t * 0.4)}px system-ui, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+        ctx.fillStyle = color;
+        ctx.fillText(o.pathLabel, cx(last) + t * 0.4, cy(last) - t * 0.2);
+      }
     }
   }
 
