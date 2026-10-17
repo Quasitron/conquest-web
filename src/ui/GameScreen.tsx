@@ -11,6 +11,7 @@ import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
+import { UnitList } from './UnitList';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
 import { downloadSave } from './exportFile';
@@ -95,6 +96,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [target, setTarget] = useState<TargetMode>(null);
   const [prodMap, setProdMap] = useState(false);
   const [routesMap, setRoutesMap] = useState(false);
+  const [unitsOpen, setUnitsOpen] = useState(false);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
@@ -184,7 +186,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
-  const dialogOpen = openCityObj !== null || reportCity !== null;
+  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen;
   // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
   const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
   useEffect(() => setDialogError(null), [dialogKey]);
@@ -319,6 +321,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setFrozen(null);
     setNoPath(null);
     setCityOpen(null);
+    setUnitsOpen(false);
     setReports([]);
     setReportIdx(0);
     if (session.phase !== 'playing') return;
@@ -752,6 +755,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <StatusLine
           unit={playing ? selectedUnit : null} onFit={requestFit} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
           routesMap={routesMap} onToggleRoutes={() => setRoutesMap(!routesMap)}
+          onUnits={() => { setTarget(null); setMenu(null); setUnitsOpen(true); }}
           canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
         />
         <MapCanvas
@@ -848,6 +852,17 @@ export function GameScreen({ session, onQuit }: Props) {
           onSetRoute={(route) => act({ type: 'setRoute', cityId: openCityObj.id, route }, true)}
           onSelectUnit={(id) => { const u = view.myUnits.find((x) => x.id === id); if (u) selectUnit(u); }}
           onClose={() => setCityOpen(null)}
+        />
+      )}
+      {unitsOpen && (
+        <UnitList
+          view={view}
+          onSelect={(id) => {
+            const u = view.myUnits.find((x) => x.id === id);
+            setUnitsOpen(false);
+            if (u) selectUnit(u);
+          }}
+          onClose={() => setUnitsOpen(false)}
         />
       )}
       {report && reportCity && (

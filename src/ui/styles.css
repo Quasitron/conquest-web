@@ -109,6 +109,9 @@ button.linklike { border: 0; background: none; padding: 0; text-align: left; col
 .cargo-list button { width: 100%; text-align: left; font-size: 0.85rem; padding: 2px 8px; margin: 0; }
 .unit-info { text-align: left; max-width: 360px; }
 .unit-info h2, .unit-info p { margin: 0; }
+.unit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
+.unit-list li { display: flex; flex-direction: column; }
+.unit-list li .muted { font-size: 0.8rem; margin-left: 1.8em; }
 .route-types { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; border: 1px solid #333c48; border-radius: 6px; padding: 8px; }
 .route-types label.disabled { opacity: 0.45; }
 .rename { display: flex; gap: 6px; }
