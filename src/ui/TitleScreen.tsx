@@ -120,7 +120,7 @@ export function TitleScreen({ store, onStart }: Props) {
           <section>
             <div class="title-buttons">
               {autosave && (
-                <button class="primary" onClick={() => load('autosave')}>Continue{autosave.gameName ? ` "${autosave.gameName}"` : ''} (turn {autosave.turn})</button>
+                <button class="primary" onClick={() => load('autosave')}>Continue Last Save{autosave.gameName ? ` "${autosave.gameName}"` : ''} (turn {autosave.turn})</button>
               )}
               <button onClick={() => setPanel('new')} class={autosave ? '' : 'primary'}>New Game</button>
               <button onClick={() => setPanel('load')}>Load…</button>
