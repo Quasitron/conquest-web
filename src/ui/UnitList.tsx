@@ -1,8 +1,11 @@
 import { useState } from 'preact/hooks';
-import { UNIT_STATS, UNIT_TYPES, unitDisplayName, type PlayerView, type Unit, type UnitType } from '../engine';
+import {
+  UNIT_STATS, UNIT_TYPES, cargoCapacity, unitDisplayName, type PlayerView, type Unit, type UnitType,
+} from '../engine';
 import { describeOrders } from './actions';
 import { blur } from './blur';
 import { UNIT_GLYPH } from './colors';
+import { cargoLoad } from './labels';
 import { PlacedDialog } from './LeaderLine';
 
 interface Props {
@@ -51,7 +54,10 @@ export function UnitList({ view, onSelect, onClose }: Props) {
                 <button class="linklike" onClick={(e) => { blur(e); onSelect(u.id); }}>
                   <span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}
                 </button>
-                <span class="muted">{whereIs(view, u)} · {describeOrders(u.orders)}</span>
+                <span class="muted">
+                  {whereIs(view, u)} · {describeOrders(u.orders)}
+                  {UNIT_STATS[u.type].carries !== null && ` · ${cargoLoad(view.myUnits.filter((c) => c.carriedBy === u.id).length, cargoCapacity(u))}`}
+                </span>
               </li>
             ))}
           </ul>
