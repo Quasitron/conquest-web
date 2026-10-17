@@ -44,7 +44,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
           {open && (
             <ul class="cargo-list">
               {cargo.map((c) => (
-                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)}</button></li>
+                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {describeOrders(c.orders)}</button></li>
               ))}
             </ul>
           )}
