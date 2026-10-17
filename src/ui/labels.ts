@@ -51,9 +51,12 @@ export function patrolsFrom(units: readonly Unit[], carrier: Pick<Unit, 'id'>): 
     .sort((a, b) => a.id - b.id);
 }
 
-/** A carrier's load plus its patrols, e.g. "Carrying: 2/8 Units · 5 on patrol". */
-export function cargoAndPatrols(used: number, capacity: number, patrols: number): string {
-  return cargoLoad(used, capacity) + (patrols > 0 ? ` · ${patrols} on patrol` : '');
+/**
+ * A carrier's whole group: those aboard plus those away on its patrols, since a patrolling fighter still holds
+ * its place. "Carrying: 6/8 Units · 2 away" means 4 aboard and 2 out on patrol.
+ */
+export function cargoAndPatrols(aboard: number, capacity: number, away: number): string {
+  return cargoLoad(aboard + away, capacity) + (away > 0 ? ` · ${away} away` : '');
 }
 
 export function withArticle(name: string): string {
