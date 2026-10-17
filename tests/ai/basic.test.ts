@@ -111,3 +111,71 @@ describe('AI seats in a session', () => {
     expect(citiesOf(1)).toBeGreaterThan(start + 2);
   }, 60_000);
 });
+
+describe('AI warships', () => {
+  /** A strip of sea between two cities of player 1 (the AI) and one of player 0. */
+  function sea() {
+    const s = game(['*..............*..*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 1;
+    s.cities[2].owner = 0;
+    for (const c of s.cities) c.production = 'army';
+    return s;
+  }
+  const enemyAt = (s: GameState, type: 'destroyer' | 'transport', x: number) => {
+    const e = addUnit(s, type, 0, x, 0);
+    s.fog[1].lastSeen[e.id] = { unitId: e.id, type, owner: 0, x, y: 0, turnSeen: s.turn };
+    return e;
+  };
+
+  it('coastal cities other than the port build warships once the fleet is due, the port only after a transport', () => {
+    const s = sea();
+    s.turn = 20;
+    const v = view(s);
+    const port = portCity(v)!;
+    const other = v.myCities.find((c) => c.id !== port.id)!;
+    expect(wantedProduction(v, other, port)).toBe('destroyer');
+    expect(wantedProduction(v, port, port)).toBe('army');
+    addUnit(s, 'transport', 1, port.x, port.y);
+    expect(wantedProduction(view(s), port, port)).toBe('destroyer');
+    s.turn = 5;
+    expect(wantedProduction(view(s), other, port)).toBe('army');
+  });
+
+  it('attacks an enemy ship right beside it', () => {
+    const s = sea();
+    const d = addUnit(s, 'destroyer', 1, 5, 0);
+    enemyAt(s, 'destroyer', 6);
+    expect(next(s)).toMatchObject({ type: 'move', unitId: d.id, dir: 2 });
+  });
+
+  it('sails toward an enemy ship seen lately', () => {
+    const s = sea();
+    const d = addUnit(s, 'destroyer', 1, 3, 0);
+    enemyAt(s, 'transport', 9);
+    const cmd = next(s);
+    expect(cmd).toMatchObject({ type: 'setOrders', unitId: d.id, orders: { kind: 'goto' } });
+    const target = (cmd as { orders: { target: { x: number } } }).orders.target;
+    expect(Math.abs(target.x - 9)).toBe(1);
+  });
+
+  it('a hurt ship goes home to repair and waits there', () => {
+    const s = sea();
+    const d = addUnit(s, 'destroyer', 1, 5, 0, { damage: 1 });
+    expect(next(s)).toMatchObject({ type: 'setOrders', unitId: d.id, orders: { kind: 'goto' } });
+    const home = s.cities[0];
+    d.x = home.x;
+    d.y = home.y;
+    expect(next(s)).toBeNull();
+  });
+
+  it('with nothing to hunt, patrols out to sea toward the enemy city', () => {
+    const s = sea();
+    const d = addUnit(s, 'destroyer', 1, 1, 0);
+    const cmd = next(s);
+    expect(cmd).toMatchObject({ type: 'setOrders', unitId: d.id, orders: { kind: 'patrol', a: { x: 1, y: 0 } } });
+    const end = (cmd as { orders: { b: { x: number } } }).orders.b.x;
+    expect(end - 1).toBeGreaterThanOrEqual(4);
+    expect(end - 1).toBeLessThanOrEqual(8);
+  });
+});

@@ -1,5 +1,5 @@
 import {
-  UNIT_STATS, chebyshev, findFrontier, findPath, neighbors, pathMapFromView,
+  UNIT_STATS, chebyshev, combatWinChance, findFrontier, findPath, neighbors, pathMapFromView,
   type City, type MapLike, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -11,9 +11,11 @@ import { dirTo } from '../ui/targets';
  * The basic computer opponent (stage 1). It sees only its own PlayerView and answers one command at a time:
  * the turn driver calls `nextAction` over and over, applying each command, until it returns null.
  *
- * What it does: cities build armies (the port city builds a transport once the game is under way); armies explore,
- * march on the nearest known foreign city and attack it; idle armies gather in the port; a transport with enough
- * armies waiting sails off exploring, heads for the nearest reachable foreign city, and lands its armies beside it.
+ * What it does: cities build armies (the port city builds a transport once armies have run out of land); armies
+ * explore, march on the nearest known foreign city and attack it; idle armies gather in the port; a transport with
+ * enough armies waiting sails off exploring, heads for the nearest reachable foreign city, and lands its armies.
+ * Sea power (stage 2): coastal cities also build a small fleet of warships. Warships attack enemy ships next to
+ * them, hunt ones seen lately, go home to repair when hurt, and otherwise patrol toward the enemy.
  */
 export interface AiMemo {
   /** Commands issued this turn per unit ('u<id>') or city ('c<id>'); a cap stops any loop. */
@@ -59,15 +61,42 @@ function idleArmies(view: PlayerView): number {
   ).length;
 }
 
+const WARSHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'battleship'];
+const isWarship = (t: UnitType | null): boolean => t !== null && WARSHIPS.includes(t);
+/** The fleet starts to be built from this turn. */
+const FLEET_FROM_TURN = 12;
+
+function warshipsOwnedOrBuilding(view: PlayerView): number {
+  return view.myUnits.filter((u) => isWarship(u.type)).length
+    + view.myCities.filter((c) => isWarship(c.production)).length;
+}
+
+/** How many warships the fleet should hold: one more per two cities, up to eight. */
+function wantedWarships(view: PlayerView): number {
+  return view.turn < FLEET_FROM_TURN ? 0 : Math.min(8, 1 + Math.floor(view.myCities.length / 2));
+}
+
+/** Heavier ships as the empire grows. */
+function warshipFor(view: PlayerView): UnitType {
+  const n = view.myCities.length;
+  return n >= 8 ? 'battleship' : n >= 4 ? 'cruiser' : 'destroyer';
+}
+
 /**
  * What a city should be building: armies, except that the port builds a transport once armies have run out of
- * land to conquer (some are idle in a city) and no transport exists or is on the way.
+ * land to conquer (some are idle in a city) and no transport exists or is on the way, and coastal cities build
+ * warships until the fleet is as big as it should be (the port only once it has a transport).
  */
 export function wantedProduction(view: PlayerView, city: City, port: City | null): UnitType {
   const wanted = 1 + Math.floor(view.myCities.length / 8);
   if (port && city.id === port.id && idleArmies(view) >= 1) {
     const others = transportsOwnedOrBuilding(view) - (city.production === 'transport' ? 1 : 0);
     if (others < wanted) return 'transport';
+  }
+  if (cityIsCoastal(view, city)) {
+    const ships = warshipsOwnedOrBuilding(view) - (isWarship(city.production) ? 1 : 0);
+    const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
+    if (portReady && ships < wantedWarships(view)) return warshipFor(view);
   }
   return 'army';
 }
@@ -201,11 +230,93 @@ function decideTransport(view: PlayerView, u: Unit): SessionCommand | null {
   return home ? goTo(view, u, home) : null;
 }
 
+/** Chance that our ship wins a fight against a ship of `type` (its damage is unknown, so assumed none). */
+function winChance(u: Unit, type: UnitType): number {
+  const a = UNIT_STATS[u.type];
+  const d = UNIT_STATS[type];
+  return combatWinChance(
+    { attack: a.attack, shot: a.shot, hits: a.hits, damage: u.damage },
+    { defense: d.defense, shot: d.shot, hits: d.hits, damage: 0 },
+  );
+}
+
+/** Enemy ships we know of (anything afloat that is not ours), most recently seen first. */
+function enemyShips(view: PlayerView) {
+  return view.enemies
+    .filter((e) => UNIT_STATS[e.type].domain === 'sea')
+    .sort((a, b) => b.turnSeen - a.turnSeen);
+}
+
+/** How long ago (in turns) an enemy sighting may be and still be worth sailing to. */
+const HUNT_MEMORY = 2;
+/** Farthest (in squares) a warship goes after a sighting. */
+const HUNT_RANGE = 14;
+/** A patrol runs out this far from where the ship starts it, at most. */
+const PATROL_MIN = 4;
+const PATROL_MAX = 8;
+
+/** A water square a patrol can run out to, leaning toward the nearest enemy (or unowned) city; null if none. */
+function patrolEnd(view: PlayerView, u: Unit): Pos | null {
+  const dist = reach(view, u);
+  const enemy = view.knownCities.filter((c) => c.owner !== null && c.owner !== view.me);
+  const goals = enemy.length > 0 ? enemy : view.knownCities.filter((c) => c.owner !== view.me);
+  let best: { sq: Pos; score: number } | null = null;
+  for (const [i, d] of dist) {
+    if (d < PATROL_MIN || d > PATROL_MAX) continue;
+    const sq = { x: i % view.width, y: Math.floor(i / view.width) };
+    if (view.myCities.some((c) => at(c, sq))) continue;
+    const score = goals.length > 0 ? Math.min(...goals.map((g) => chebyshev(geo(view), sq, g))) : 0;
+    if (best === null || score < best.score || (score === best.score && i < best.sq.y * view.width + best.sq.x)) {
+      best = { sq, score };
+    }
+  }
+  return best ? best.sq : null;
+}
+
+function decideWarship(view: PlayerView, u: Unit): SessionCommand | null {
+  const inCity = view.myCities.some((c) => at(c, u));
+  const ships = enemyShips(view);
+
+  // An enemy ship right beside us that we are likely to beat (or that is alone and easy): attack it.
+  const adjacent = ships.find((e) => e.visibleNow && chebyshev(geo(view), u, e) === 1);
+  if (adjacent && winChance(u, adjacent.type) >= 0.45) {
+    const dir = dirTo(view, u, adjacent);
+    if (dir !== null) return { type: 'move', unitId: u.id, dir };
+  }
+
+  // Hurt: go home and sit out the repair (doing nothing while in a city, so it is looked at again each turn).
+  if (u.damage > 0) {
+    if (inCity) return null;
+    const home = nearestOwnCity(view, u, true);
+    return home ? goTo(view, u, home) : null;
+  }
+
+  // A ship was seen lately within reach: sail to the square beside it.
+  const dist = reach(view, u);
+  let target: { sq: Pos; d: number } | null = null;
+  for (const e of ships) {
+    if (e.turnSeen < view.turn - HUNT_MEMORY) continue;
+    for (const n of neighbors(geo(view), e.x, e.y)) {
+      const d = dist.get(n.y * view.width + n.x);
+      if (d !== undefined && d > 0 && d <= HUNT_RANGE && (target === null || d < target.d)) target = { sq: n, d };
+    }
+  }
+  if (target) return setOrders(u, { kind: 'goto', target: target.sq });
+
+  // Otherwise keep watch: patrol out to sea toward the enemy and back.
+  const end = patrolEnd(view, u);
+  if (end) return setOrders(u, { kind: 'patrol', a: { x: u.x, y: u.y }, b: end, toB: true });
+  return null;
+}
+
 function decide(view: PlayerView, u: Unit, port: City | null): SessionCommand | null {
   switch (u.type) {
     case 'army': return decideArmy(view, u, port);
     case 'transport': return decideTransport(view, u);
-    default: return null; // the basic AI builds nothing else yet
+    case 'destroyer':
+    case 'cruiser':
+    case 'battleship': return decideWarship(view, u);
+    default: return null; // fighters, submarines and carriers are not built yet
   }
 }
 
