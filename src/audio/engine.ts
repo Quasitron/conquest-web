@@ -1,4 +1,4 @@
-﻿import { SOUND_GAP_MS } from './fromEvents';
+import { SOUND_GAP_MS } from './fromEvents';
 import { OVERRIDES, SYNTH, type SoundName } from './sounds';
 
 export interface SoundSettings {
@@ -81,6 +81,8 @@ export function context(): AudioContext | null {
     master = ctx.createGain();
     master.gain.value = getSettings().volume;
     master.connect(ctx.destination);
+    // Recorded replacements load as soon as audio is available, so the first play already uses them.
+    for (const url of Object.values(OVERRIDES)) if (url) try { void loadBuffer(url, ctx); } catch { /* no fetch here */ }
   } catch {
     ctx = null;
     master = null;
@@ -117,7 +119,7 @@ function playAt(name: SoundName, delaySec: number): void {
       return;
     }
     // Not loaded yet: start loading it and use the synth this once.
-    void loadBuffer(url, c);
+    try { void loadBuffer(url, c); } catch { /* no fetch here: the synth plays */ }
   }
   SYNTH[name](c, master, t);
 }

@@ -1,4 +1,4 @@
-﻿export type SoundName =
+export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
   | 'produce-army' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
@@ -18,7 +18,10 @@ export const SOUND_NAMES: SoundName[] = [
  * Any format the browser can decode works (mp3, ogg, wav, m4a). A sound with no entry uses the built-in synth.
  * If a file fails to load, the synth plays instead.
  */
-export const OVERRIDES: Partial<Record<SoundName, string>> = {};
+export const OVERRIDES: Partial<Record<SoundName, string>> = {
+  // Jet flyby, seconds 4 to 7 of the original recording, trimmed and faded in public/sounds/.
+  'produce-fighter': '/sounds/produce-fighter.mp3',
+};
 
 export type MusicName = 'title';
 
