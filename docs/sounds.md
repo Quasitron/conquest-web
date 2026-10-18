@@ -32,7 +32,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-army` | The production screen for a new army opens (synth: snare-like drum roll) |
 | `produce-fighter` | The production screen for a new fighter opens (jet whoosh) |
 | `produce-transport` | The production screen for a new transport opens (short low ship horn) |
-| `produce-destroyer` | The production screen for a new destroyer opens (bosun's-pipe glissando) |
+| `produce-destroyer` | The production screen for a new destroyer opens (recorded, 1.8 s; the synth glissando is the fallback) |
 | `produce-submarine` | The production screen for a new submarine opens (sonar ping) |
 | `produce-cruiser` | The production screen for a new cruiser opens (double horn) |
 | `produce-battleship` | The production screen for a new battleship opens (deep horn and rumble) |
@@ -77,5 +77,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | --- | --- | --- | --- |
 | `produce-transport.mp3` | https://freesound.org/people/devy32/sounds/441223/ (devy32) | CC0 (checked by the game's owner) | seconds 16.7 to 19.2 |
 | `produce-fighter.mp3` | https://freesound.org/people/LukaCafuka/sounds/809207/ (LukaCafuka) | CC0 (checked by the game's owner) | seconds 4 to 7 |
+| `produce-destroyer.mp3` | https://freesound.org/people/craigsmith/sounds/675788/ (craigsmith) | CC0 (checked by the game's owner) | seconds 13.2 to 15 |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
