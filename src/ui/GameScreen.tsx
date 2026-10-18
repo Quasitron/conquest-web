@@ -12,7 +12,7 @@ import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
 import { installAudioUnlock, play, playAll } from '../audio/engine';
-import { produceSound, soundsForEvents } from '../audio/fromEvents';
+import { produceSound, SOUND_GAP_MS, soundsForEvents } from '../audio/fromEvents';
 import { SoundDialog } from './SoundDialog';
 import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
@@ -328,18 +328,29 @@ export function GameScreen({ session, onQuit }: Props) {
 
   // Sounds for the viewer's new log entries. A loaded save, or a different viewer in hotseat, is synced silently.
   const soundSeen = useRef<{ me: number; count: number } | null>(null);
+  // When the sounds just played for a batch should have finished, so a production sound can wait for them.
+  const soundsEnd = useRef(0);
   useEffect(installAudioUnlock, []);
   useEffect(() => {
     const log = session.log(view.me);
     const seen = soundSeen.current;
     if (seen && seen.me === view.me && log.length > seen.count) {
-      playAll(soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me));
+      const sounds = soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me);
+      playAll(sounds);
+      if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
     }
     soundSeen.current = { me: view.me, count: log.length };
   }, [view]);
 
   // Each unit's production report opens with that unit type's sound.
-  useEffect(() => { if (report) play(produceSound(report.unitType)); }, [report?.unitId]);
+  useEffect(() => {
+    if (!report) return;
+    const type = report.unitType;
+    const wait = soundsEnd.current - Date.now();
+    if (wait <= 0) { play(produceSound(type)); return; }
+    const timer = window.setTimeout(() => play(produceSound(type)), wait);
+    return () => window.clearTimeout(timer);
+  }, [report?.unitId]);
 
   // New turn for the viewing player: reset held/skipped and pick the first ready unit.
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
@@ -1044,4 +1055,5 @@ export function GameScreen({ session, onQuit }: Props) {
     </div>
   );
 }
+
 
