@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine';
 import type { GameState } from '../../src/engine';
 import { GameSession } from '../../src/app/session';
@@ -91,6 +91,78 @@ describe('AI transports', () => {
   });
 });
 
+describe('AI land tactics', () => {
+  /** Our city at x=0, a held enemy city at x=6 (player 0), open land between. */
+  function front() {
+    const s = game(['*#####*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0;
+    s.fog[1].knownCityOwner[s.cities[1].id] = 0;
+    return s;
+  }
+
+  const prod = (s: GameState) => { for (const c of s.cities) c.production = c.owner === 1 ? 'army' : null; return s; };
+
+  it('a lone army waits beside a held city instead of assaulting; with enough armies near it attacks', () => {
+    const s = front();
+    const a = addUnit(s, 'army', 1, 5, 0);
+    addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+    addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+    expect(next(prod(s))).toBeNull();
+    addUnit(s, 'army', 1, 4, 0, { orders: { kind: 'sentry' } });
+    addUnit(s, 'army', 1, 4, 1, { orders: { kind: 'sentry' } });
+    expect(next(prod(s))).toMatchObject({ type: 'move', unitId: a.id, dir: 2 });
+  });
+
+  it('attacks a neutral city alone', () => {
+    const s = front();
+    s.cities[1].owner = null;
+    s.fog[1].knownCityOwner[s.cities[1].id] = null;
+    const a = addUnit(s, 'army', 1, 5, 0);
+    addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+    addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+    expect(next(prod(s))).toMatchObject({ type: 'move', unitId: a.id });
+  });
+
+  it('the last two defenders stay in a city with an enemy army in sight, a third may leave', () => {
+    const s = front();
+    const e = addUnit(s, 'army', 0, 1, 0);
+    s.fog[1].lastSeen[e.id] = { unitId: e.id, type: 'army', owner: 0, x: 1, y: 0, turnSeen: s.turn };
+    addUnit(s, 'army', 1, 0, 0);
+    addUnit(s, 'army', 1, 0, 0);
+    expect(next(prod(s))).toBeNull();
+    const third = addUnit(s, 'army', 1, 0, 0);
+    // Only the surplus army acts (the first two, by id, are kept home).
+    expect(next(prod(s))).toMatchObject({ unitId: third.id });
+  });
+
+  it('armies march on a city where others are massing rather than on a slightly nearer one', () => {
+    const s = game(['##*#########*']);
+    s.cities[0].owner = 0;
+    s.cities[1].owner = 0;
+    for (const c of s.cities) s.fog[1].knownCityOwner[c.id] = 0;
+    const a = addUnit(s, 'army', 1, 6, 0);
+    addUnit(s, 'army', 1, 11, 0, { orders: { kind: 'sentry' } });
+    addUnit(s, 'army', 1, 11, 0, { orders: { kind: 'sentry' } });
+    const cmd = next(prod(s)) as { orders: { target: { x: number } }; unitId: number };
+    expect(cmd.unitId).toBe(a.id);
+    expect(cmd.orders.target.x).toBe(11);
+  });
+
+  it('prefers an enemy-held city near its own cities (a lost city) over a nearer neutral one', () => {
+    const s = game(['*##*#####*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0; // lost city, near ours
+    s.cities[2].owner = null;
+    s.fog[1].knownCityOwner[s.cities[1].id] = 0;
+    s.fog[1].knownCityOwner[s.cities[2].id] = null;
+    const a = addUnit(s, 'army', 1, 6, 0);
+    const cmd = next(prod(s)) as { orders: { target: { x: number } }; unitId: number };
+    expect(cmd.unitId).toBe(a.id);
+    expect(cmd.orders.target.x).toBe(4);
+  });
+});
+
 describe('AI seats in a session', () => {
   const seats: SeatConfig[] = [
     { name: 'You', kind: 'human', color: '#d7263d' },
@@ -131,6 +203,7 @@ describe('AI warships', () => {
   it('coastal cities other than the port build warships once the fleet is due, the port only after a transport', () => {
     const s = sea();
     s.turn = 20;
+    enemyAt(s, 'transport', 9);
     const v = view(s);
     const port = portCity(v)!;
     const other = v.myCities.find((c) => c.id !== port.id)!;
@@ -139,6 +212,23 @@ describe('AI warships', () => {
     addUnit(s, 'transport', 1, port.x, port.y);
     expect(wantedProduction(view(s), port, port)).toBe('destroyer');
     s.turn = 5;
+    expect(wantedProduction(view(s), other, port)).toBe('army');
+  });
+
+  it('builds no warships while the sea is quiet, but does once armies sit idle in a city or a ship was sighted', () => {
+    const s = sea();
+    s.turn = 30;
+    const v = view(s);
+    const port = portCity(v)!;
+    const other = v.myCities.find((c) => c.id !== port.id)!;
+    expect(wantedProduction(v, other, port)).toBe('army');
+    addUnit(s, 'army', 1, other.x, other.y, { orders: { kind: 'sentry' } });
+    expect(wantedProduction(view(s), other, port)).toBe('destroyer');
+    s.units = s.units.filter((u) => u.type !== 'army');
+    const e = enemyAt(s, 'destroyer', 9);
+    expect(wantedProduction(view(s), other, port)).toBe('destroyer');
+    // A sighting from long ago no longer counts.
+    s.fog[1].lastSeen[e.id].turnSeen = 5;
     expect(wantedProduction(view(s), other, port)).toBe('army');
   });
 
@@ -179,3 +269,5 @@ describe('AI warships', () => {
     expect(end - 1).toBeLessThanOrEqual(8);
   });
 });
+
+

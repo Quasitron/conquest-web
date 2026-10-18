@@ -1,6 +1,6 @@
 import {
   UNIT_STATS, chebyshev, combatWinChance, findFrontier, findPath, neighbors, pathMapFromView,
-  type City, type MapLike, type PlayerView, type Pos, type Unit, type UnitType,
+  type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
 import { cityIsCoastal } from '../ui/labels';
@@ -63,17 +63,30 @@ function idleArmies(view: PlayerView): number {
 
 const WARSHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'battleship'];
 const isWarship = (t: UnitType | null): boolean => t !== null && WARSHIPS.includes(t);
-/** The fleet starts to be built from this turn. */
+/** The fleet is not built before this turn. */
 const FLEET_FROM_TURN = 12;
+/** An enemy ship seen within this many turns means the sea matters. */
+const SEA_MEMORY = 10;
 
 function warshipsOwnedOrBuilding(view: PlayerView): number {
   return view.myUnits.filter((u) => isWarship(u.type)).length
     + view.myCities.filter((c) => isWarship(c.production)).length;
 }
 
-/** How many warships the fleet should hold: one more per two cities, up to eight. */
+/**
+ * Whether the sea matters: armies have run out of land to conquer (some wait idle in a city, so the rest of the
+ * war is across the water), or enemy ships were sighted lately. On a map where both sides share a continent
+ * neither happens and no production is wasted on ships.
+ */
+function seaMatters(view: PlayerView): boolean {
+  return idleArmies(view) >= 1
+    || view.enemies.some((e) => UNIT_STATS[e.type].domain === 'sea' && e.turnSeen >= view.turn - SEA_MEMORY);
+}
+
+/** How many warships the fleet should hold: one more per two cities, up to eight (none while the sea is quiet). */
 function wantedWarships(view: PlayerView): number {
-  return view.turn < FLEET_FROM_TURN ? 0 : Math.min(8, 1 + Math.floor(view.myCities.length / 2));
+  if (view.turn < FLEET_FROM_TURN || !seaMatters(view)) return 0;
+  return Math.min(8, 1 + Math.floor(view.myCities.length / 2));
 }
 
 /** Heavier ships as the empire grows. */
@@ -172,6 +185,61 @@ function goTo(view: PlayerView, u: Unit, target: Pos): SessionCommand | null {
   return path !== null && path.length > 0 ? setOrders(u, { kind: 'goto', target }) : null;
 }
 
+/** Armies that gather before an assault on a held city. */
+const ASSAULT_ARMIES = 3;
+/** Armies within this many squares of a city count as part of an assault on it. */
+const RALLY_RADIUS = 3;
+/** Cities with a visible enemy land unit this close keep their garrison at home. */
+const THREAT_RANGE = 4;
+const GARRISON = 2;
+/** An enemy-held city this close to one of our cities is a threat (or a loss) and is dealt with first. */
+const HOME_RANGE = 6;
+
+const landArmies = (view: PlayerView): Unit[] =>
+  view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null);
+
+/** Own armies on foot within `radius` of `p`. */
+function armiesNear(view: PlayerView, p: Pos, radius: number): number {
+  return landArmies(view).filter((a) => chebyshev(geo(view), a, p) <= radius).length;
+}
+
+/** A visible enemy land unit close to the city: keep the garrison at home. */
+function threatened(view: PlayerView, city: Pos): boolean {
+  return view.enemies.some(
+    (e) => e.visibleNow && UNIT_STATS[e.type].domain === 'land' && chebyshev(geo(view), city, e) <= THREAT_RANGE,
+  );
+}
+
+/** Armies needed beside a held city before the assault: fewer when we have fewer, and later in a stalled game. */
+function assaultSize(view: PlayerView): number {
+  const cap = view.turn >= LATE_TURN ? ASSAULT_ARMIES - 1 : ASSAULT_ARMIES;
+  return Math.max(1, Math.min(cap, landArmies(view).length));
+}
+
+/**
+ * The foreign city this army marches on and the square beside it to head for: the nearest by walking distance,
+ * but a city where our armies are already massing is preferred, and so is an enemy-held city near our own
+ * (a city we lost, or one that threatens us).
+ */
+function armyTarget(view: PlayerView, u: Unit): { city: { id: number; x: number; y: number; owner: PlayerId | null }; sq: Pos } | null {
+  const dist = reach(view, u);
+  let best: { city: { id: number; x: number; y: number; owner: PlayerId | null }; sq: Pos; cost: number } | null = null;
+  for (const c of view.knownCities) {
+    if (c.owner === view.me) continue;
+    let sq: Pos | null = null;
+    let d = Infinity;
+    for (const n of neighbors(geo(view), c.x, c.y)) {
+      const dn = dist.get(n.y * view.width + n.x);
+      if (dn !== undefined && dn > 0 && dn < d) { d = dn; sq = n; }
+    }
+    if (!sq) continue;
+    let cost = d - 2 * (armiesNear(view, c, RALLY_RADIUS) - (chebyshev(geo(view), u, c) <= RALLY_RADIUS ? 1 : 0));
+    if (c.owner !== null && view.myCities.some((m) => chebyshev(geo(view), m, c) <= HOME_RANGE)) cost -= 4;
+    if (best === null || cost < best.cost) best = { city: c, sq, cost };
+  }
+  return best;
+}
+
 function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionCommand | null {
   // Just put ashore from a transport: step onto land beside it.
   if (u.carriedBy !== null) {
@@ -179,9 +247,16 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionComman
     const step = ship ? landingPlan(view, ship, [u.id])[0] : undefined;
     return step ? { type: 'move', unitId: u.id, dir: step.dir } : null;
   }
-  // A foreign city next door: attack it.
+  // Enemy land units near our city: the last defenders stay (doing nothing, so they are looked at again next turn).
+  const here = view.myCities.find((c) => at(c, u));
+  if (here && threatened(view, here)) {
+    const inside = landArmies(view).filter((a) => at(a, here)).map((a) => a.id).sort((a, b) => a - b);
+    if (inside.indexOf(u.id) < GARRISON) return null;
+  }
+  // A foreign city next door: attack it, a held one only once enough armies stand ready (a lone army has poor odds).
   const next = view.knownCities.find((c) => c.owner !== view.me && chebyshev(geo(view), u, c) === 1);
   if (next) {
+    if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view)) return null;
     const dir = dirTo(view, u, next);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
@@ -194,8 +269,8 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionComman
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
   // March on the nearest foreign city we can reach on foot.
-  const approach = nearestApproach(view, u);
-  if (approach) return setOrders(u, { kind: 'goto', target: approach });
+  const target = armyTarget(view, u);
+  if (target) return setOrders(u, { kind: 'goto', target: target.sq });
   // Uncover more of the map.
   if (findFrontier(pathMapFromView(view), u) !== null) return setOrders(u, { kind: 'explore' });
   // Nothing to do: wait in the port for a transport (or in the nearest city).
