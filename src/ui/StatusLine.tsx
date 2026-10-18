@@ -20,11 +20,14 @@ interface Props {
   onReports: () => void;
   /** Battles against you since your last turn, shown as a count on the Reports button. */
   battleCount: number;
+  /** Group mode: drag a box on the map, then give all the units in it one order. */
+  groupActive: boolean;
+  onGroup: () => void;
 }
 
 export function StatusLine({
   unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onReports,
-  battleCount,
+  battleCount, groupActive, onGroup,
 }: Props) {
   return (
     <div class="statusline">
@@ -33,6 +36,9 @@ export function StatusLine({
         Reports{battleCount > 0 ? ` (${battleCount})` : ''}
       </button>
       <button title="List all your units and jump to one" onClick={(e) => { blur(e); onUnits(); }}>Units</button>
+      <button class={groupActive ? 'primary' : ''} title="Drag a box over your units, then give them all one order (Shift+drag with a mouse)" onClick={(e) => { blur(e); onGroup(); }}>
+        {groupActive ? 'Cancel Group' : 'Group'}
+      </button>
       <button class={routesMap ? 'primary' : ''} title="Show the routes set on your cities" onClick={(e) => { blur(e); onToggleRoutes(); }}>
         {routesMap ? 'Hide Routes' : 'Routes'}
       </button>

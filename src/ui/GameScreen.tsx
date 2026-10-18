@@ -12,6 +12,8 @@ import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
 import { UnitList } from './UnitList';
+import { GroupDialog } from './GroupDialog';
+import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
 import { Reports, type ReportTab } from './Reports';
 import { battlesAgainstMe, recentSightings } from './reportLines';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
@@ -45,6 +47,9 @@ const MENU_W = 220;
 const MENU_H = 400;
 // How long a newly given Move To / Patrol route stays on screen before the cycle moves on.
 const ROUTE_PAUSE_MS = 700;
+
+/** Group mode: waiting for a box, choosing the order for the units it caught, or waiting for a Move To square. */
+type GroupState = null | { step: 'box' } | { step: 'order'; ids: number[] } | { step: 'target'; ids: number[] };
 
 interface LogLine { turn: number; text: string }
 
@@ -96,6 +101,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const [held, setHeld] = useState<Set<number>>(new Set());
   const [skipped, setSkipped] = useState<number[]>([]);
   const [target, setTarget] = useState<TargetMode>(null);
+  const [group, setGroup] = useState<GroupState>(null);
+  const [groupBox, setGroupBox] = useState<GroupBox | null>(null);
   const [prodMap, setProdMap] = useState(false);
   const [routesMap, setRoutesMap] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
@@ -321,6 +328,8 @@ export function GameScreen({ session, onQuit }: Props) {
     cancelAdvance();
     setSelection(null);
     setTarget(null);
+    setGroup(null);
+    setGroupBox(null);
     setMenu(null);
     setPicker(null);
     setInfoId(null);
@@ -474,6 +483,72 @@ export function GameScreen({ session, onQuit }: Props) {
     else if (readyNow().length === 0) setSelection(null);
   };
 
+  const cancelGroup = () => {
+    setGroup(null);
+    setGroupBox(null);
+  };
+  const toggleGroup = () => {
+    if (group) return cancelGroup();
+    if (!playing) return;
+    setTarget(null);
+    setMenu(null);
+    setMessage(null);
+    setGroup({ step: 'box' });
+  };
+  /** A box was released (in Group mode, or by Shift+drag): the units inside it become the group. */
+  const onBoxDone = (box: GroupBox) => {
+    if (!playing || dialogOpen || group?.step === 'order' || group?.step === 'target') return setGroupBox(null);
+    const caught = unitsInBox(view, box);
+    if (caught.length === 0) {
+      setGroupBox(null);
+      setMessage('No units of yours in that box.' + (group ? ' Drag again, or press Esc.' : ''));
+      return;
+    }
+    setTarget(null);
+    setMenu(null);
+    setMessage(null);
+    setGroupBox(box); // stays drawn while the order is chosen
+    setGroup({ step: 'order', ids: caught.map((u) => u.id) });
+  };
+  const pickGroupOrder = (id: GroupOrderId) => {
+    if (group?.step !== 'order') return;
+    if (id === 'moveTo') setGroup({ step: 'target', ids: group.ids });
+    else applyGroup(id, group.ids);
+  };
+  /** Gives one order to every unit of the group it is available for, then reports how many took it. */
+  const applyGroup = (id: GroupOrderId, ids: number[], at?: Pos) => {
+    const eligible = eligibleFor(session.view(), ids, id);
+    const pre = ready;
+    let nextHeld = held;
+    let done = 0;
+    for (const u of eligible) {
+      if (id === 'hold') {
+        if (nextHeld === held) nextHeld = new Set(held);
+        nextHeld.add(u.id);
+        done++;
+        continue;
+      }
+      const cmd: SessionCommand =
+        id === 'goHome' ? { type: 'goHome', unitId: u.id }
+        : { type: 'setOrders', unitId: u.id, orders: id === 'sentry' ? { kind: 'sentry' } : id === 'explore' ? { kind: 'explore' } : id === 'moveTo' ? { kind: 'goto', target: at! } : null };
+      if (act(cmd)) done++;
+    }
+    cancelGroup();
+    if (nextHeld !== held) setHeld(nextHeld);
+    // The selected unit may no longer need orders: move the cycle on.
+    const selId = selection?.kind === 'unit' && ids.includes(selection.id) ? selection.id : null;
+    if (selId !== null) {
+      const fresh = readyNow(nextHeld);
+      if (!fresh.some((u) => u.id === selId)) {
+        const next = nextAfter(selId, pre, fresh) ?? fresh[0];
+        if (next) selectUnit(next);
+        else setSelection(null);
+      }
+    }
+    const label = GROUP_ORDERS.find((o) => o.id === id)!.label;
+    setMessage(`${label} given to ${done} of ${ids.length} ${ids.length === 1 ? 'unit' : 'units'}.`);
+  };
+
   const moveSelected = (dir: number) => {
     if (!selectedUnit) return;
     if (act({ type: 'move', unitId: selectedUnit.id, dir: dir as Dir })) {
@@ -568,6 +643,16 @@ export function GameScreen({ session, onQuit }: Props) {
   const onSquare = (p: Pos) => {
     if (!playing || dialogOpen) return;
     const explored = view.terrain[p.y * view.width + p.x] !== null;
+    if (group) {
+      // Group mode swallows clicks: only the Move To square is meaningful.
+      if (group.step !== 'target') return;
+      if (!explored) {
+        setMessage('That square has not been explored.');
+        return;
+      }
+      applyGroup('moveTo', group.ids, p);
+      return;
+    }
     if (target && selectedUnit) {
       if (!explored) {
         setMessage('That square has not been explored.');
@@ -617,7 +702,7 @@ export function GameScreen({ session, onQuit }: Props) {
 
   /** Double-click on one of your units outside a city opens its info dialog. */
   const onDouble = (p: Pos) => {
-    if (!playing || target || dialogOpen) return;
+    if (!playing || target || group || dialogOpen) return;
     if (view.knownCities.some((c) => c.x === p.x && c.y === p.y)) return;
     const unit = view.myUnits.find((u) => u.x === p.x && u.y === p.y && u.carriedBy === null);
     if (!unit) return;
@@ -627,6 +712,7 @@ export function GameScreen({ session, onQuit }: Props) {
 
   const onContext = (_p: Pos, client: { x: number; y: number }) => {
     if (!playing || dialogOpen) return;
+    if (group) return cancelGroup();
     if (target) {
       setTarget(null);
       return;
@@ -656,7 +742,8 @@ export function GameScreen({ session, onQuit }: Props) {
       if (!a) return;
       if (a.kind === 'escape') {
         e.preventDefault();
-        if (menu) setMenu(null);
+        if (group) cancelGroup();
+        else if (menu) setMenu(null);
         else if (info) setInfoId(null);
         else if (picker) setPicker(null);
         else if (target) setTarget(null);
@@ -685,6 +772,7 @@ export function GameScreen({ session, onQuit }: Props) {
         // An action key dismisses an open menu and cancels target mode before acting.
         setMenu(null);
         setTarget(null);
+        cancelGroup();
         doAction(a.id);
       }
     };
@@ -736,7 +824,11 @@ export function GameScreen({ session, onQuit }: Props) {
     onOpenCity: (id: number) => latest.current.openCity(id),
     onProduction: (cityId: number, unitType: UnitType | null) => { latest.current.act({ type: 'setProduction', cityId, unitType }); },
   }), []);
-  const nothingLeft = view.myUnits.length === 0 && view.myCities.length === 0;
+  const groupHint = !playing || !group ? null
+    : group.step === 'box' ? message ?? 'Group: drag a box over your units (Esc cancels).'
+    : group.step === 'target' ? `Move To for ${group.ids.length} ${group.ids.length === 1 ? 'unit' : 'units'}: click a square (Esc cancels).`
+    : `${group.ids.length} ${group.ids.length === 1 ? 'unit' : 'units'} in the box.`;
+  const nothingLeft =view.myUnits.length === 0 && view.myCities.length === 0;
   const allMoved = playing && ready.length === 0 && !nothingLeft;
   const endTurnBlinks = playing && ready.length === 0;
   const current = view.players[view.currentPlayer];
@@ -765,9 +857,10 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
           {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
-          {!target && message && <span class="message" role="status">{message}</span>}
-          {!target && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}
-          {!target && !message && allMoved && <span class="message" role="status">All units have moved. Press Enter or click End Turn.</span>}
+          {!target && groupHint && <span class="message" role="status">{groupHint}</span>}
+          {!target && !groupHint && message && <span class="message" role="status">{message}</span>}
+          {!target && !groupHint && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}
+          {!target && !groupHint && !message && allMoved && <span class="message" role="status">All units have moved. Press Enter or click End Turn.</span>}
           {session.saveError && <span class="error" role="alert">{session.saveError}</span>}
           <button class={endTurnBlinks ? 'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
         </span>
@@ -779,6 +872,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onUnits={() => { setTarget(null); setMenu(null); setUnitsOpen(true); }}
           onReports={() => { setTarget(null); setMenu(null); setReportTab(battles.length > 0 ? 'combat' : 'status'); }}
           battleCount={battles.length}
+          groupActive={group !== null} onGroup={toggleGroup}
           canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
         />
         <MapCanvas
@@ -788,6 +882,7 @@ export function GameScreen({ session, onQuit }: Props) {
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
           route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
+          boxMode={playing && group?.step === 'box'} groupBox={groupBox} onBox={setGroupBox} onBoxDone={onBoxDone}
         />
       </div>
       <div class="side">
@@ -823,6 +918,9 @@ export function GameScreen({ session, onQuit }: Props) {
       )}
       {menu && selectedUnit && (
         <OrdersMenu view={view} unit={selectedUnit} at={menu} onAction={doAction} onClose={() => setMenu(null)} />
+      )}
+      {playing && group?.step === 'order' && !dialogOpen && (
+        <GroupDialog view={view} unitIds={group.ids} onPick={pickGroupOrder} onCancel={cancelGroup} />
       )}
       {pickerUnit && picker === 'load' && (
         <div class="overlay">

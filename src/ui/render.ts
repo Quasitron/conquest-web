@@ -3,6 +3,7 @@ import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
+import type { GroupBox } from './group';
 
 export interface DrawOptions {
   view: PlayerView;
@@ -33,6 +34,8 @@ export interface DrawOptions {
   patrols?: [Pos, Pos][];
   /** A square to flash with a ring (a report line was just shown), or null. */
   flash?: Pos | null;
+  /** The box being dragged in Group mode, drawn as a yellow rectangle. */
+  groupBox?: GroupBox | null;
   /** The player's city routes, drawn as arrows from each route city to its destination. */
   cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   /** Production map: hides the units and shows what each own city is building. */
@@ -267,6 +270,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       ctx.arc(sx + t / 2, sy + t / 2, t * 0.62, 0, Math.PI * 2);
       ctx.stroke();
     });
+  }
+
+  // The Group mode box, once in each copy of the map on a wrapping map.
+  if (o.groupBox) {
+    const g = o.groupBox;
+    for (const off of view.wrap ? [-view.width, 0, view.width] : [0]) {
+      const rx = (g.x0 + off - cam.x) * t;
+      const ry = (g.y0 - cam.y) * t;
+      const rw = (g.x1 - g.x0 + 1) * t;
+      const rh = (g.y1 - g.y0 + 1) * t;
+      ctx.fillStyle = 'rgba(255, 221, 0, 0.18)';
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeStyle = '#ffdd00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.strokeRect(rx, ry, rw, rh);
+    }
   }
 
   // Other patrols: a dashed line between the endpoints, with a ring at each end.
