@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { GameEvent } from '../../src/engine';
 import { MAX_SOUNDS, produceSound, soundsForEvents } from '../../src/audio/fromEvents';
 
@@ -12,7 +12,7 @@ const destroyed = (reason: 'combat' | 'crashed' | 'disbanded'): GameEvent =>
 
 describe('soundsForEvents', () => {
   it('each unit type has its own production sound, with chime for an unknown type', () => {
-    for (const t of ['army', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier']) {
+    for (const t of ['army', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier', 'armor']) {
       expect(produceSound(t)).toBe(`produce-${t}`);
     }
     expect(produceSound('zeppelin')).toBe('chime');

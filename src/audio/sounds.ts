@@ -1,13 +1,13 @@
 export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
-  | 'produce-army' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
+  | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier'
   | 'battle-won' | 'battle-lost';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
-  'produce-army', 'produce-fighter', 'produce-transport', 'produce-destroyer',
+  'produce-army', 'produce-armor', 'produce-fighter', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
   'battle-won', 'battle-lost',
 ];
@@ -33,6 +33,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-battleship': '/sounds/produce-battleship.mp3',
   // Carrier, 2:58 to 3:01 of the original recording.
   'produce-carrier': '/sounds/produce-carrier.mp3',
+  // Armor (not in the game yet), the first 4 seconds of the original recording.
+  'produce-armor': '/sounds/produce-armor.mp3',
 };
 
 export type MusicName = 'title';
@@ -223,6 +225,12 @@ export const SYNTH: Record<SoundName, SynthFn> = {
       noise(c, o, t + d, 0.07, { gain: 0.14 + i * 0.03, from: 7000, to: 1500, q: 0.5 });
       tone(c, o, t + d, 190, 0.06, { type: 'triangle', gain: 0.1, endFreq: 140 });
     });
+  },
+  // Armor (for when that unit arrives): a low engine rumble with clanking tracks.
+  'produce-armor': (c, o, t) => {
+    tone(c, o, t, 55, 0.9, { type: 'sawtooth', gain: 0.18, endFreq: 70 });
+    noise(c, o, t, 0.9, { gain: 0.14, from: 500, to: 200, q: 2 });
+    [0.15, 0.4, 0.65].forEach((d) => tone(c, o, t + d, 420, 0.05, { type: 'square', gain: 0.06, endFreq: 300 }));
   },
   // Fighter: a jet whoosh, a filtered noise sweep rising then fading.
   'produce-fighter': (c, o, t) => {

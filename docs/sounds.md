@@ -30,6 +30,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `turn` | Your turn starts |
 | `chime` | Fallback for a produced unit of an unknown type (not normally heard) |
 | `produce-army` | The production screen for a new army opens (synth: snare-like drum roll) |
+| `produce-armor` | The production screen for a new armor opens (not in the game yet; recorded, 4 s, synth rumble is the fallback) |
 | `produce-fighter` | The production screen for a new fighter opens (jet whoosh) |
 | `produce-transport` | The production screen for a new transport opens (short low ship horn) |
 | `produce-destroyer` | The production screen for a new destroyer opens (recorded, 1.8 s; the synth glissando is the fallback) |
@@ -82,5 +83,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-cruiser.mp3` | https://freesound.org/people/Grotelue/sounds/64601/ (Grotelue) | CC0 (checked by the game's owner) | seconds 2.5 to 4.5 |
 | `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | first 1.7 seconds |
 | `produce-carrier.mp3` | https://freesound.org/people/qubodup/sounds/162449/ (qubodup) | CC0 (checked by the game's owner) | 2:58 to 3:01 |
+| `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.

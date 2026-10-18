@@ -1,4 +1,4 @@
-﻿import type { GameEvent, PlayerId } from '../engine';
+import type { GameEvent, PlayerId } from '../engine';
 import type { SoundName } from './sounds';
 
 /** At most this many sounds per batch, so a computer turn is not a wall of noise. */
@@ -9,7 +9,7 @@ export const SOUND_GAP_MS = 120;
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
   win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1, 'battle-won': 8, 'battle-lost': 8,
-  'produce-army': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
+  'produce-army': 3, 'produce-armor': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
   'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
 
