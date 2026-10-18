@@ -4,6 +4,7 @@ import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
 import type { StepTarget } from './targets';
 import { useBlink } from './useBlink';
+import { boxBetween, rawSquareAt, type GroupBox } from './group';
 
 interface Props {
   view: PlayerView;
@@ -35,6 +36,14 @@ interface Props {
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
   onZoom?: () => void;
+  /** Group mode is waiting for a box: a drag draws it instead of panning (Shift+drag does too, with a mouse). */
+  boxMode?: boolean;
+  /** The box as dragged so far, drawn in yellow. */
+  groupBox?: GroupBox | null;
+  /** The box changed while dragging; null when the drag was cancelled. */
+  onBox?: (box: GroupBox | null) => void;
+  /** The box was released. */
+  onBoxDone?: (box: GroupBox) => void;
 }
 
 export function MapCanvas(p: Props) {
@@ -71,6 +80,7 @@ export function MapCanvas(p: Props) {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
       route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, flash: p.flash, cityRoutes: p.cityRoutes, attack: p.attack,
+      groupBox: p.groupBox,
     });
   });
 
@@ -88,6 +98,11 @@ export function MapCanvas(p: Props) {
 
   const squareAt = (pt: { x: number; y: number }) =>
     screenToMap(camRef.current, p.view.width, p.view.height, p.view.wrap, pt.x, pt.y);
+
+  // A Group mode box drag in progress: the pointer drawing it and the square it started on.
+  const boxDrag = useRef<{ id: number; start: Pos } | null>(null);
+  const rawAt = (pt: { x: number; y: number }) =>
+    rawSquareAt(camRef.current, p.view.width, p.view.height, p.view.wrap, pt.x, pt.y);
 
   const local = (e: PointerEvent | WheelEvent) => {
     const r = ref.current!.getBoundingClientRect();
@@ -117,6 +132,13 @@ export function MapCanvas(p: Props) {
       }}
       onPointerDown={(e) => {
         (e.target as Element).setPointerCapture(e.pointerId);
+        if (e.button === 0 && pointers.current.size === 0 && (p.boxMode || (e.shiftKey && e.pointerType === 'mouse'))) {
+          const start = rawAt(local(e));
+          boxDrag.current = { id: e.pointerId, start };
+          pointers.current.set(e.pointerId, local(e));
+          p.onBox?.(boxBetween(start, start, p.view.width));
+          return;
+        }
         pointers.current.set(e.pointerId, local(e));
         dragged.current = false;
         longPressed.current = false;
@@ -143,6 +165,10 @@ export function MapCanvas(p: Props) {
           return;
         }
         const pt = local(e);
+        if (boxDrag.current) {
+          if (boxDrag.current.id === e.pointerId) p.onBox?.(boxBetween(boxDrag.current.start, rawAt(pt), p.view.width));
+          return;
+        }
         if (Math.hypot(pt.x - prev.x, pt.y - prev.y) > 4) clearPress();
         if (pointers.current.size === 2) {
           pointers.current.set(e.pointerId, pt);
@@ -163,12 +189,25 @@ export function MapCanvas(p: Props) {
         }
       }}
       onPointerCancel={(e) => {
+        if (boxDrag.current?.id === e.pointerId) {
+          boxDrag.current = null;
+          p.onBox?.(null);
+        }
         clearPress();
         pointers.current.delete(e.pointerId);
         dragged.current = false;
         pinchDist.current = 0;
       }}
       onPointerUp={(e) => {
+        const bd = boxDrag.current;
+        if (bd) {
+          if (bd.id === e.pointerId) {
+            boxDrag.current = null;
+            pointers.current.delete(e.pointerId);
+            p.onBoxDone?.(boxBetween(bd.start, rawAt(local(e)), p.view.width));
+          }
+          return;
+        }
         const wasDrag = dragged.current;
         const pt = local(e);
         clearPress();
