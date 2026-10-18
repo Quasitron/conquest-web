@@ -11,6 +11,7 @@ export function StatusTab({ view }: { view: PlayerView }) {
         <dt>Cities captured</dt><dd>{s.citiesCaptured}</dd>
         <dt>Cities known</dt><dd>{s.citiesKnown}</dd>
         <dt>World explored</dt><dd>{s.worldExplored}%</dd>
+        <dt>Map edges</dt><dd>{view.wrap ? 'Wraps east-west' : 'No wrap'}</dd>
       </dl>
       <table class="status-table">
         <thead>

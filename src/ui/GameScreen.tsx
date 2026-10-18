@@ -1025,7 +1025,7 @@ export function GameScreen({ session, onQuit }: Props) {
   return (
     <div class={dialogOpen ? 'game modal' : 'game'}>
       <header class="topbar">
-        <span>Turn {view.turn}</span>
+        <span title={view.wrap ? 'This map wraps east-west' : 'This map does not wrap'}>Turn {view.turn}</span>
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>

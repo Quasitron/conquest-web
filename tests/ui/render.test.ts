@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { drawMap, drawMinimap, type DrawOptions } from '../../src/ui/render';
-import { PLAYER_COLORS, UNIT_GLYPH } from '../../src/ui/colors';
+import { PLAYER_COLORS, TERRAIN_COLORS, UNIT_GLYPH } from '../../src/ui/colors';
 import { addUnit, makeGame } from '../helpers';
 import type { GameState } from '../../src/engine/types';
 
@@ -16,15 +16,18 @@ function fakeCtx() {
     fillAt: [] as { text: string; x: number }[],
     arcs: [] as { r: number; alpha: number }[],
     strokes: [] as string[],
+    hatches: 0,
+    rects: [] as { x: number; y: number; w: number; h: number; style: string }[],
     dashes: [] as number[][],
     points: [] as { x: number; y: number }[],
   };
   const target = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: '', textBaseline: '', globalAlpha: 1,
-    fillRect: () => { calls.fillRect++; },
+    fillRect: (x: number, y: number, w: number, h: number) => { calls.fillRect++; calls.rects.push({ x, y, w, h, style: String(target.fillStyle) }); },
     fillText: (t: string, x: number) => { calls.fillText.push(t); calls.fillAt.push({ text: t, x }); },
     arc: (_x: number, _y: number, r: number) => { calls.arcs.push({ r, alpha: target.globalAlpha }); },
-    stroke: () => { calls.strokes.push(target.strokeStyle); },
+    // The diagonal hatch beyond the map's edges is background, not an overlay: counted apart from the strokes.
+    stroke: () => { if (target.strokeStyle === '#1b222c') calls.hatches++; else calls.strokes.push(target.strokeStyle); },
     setLineDash: (d: number[]) => { calls.dashes.push(d); },
     moveTo: (x: number, y: number) => { calls.points.push({ x, y }); },
     lineTo: (x: number, y: number) => { calls.points.push({ x, y }); },
@@ -59,7 +62,7 @@ describe('render', () => {
     const { ctx, calls } = fakeCtx();
     drawMap(ctx, { view, cam: { x: 0, y: 0, tile: 20 }, width: 140, height: 60, selected: { x: 1, y: 1 }, targets: [], colors: PLAYER_COLORS, ...NO_OVERLAY });
     // background + 4 explored squares (the start city sits in the corner, sight 1, no wrap) + the city's inner square
-    expect(calls.fillRect).toBe(6);
+    expect(calls.fillRect).toBe(7);
     expect(calls.fillText).toContain('A');
   });
 
@@ -216,6 +219,21 @@ describe('render', () => {
     expect(early).toBeGreaterThan(plain);
     expect(burst).toBeGreaterThan(plain);
     expect(over).toBe(plain);
+  });
+  it('beyond a non-wrapping map\'s edges a hatch shows, and the unexplored fill covers only the map', () => {
+    const s = makeGame(M);
+    // Camera two squares left of the map: the map starts 40px in; it is 7 squares (140px) wide, 3 (60px) tall.
+    const calls = paint(s, 20, {}, { x: -2, y: 0, tile: 20 });
+    expect(calls.hatches).toBe(1);
+    const unexplored = calls.rects.find((r) => r.style === TERRAIN_COLORS.unexplored)!;
+    expect(unexplored).toMatchObject({ x: 40, y: 0, w: 140, h: 60 });
+  });
+
+  it('on a wrapping map the unexplored fill runs the full width, so there is no edge to see', () => {
+    const s = makeGame(M, { wrap: true });
+    const calls = paint(s, 20, {}, { x: -2, y: 0, tile: 20 });
+    const unexplored = calls.rects.find((r) => r.style === TERRAIN_COLORS.unexplored)!;
+    expect(unexplored).toMatchObject({ x: 0, w: 140 });
   });
   it('a blinking active unit is drawn at alpha 0.25 while blink is off', () => {
     const s = makeGame(M);

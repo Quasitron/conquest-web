@@ -54,8 +54,22 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const { view, cam, width, height, colors } = o;
   const t = cam.tile;
   const visible = new Set(view.visibleSquares);
-  ctx.fillStyle = TERRAIN_COLORS.unexplored;
+  // Beyond the map's edges a dark diagonal hatch shows, so a real edge never looks like unexplored squares.
+  ctx.fillStyle = '#06080b';
   ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = '#1b222c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let k = -height; k < width; k += 10) {
+    ctx.moveTo(k, 0);
+    ctx.lineTo(k + height, height);
+  }
+  ctx.stroke();
+  // The map itself (all the way across on a wrapping map) is unexplored until squares are revealed.
+  const mapLeft = view.wrap ? 0 : (0 - cam.x) * t;
+  const mapRight = view.wrap ? width : (view.width - cam.x) * t;
+  ctx.fillStyle = TERRAIN_COLORS.unexplored;
+  ctx.fillRect(mapLeft, (0 - cam.y) * t, mapRight - mapLeft, view.height * t);
 
   const x0 = Math.floor(cam.x);
   const y0 = Math.max(0, Math.floor(cam.y));

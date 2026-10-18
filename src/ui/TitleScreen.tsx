@@ -4,7 +4,7 @@ import { GameSession } from '../app/session';
 import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
 import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
-import { PLAYER_COLORS } from './colors';
+import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
 import { pickFileText } from './exportFile';
 import { VERSION_LABEL } from './version';
 
@@ -42,16 +42,13 @@ const REGION_OPTIONS: { value: WorldOptions['nameRegion']; label: string }[] = [
 ];
 
 const randomSeed = () => Math.floor(Math.random() * 1_000_000_000);
-const defaultSeats = (n: number, prev: SeatConfig[]): SeatConfig[] =>
-  Array.from({ length: n }, (_, i) =>
-    prev[i] ?? { name: i === 0 ? 'Player 1' : `Player ${i + 1}`, kind: i === 0 ? 'human' : 'ai', color: PLAYER_COLORS[i] },
-  );
-
 export function TitleScreen({ store, onStart }: Props) {
-  const [world, setWorld] = useState<WorldOptions>({ ...DEFAULT_WORLD });
-  const [seats, setSeats] = useState<SeatConfig[]>(defaultSeats(2, []));
+  // The form starts from the last settings used (the seed is always fresh).
+  const [remembered] = useState(() => loadNewGameSettings({ world: { ...DEFAULT_WORLD }, seats: defaultSeats(2, []), rules: { ...CLASSIC_RULES } }));
+  const [world, setWorld] = useState<WorldOptions>(remembered.world);
+  const [seats, setSeats] = useState<SeatConfig[]>(remembered.seats);
   const [seed, setSeed] = useState(randomSeed());
-  const [rules, setRules] = useState<HouseRules>({ ...CLASSIC_RULES });
+  const [rules, setRules] = useState<HouseRules>(remembered.rules);
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<'menu' | 'new' | 'load'>('menu');
@@ -72,7 +69,9 @@ export function TitleScreen({ store, onStart }: Props) {
     const sizeError = validateMapSize(world.width, world.height);
     if (sizeError) return setError(sizeError);
     try {
-      onStart(GameSession.create({ world, seed, seats, rules }, store));
+      const session = GameSession.create({ world, seed, seats, rules }, store);
+      saveNewGameSettings({ world, seats, rules });
+      onStart(session);
     } catch (e) {
       setError((e as Error).message);
     }
