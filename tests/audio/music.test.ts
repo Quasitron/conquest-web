@@ -16,6 +16,7 @@ class FakeAudio {
   pause() { this.paused = true; }
 }
 
+const realTitle = MUSIC.title;
 const store = new Map<string, string>();
 
 beforeEach(() => {
@@ -26,7 +27,7 @@ beforeEach(() => {
   g.Audio = FakeAudio;
 });
 afterEach(() => {
-  delete MUSIC.title;
+  MUSIC.title = realTitle;
   delete g.Audio;
   delete g.localStorage;
   stopMusic(0);
@@ -35,6 +36,7 @@ afterEach(() => {
 
 describe('music', () => {
   it('does nothing when no track is set', () => {
+    delete MUSIC.title;
     startMusic('title');
     expect(FakeAudio.made).toHaveLength(0);
   });

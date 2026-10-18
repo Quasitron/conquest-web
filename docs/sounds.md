@@ -61,8 +61,8 @@ Production sounds play as each new unit's production screen opens, one at a time
 
 ## Title-screen music
 
-The game plays a theme on the title screen and fades it out when a game starts. There is no built-in tune: until you add a file,
-nothing plays.
+The game plays a theme on the title screen and fades it out when a game starts. The current theme is `public/music/battleThemeA.mp3`.
+There is no built-in tune: if the line in `MUSIC` is removed, nothing plays.
 
 1. Put the track in `public/music/`, e.g. `public/music/title.mp3`.
 2. In `src/audio/sounds.ts` set `title: '/music/title.mp3'` in `MUSIC`.
@@ -84,5 +84,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | first 1.7 seconds |
 | `produce-carrier.mp3` | https://freesound.org/people/qubodup/sounds/162449/ (qubodup) | CC0 (checked by the game's owner) | 2:58 to 3:01 |
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
+| `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.

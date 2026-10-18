@@ -44,7 +44,10 @@ export type MusicName = 'title';
  * the file in public/music/ (e.g. public/music/title.mp3) and set  title: '/music/title.mp3'  below.
  * Use a track that loops cleanly or is a minute or two long; it loops until a game starts.
  */
-export const MUSIC: Partial<Record<MusicName, string>> = {};
+export const MUSIC: Partial<Record<MusicName, string>> = {
+  // Battle Theme A (OpenGameArt), about 1:36, loops.
+  title: '/music/battleThemeA.mp3',
+};
 
 /** The synth effects write into `out` (the master gain), starting at time `t`. Each is under 1.2 seconds. */
 export type SynthFn = (ctx: AudioContext, out: AudioNode, t: number) => void;
