@@ -208,7 +208,7 @@ describe('render', () => {
   });
   it('a fight playing out draws its effect on its square, and nothing once it is over', () => {
     const s = makeGame(M);
-    const fight = { at: { x: 1, y: 1 }, attackerOwner: 1, attackerType: 'cruiser' as const, attackerWon: true, destroyed: true, captured: false, text: 't' };
+    const fight = { at: { x: 1, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const, attackerWon: true, destroyed: true, captured: false, text: 't' };
     const plain = paint(s, 20).strokes.length;
     const early = paint(s, 20, { fx: [{ fight, age: 100, duration: 800 }] }).strokes.length;
     const burst = paint(s, 20, { fx: [{ fight, age: 600, duration: 800 }] }).strokes.length;

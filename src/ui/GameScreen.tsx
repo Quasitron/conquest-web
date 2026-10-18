@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
 import { unloadAndLand } from '../app/unloadAndLand';
 import {
-  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, findPath, pathMapFromView, unitDisplayName,
-  type Dir, type Orders, type PlayerView, type Pos, type Unit, type UnitType,
+  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, chebyshev, findPath, pathMapFromView, unitDisplayName,
+  type Dir, type MapLike, type Orders, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
@@ -28,8 +28,8 @@ import { cityScreenPoint } from './placement';
 import { approachSquare, attackLabel, cityAttackChance } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
-import { getCombatMode } from './combatMode';
-import { fightsFromEvents, replayFights, FIGHT_MS, REPLAY_STEP_MS, SHOT_SHARE, type Fight } from './fights';
+import { getCombatMode, getReplayPace, getReportAfter, type ReplayPace } from './combatMode';
+import { fightsFromEvents, placeNote, replayFights, stepDuration, FIGHT_MS, SHOT_SHARE, type Fight } from './fights';
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
@@ -56,6 +56,11 @@ const ROUTE_PAUSE_MS = 700;
 const BATTLE_PAUSE_MS = 1000;
 /** The replay zooms in to at least this tile size so each fight is easy to see. */
 const REPLAY_TILE = 36;
+/** Each replayed fight opens at no closer than this tile size, so you can see where on the map it is. */
+const WIDE_TILE = 10;
+/** How long that wide view is held before zooming in, and the longest a fight's own animation runs. */
+const WIDE_MS = 650;
+const REPLAY_FX_MS = 1500;
 
 /** Group mode: waiting for a box, choosing the order for the units it caught, or waiting for a Move To square. */
 type GroupState = null | { step: 'box' } | { step: 'order'; ids: number[] } | { step: 'target'; ids: number[] };
@@ -120,6 +125,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [fx, setFx] = useState<ActiveFx[]>([]);
   const [replay, setReplay] = useState<{ steps: Fight[]; more: number; index: number } | null>(null);
   const fxTimer = useRef<number | undefined>(undefined);
+  const [replayPaused, setReplayPaused] = useState(false);
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
@@ -400,7 +406,10 @@ export function GameScreen({ session, onQuit }: Props) {
     exploredAt.current.set(view.me, exploredCount(view));
     // Animated mode replays what the other players did since the last turn first; the turn proper begins after it.
     const rp = getCombatMode() === 'animated' ? replayFights(session.log(view.me), view.me, names, lookup) : null;
-    if (rp && rp.steps.length > 0) setReplay({ ...rp, index: 0 });
+    if (rp && rp.steps.length > 0) {
+      setReplayPaused(false);
+      setReplay({ ...rp, index: 0 });
+    }
     else beginTurn();
   }, [turnKey]);
 
@@ -414,38 +423,68 @@ export function GameScreen({ session, onQuit }: Props) {
     } else startCycle();
   };
 
-  // The turn-start replay: pan to each fight in turn, play it with its sounds, then carry on with the turn.
+  // The turn-start replay. Each fight starts with a wide view and a ring on the spot (so you can see where it is),
+  // then zooms in and plays with its sounds; the result ring stays on the square until the replay moves on. It moves
+  // on by itself at the chosen pace (important fights are held longer), or when you tap Next; Pause holds it.
   // (The batch sounds skip battles at turn start, and the sound of a captured city is already in that batch.)
   const finishReplay = () => {
     const rp = replay;
     window.clearTimeout(fxTimer.current);
     setFx([]);
+    setFlash(null);
     setReplay(null);
-    if (replayCam.current) setCam(replayCam.current); // back to the view from before the replay zoomed in
+    setReplayPaused(false);
+    if (replayCam.current) setCam(replayCam.current); // back to the view from before the replay
     replayCam.current = null;
+    // The Combat report opens once the turn proper has begun (after any production reports), if wanted.
+    if (rp && (rp.more > 0 || getReportAfter())) openCombatAfter.current = true;
     beginTurn();
-    if (rp && rp.more > 0) setReportTab('combat'); // fights beyond the cap are left to the Combat report
+  };
+  const advanceReplay = () => {
+    if (!replay) return;
+    if (replay.index + 1 < replay.steps.length) setReplay({ ...replay, index: replay.index + 1 });
+    else finishReplay();
   };
   const replayCam = useRef<Camera | null>(null);
+  const stepStart = useRef(0);
+  const openCombatAfter = useRef(false);
   const finishRef = useRef(finishReplay);
   finishRef.current = finishReplay;
+  const advanceRef = useRef(advanceReplay);
+  advanceRef.current = advanceReplay;
+  const wideMsFor = (pace: ReplayPace) => (pace === 'fast' ? WIDE_MS / 2 : WIDE_MS);
   useEffect(() => {
     if (!replay) return;
     const step = replay.steps[replay.index];
+    const pace = getReplayPace();
+    const total = stepDuration(pace, step, view.me);
+    const wideMs = wideMsFor(pace);
+    const fxMs = Math.min(total ?? REPLAY_FX_MS, REPLAY_FX_MS);
     const { w, h } = viewport();
-    // Zoom in on each fight so it can be seen, remembering the view to restore afterwards.
     replayCam.current ??= camNow.current;
-    setCam(centerOn({ ...camNow.current, tile: Math.max(camNow.current.tile, REPLAY_TILE) }, step.at.x, step.at.y, w, h));
-    runFx([step], REPLAY_STEP_MS);
-    play('shot');
-    const boom = window.setTimeout(() => { if (step.destroyed) play('explosion'); }, REPLAY_STEP_MS * SHOT_SHARE);
-    const next = window.setTimeout(() => {
-      if (replay.index + 1 < replay.steps.length) setReplay({ ...replay, index: replay.index + 1 });
-      else finishRef.current();
-    }, REPLAY_STEP_MS + 150);
-    return () => { window.clearTimeout(boom); window.clearTimeout(next); };
+    const base = replayCam.current;
+    // 1. A wide view with a ring on the spot (never closer than the player's own zoom, never wider than WIDE_TILE).
+    setCam(centerOn({ ...camNow.current, tile: Math.min(base.tile, WIDE_TILE) }, step.at.x, step.at.y, w, h));
+    setFlash(step.at);
+    stepStart.current = performance.now();
+    // 2. Zoom in and play the fight with its sounds.
+    const zoom = window.setTimeout(() => {
+      setCam(centerOn({ ...camNow.current, tile: Math.max(base.tile, REPLAY_TILE) }, step.at.x, step.at.y, w, h));
+      runFx([step], fxMs);
+      play('shot');
+    }, wideMs);
+    const boom = window.setTimeout(() => { if (step.destroyed) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
+    return () => { window.clearTimeout(zoom); window.clearTimeout(boom); };
   }, [replay?.index, replay !== null]);
-
+  useEffect(() => {
+    if (!replay || replayPaused) return;
+    const pace = getReplayPace();
+    const total = stepDuration(pace, replay.steps[replay.index], view.me);
+    if (total === null) return; // manual: waits for Next
+    const due = stepStart.current + wideMsFor(pace) + total + 150;
+    const timer = window.setTimeout(() => advanceRef.current(), Math.max(400, due - performance.now()));
+    return () => window.clearTimeout(timer);
+  }, [replay?.index, replay !== null, replayPaused]);
   /** Selects the first ready unit of a fresh turn (built-this-turn first), else looks at a city. */
   const startCycle = () => {
     const first = readyNow(new Set(), [])[0];
@@ -457,7 +496,9 @@ export function GameScreen({ session, onQuit }: Props) {
     } else if (fitOf(view.me).auto) applyAutoFit(view, null);
     else if (view.myCities[0]) focus(view.myCities[0]);
     // Reports mode: if anything attacked you since your last turn, the Combat report opens on its own.
-    if (getCombatMode() === 'reports' && battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
+    const wantCombat = getCombatMode() === 'reports' || openCombatAfter.current;
+    openCombatAfter.current = false;
+    if (wantCombat && battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
     // A player's very first turn (one city, no units): its production screen opens so the default can be changed,
     // as in the original. Last, so the city screen's focus wins over the camera moves above.
     if (view.turn === 1 && view.myUnits.length === 0 && view.myCities.length === 1) openCity(view.myCities[0].id);
@@ -860,10 +901,13 @@ export function GameScreen({ session, onQuit }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (replay) {
-        // During the replay only Esc, Enter and Space do anything: they skip the rest of it.
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        // During the replay only these keys do anything: Space and Enter go to the next fight, Esc ends the replay.
+        if (e.key === 'Escape') {
           e.preventDefault();
           finishReplay();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          advanceReplay();
         }
         return;
       }
@@ -918,7 +962,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const c = document.querySelector('canvas.minimap') as HTMLCanvasElement | null;
     if (!c) return;
     const { w, h } = viewport();
-    drawMinimap(c.getContext('2d')!, view, colors, c.width, c.height, cam, w, h);
+    drawMinimap(c.getContext('2d')!, view, colors, c.width, c.height, cam, w, h, replay ? replay.steps[replay.index].at : null);
   });
 
   const lookup = {
@@ -1020,9 +1064,20 @@ export function GameScreen({ session, onQuit }: Props) {
         />
         {replay && (
           <div class="replay-bar" role="status">
-            <span class="replay-text">{replay.steps[replay.index].text}</span>
+            <span class="replay-text">
+              {replay.steps[replay.index].text}
+              {(() => {
+                const near = placeNote(replay.steps[replay.index].at, view.knownCities, (a, b) => chebyshev(view as unknown as MapLike, a, b));
+                const at = replay.steps[replay.index].at;
+                return <span class="muted"> {near ? `${near}, ` : ''}at {at.x},{at.y}</span>;
+              })()}
+            </span>
             <span class="muted">{replay.index + 1} of {replay.steps.length + replay.more}</span>
-            <button class="primary" onClick={(e) => { blur(e); finishReplay(); }}>Skip</button>
+            {getReplayPace() !== 'manual' && (
+              <button onClick={(e) => { blur(e); setReplayPaused(!replayPaused); }}>{replayPaused ? 'Resume' : 'Pause'}</button>
+            )}
+            <button class="primary" onClick={(e) => { blur(e); advanceReplay(); }}>{replay.index + 1 < replay.steps.length ? 'Next' : 'Done'}</button>
+            <button onClick={(e) => { blur(e); finishReplay(); }}>Skip</button>
           </div>
         )}
       </div>

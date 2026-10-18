@@ -1,8 +1,11 @@
-﻿import { useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { getSettings, playAll, setSettings } from '../audio/engine';
 import { MUSIC } from '../audio/sounds';
 import { blur } from './blur';
-import { COMBAT_MODES, getCombatMode, setCombatMode, type CombatMode } from './combatMode';
+import {
+  COMBAT_MODES, REPLAY_PACES, getCombatMode, getReplayPace, getReportAfter, setCombatMode, setReplayPace, setReportAfter,
+  type CombatMode, type ReplayPace,
+} from './combatMode';
 import { PlacedDialog } from './LeaderLine';
 
 interface Props {
@@ -15,10 +18,16 @@ const COMBAT_CHOICES: Record<CombatMode, { label: string; hint: string }> = {
   off: { label: 'Off', hint: 'No animation and nothing opens by itself. The Reports button still lists the fights.' },
 };
 
+const PACE_LABELS: Record<ReplayPace, string> = {
+  manual: 'Manual (tap Next)', slow: 'Slow', normal: 'Normal', fast: 'Fast',
+};
+
 /** The Settings dialog: sound (on/off, volume, music, a test button) and how fights are shown. */
 export function SettingsDialog({ onClose }: Props) {
   const [s, setS] = useState(getSettings());
   const [combat, setCombat] = useState(getCombatMode());
+  const [pace, setPace] = useState(getReplayPace());
+  const [after, setAfter] = useState(getReportAfter());
   const change = (patch: Partial<typeof s>) => setS(setSettings(patch));
   return (
     <PlacedDialog anchor={null} label="Settings" onKey={(e) => { if (e.key === 'Escape') { onClose(); return true; } return false; }}>
@@ -67,6 +76,21 @@ export function SettingsDialog({ onClose }: Props) {
           </label>
         ))}
       </div>
+      <p class="muted">Animated replay at the start of your turn:</p>
+      <div class="pace-choice" role="radiogroup" aria-label="Replay pace">
+        {REPLAY_PACES.map((m) => (
+          <label key={m} class={pace === m ? 'selected' : ''}>
+            <input type="radio" name="pace" checked={pace === m} disabled={combat !== 'animated'} onChange={() => setPace(setReplayPace(m))} />
+            {' '}{PACE_LABELS[m]}
+          </label>
+        ))}
+      </div>
+      <p>
+        <label>
+          <input type="checkbox" checked={after} disabled={combat !== 'animated'} onChange={(e) => setAfter(setReportAfter((e.currentTarget as HTMLInputElement).checked))} />
+          {' '}Open the Combat report when the replay ends
+        </label>
+      </p>
       <div class="picker-actions">
         <button disabled={!s.enabled} onClick={(e) => { blur(e); playAll(['produce-army', 'shot', 'explosion', 'capture']); }}>Test</button>
         <button class="primary" onClick={(e) => { blur(e); onClose(); }}>Close</button>

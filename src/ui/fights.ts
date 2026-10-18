@@ -1,5 +1,6 @@
 import type { GameEvent, PlayerId, Pos, UnitType } from '../engine';
 import type { LogEntry } from '../app/session';
+import type { ReplayPace } from './combatMode';
 import { describeEvent, type DescribeLookup } from './describe';
 
 /** One fight, folded together from a combat event and the destruction or capture events that follow it. */
@@ -7,6 +8,8 @@ export interface Fight {
   /** The square that was attacked. */
   at: Pos;
   attackerOwner: PlayerId;
+  /** Whose unit or city was attacked (null for a neutral city). */
+  defenderOwner: PlayerId | null;
   attackerType: UnitType;
   attackerWon: boolean;
   /** A unit was destroyed in the fight (on either side). */
@@ -27,7 +30,7 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
   for (const e of events) {
     if (e.type === 'combat') {
       cur = {
-        at: { x: e.x, y: e.y }, attackerOwner: e.attackerOwner, attackerType: e.attackerType,
+        at: { x: e.x, y: e.y }, attackerOwner: e.attackerOwner, defenderOwner: e.defender.owner, attackerType: e.attackerType,
         attackerWon: e.attackerWon, destroyed: false, captured: false, text: describe(e) ?? '',
       };
       out.push(cur);
@@ -93,4 +96,35 @@ export function fightFrame(ageMs: number, f: Fight, durationMs = FIGHT_MS): Figh
     burst: p <= SHOT_SHARE ? 0 : (p - SHOT_SHARE) / (1 - SHOT_SHARE),
     outcome: f.captured ? 'capture' : f.destroyed ? 'explosion' : 'hit',
   };
+}
+
+/** How long (ms) a fight is held at each pace; manual waits for the player. */
+export const PACE_MS: Record<ReplayPace, number | null> = { manual: null, slow: 3000, normal: 1500, fast: 800 };
+/** Fights that matter to you (one of your units destroyed, a city taken) are held this much longer. */
+export const IMPORTANT_FACTOR = 1.6;
+
+/** A fight that destroyed one of `me`'s units or took one of their cities, or that took any city. */
+export function fightImportant(f: Fight, me: PlayerId): boolean {
+  if (f.captured) return true;
+  return f.destroyed && (f.defenderOwner === me || f.attackerOwner === me);
+}
+
+/** How long to hold a fight before moving on at this pace; null in manual (the player decides). */
+export function stepDuration(pace: ReplayPace, f: Fight, me: PlayerId): number | null {
+  const base = PACE_MS[pace];
+  if (base === null) return null;
+  return Math.round(base * (fightImportant(f, me) ? IMPORTANT_FACTOR : 1));
+}
+
+/** "near Norfolk Island": the closest known city, if one is within `range` squares; null otherwise. */
+export function placeNote(
+  at: Pos, cities: readonly { name: string; x: number; y: number }[],
+  distance: (a: Pos, b: Pos) => number, range = 12,
+): string | null {
+  let best: { name: string; d: number } | null = null;
+  for (const c of cities) {
+    const d = distance(at, c);
+    if (d <= range && (best === null || d < best.d)) best = { name: c.name, d };
+  }
+  return best ? `near ${best.name}` : null;
 }
