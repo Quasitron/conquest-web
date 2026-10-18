@@ -34,7 +34,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-transport` | The production screen for a new transport opens (short low ship horn) |
 | `produce-destroyer` | The production screen for a new destroyer opens (recorded, 1.8 s; the synth glissando is the fallback) |
 | `produce-submarine` | The production screen for a new submarine opens (recorded, 2.5 s; the synth sonar ping is the fallback) |
-| `produce-cruiser` | The production screen for a new cruiser opens (double horn) |
+| `produce-cruiser` | The production screen for a new cruiser opens (recorded, 2 s; the synth double horn is the fallback) |
 | `produce-battleship` | The production screen for a new battleship opens (deep horn and rumble) |
 | `produce-carrier` | The production screen for a new carrier opens (two-tone klaxon) |
 | `battle-won` | A fight your unit won, attacking or defending (same brass fanfare as `capture`) |
@@ -79,5 +79,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-fighter.mp3` | https://freesound.org/people/LukaCafuka/sounds/809207/ (LukaCafuka) | CC0 (checked by the game's owner) | seconds 4 to 7 |
 | `produce-destroyer.mp3` | https://freesound.org/people/craigsmith/sounds/675788/ (craigsmith) | CC0 (checked by the game's owner) | seconds 13.2 to 15 |
 | `produce-submarine.mp3` | https://freesound.org/people/Timbre/sounds/203562/ (Timbre) | CC0 (checked by the game's owner) | first 2.5 seconds |
+| `produce-cruiser.mp3` | https://freesound.org/people/Grotelue/sounds/64601/ (Grotelue) | CC0 (checked by the game's owner) | seconds 2.5 to 4.5 |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
