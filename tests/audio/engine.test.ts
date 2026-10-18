@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, getSettings, play, playAll, resetAudio, setSettings, SETTINGS_KEY } from '../../src/audio/engine';
 import { SOUND_NAMES, SYNTH } from '../../src/audio/sounds';
 
@@ -61,13 +61,13 @@ afterEach(() => {
 describe('sound settings', () => {
   it('default to on at a moderate volume', () => {
     expect(getSettings()).toEqual(DEFAULT_SETTINGS);
-    expect(DEFAULT_SETTINGS).toEqual({ enabled: true, volume: 0.6 });
+    expect(DEFAULT_SETTINGS).toEqual({ enabled: true, volume: 0.6, music: true, musicVolume: 0.5 });
   });
 
   it('persist across a reload', () => {
-    setSettings({ enabled: false, volume: 0.25 });
+    setSettings({ enabled: false, volume: 0.25, music: false, musicVolume: 0.1 });
     resetAudio();
-    expect(getSettings()).toEqual({ enabled: false, volume: 0.25 });
+    expect(getSettings()).toEqual({ enabled: false, volume: 0.25, music: false, musicVolume: 0.1 });
   });
 
   it('clamp the volume', () => {

@@ -1,14 +1,17 @@
-import { SOUND_GAP_MS } from './fromEvents';
+﻿import { SOUND_GAP_MS } from './fromEvents';
 import { OVERRIDES, SYNTH, type SoundName } from './sounds';
 
 export interface SoundSettings {
   enabled: boolean;
   /** 0 to 1. */
   volume: number;
+  /** Music (the title-screen theme) on or off, and its own 0 to 1 volume. */
+  music: boolean;
+  musicVolume: number;
 }
 
 export const SETTINGS_KEY = 'conquest.sound';
-export const DEFAULT_SETTINGS: SoundSettings = { enabled: true, volume: 0.6 };
+export const DEFAULT_SETTINGS: SoundSettings = { enabled: true, volume: 0.6, music: true, musicVolume: 0.5 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -20,6 +23,8 @@ function loadSettings(): SoundSettings {
       return {
         enabled: typeof s.enabled === 'boolean' ? s.enabled : DEFAULT_SETTINGS.enabled,
         volume: typeof s.volume === 'number' && Number.isFinite(s.volume) ? clamp01(s.volume) : DEFAULT_SETTINGS.volume,
+        music: typeof s.music === 'boolean' ? s.music : DEFAULT_SETTINGS.music,
+        musicVolume: typeof s.musicVolume === 'number' && Number.isFinite(s.musicVolume) ? clamp01(s.musicVolume) : DEFAULT_SETTINGS.musicVolume,
       };
     }
   } catch { /* storage blocked or unreadable: use the defaults */ }
@@ -32,6 +37,13 @@ let master: GainNode | null = null;
 const buffers = new Map<string, Promise<AudioBuffer | null>>();
 const decoded = new Map<string, AudioBuffer>();
 
+const listeners = new Set<() => void>();
+/** Calls n whenever the settings change; returns a function that stops it. */
+export function onSettingsChange(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 export function getSettings(): SoundSettings {
   return (settings ??= loadSettings());
 }
@@ -39,8 +51,10 @@ export function getSettings(): SoundSettings {
 export function setSettings(patch: Partial<SoundSettings>): SoundSettings {
   const next = { ...getSettings(), ...patch };
   next.volume = clamp01(next.volume);
+  next.musicVolume = clamp01(next.musicVolume);
   settings = next;
   if (master) master.gain.value = next.volume;
+  for (const fn of listeners) fn();
   try {
     globalThis.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(next));
   } catch { /* storage blocked: the setting lasts until the page is closed */ }
@@ -57,7 +71,7 @@ export function resetAudio(): void {
 }
 
 /** The audio context, created on first use; null when the browser has none. */
-function context(): AudioContext | null {
+export function context(): AudioContext | null {
   if (ctx) return ctx;
   try {
     const g = globalThis as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -143,3 +157,4 @@ export function installAudioUnlock(): void {
   document.addEventListener('pointerdown', unlock, true);
   document.addEventListener('keydown', unlock, true);
 }
+

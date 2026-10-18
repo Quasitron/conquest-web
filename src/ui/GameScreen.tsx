@@ -1,4 +1,4 @@
-﻿import type { JSX } from 'preact';
+import type { JSX } from 'preact';
 import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
@@ -890,7 +890,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
-        <button onClick={(e) => { blur(e); save(false); }}>Save Asâ€¦</button>
+        <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
         <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Sound</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>

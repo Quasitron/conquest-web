@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { SoundDialog } from './SoundDialog';
 import { GameSession } from '../app/session';
 import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
 import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
@@ -54,6 +55,7 @@ export function TitleScreen({ store, onStart }: Props) {
   const [saves, setSaves] = useState<SaveSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<'menu' | 'new' | 'load'>('menu');
+  const [soundOpen, setSoundOpen] = useState(false);
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -127,6 +129,7 @@ export function TitleScreen({ store, onStart }: Props) {
               )}
               <button onClick={() => setPanel('new')} class={autosave ? '' : 'primary'}>New Game</button>
               <button onClick={() => setPanel('load')}>Load…</button>
+              <button onClick={() => setSoundOpen(true)}>Sound</button>
             </div>
           </section>
         )}
@@ -231,6 +234,8 @@ export function TitleScreen({ store, onStart }: Props) {
         {error && <p class="error" role="alert">{error}</p>}
       </div>
       <p class="title-version">{VERSION_LABEL} · Anonymous visit counts, no cookies</p>
+      {soundOpen && <SoundDialog onClose={() => setSoundOpen(false)} />}
     </main>
   );
 }
+

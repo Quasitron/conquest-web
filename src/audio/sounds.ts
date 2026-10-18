@@ -20,6 +20,15 @@ export const SOUND_NAMES: SoundName[] = [
  */
 export const OVERRIDES: Partial<Record<SoundName, string>> = {};
 
+export type MusicName = 'title';
+
+/**
+ * Music tracks. There is no synth for music: with no entry here, nothing plays. To add the title-screen theme, put
+ * the file in public/music/ (e.g. public/music/title.mp3) and set  title: '/music/title.mp3'  below.
+ * Use a track that loops cleanly or is a minute or two long; it loops until a game starts.
+ */
+export const MUSIC: Partial<Record<MusicName, string>> = {};
+
 /** The synth effects write into `out` (the master gain), starting at time `t`. Each is under 1.2 seconds. */
 export type SynthFn = (ctx: AudioContext, out: AudioNode, t: number) => void;
 
@@ -254,6 +263,7 @@ export const SYNTH: Record<SoundName, SynthFn> = {
     [392, 349, 311, 262].forEach((f, i) => tone(c, o, t + i * 0.2, f, 0.35, { type: 'sine', gain: 0.25 }));
   },
 };
+
 
 
 

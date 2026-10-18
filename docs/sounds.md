@@ -1,4 +1,4 @@
-﻿# Sounds in Theater of Conquest
+# Sounds in Theater of Conquest
 
 Every sound is currently made by the computer in code (a "synth"), so the game ships with no audio files. Any sound can
 be replaced by a recorded file, with no other code change.
@@ -58,6 +58,13 @@ Production sounds play as each new unit's production screen opens, one at a time
 - Never use clips from the original Empire Deluxe, other commercial games, films or TV: they are copyrighted.
 - Keep files short (under 1.5 seconds) and normalised to a similar loudness so no single sound jumps out.
 
+## Title-screen music
 
+The game plays a theme on the title screen and fades it out when a game starts. There is no built-in tune: until you add a file,
+nothing plays.
 
+1. Put the track in `public/music/`, e.g. `public/music/title.mp3`.
+2. In `src/audio/sounds.ts` set `title: '/music/title.mp3'` in `MUSIC`.
 
+It loops, so use a track that loops cleanly or runs a minute or two. On an iPad (and in most browsers) music can only start after the
+first tap, so it begins then. The **Sound** button (title screen and in-game) has Music on/off and a separate music volume.
