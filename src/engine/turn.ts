@@ -23,12 +23,18 @@ function finishPlayerTurn(s: GameState, pid: PlayerId, events: GameEvent[]): voi
   }
 }
 
+/**
+ * A player is knocked out at the end of their turn when they hold no city and have no unit that could take one
+ * (a land unit, aboard a transport or not). The original only knocked a player out with no units at all, which
+ * made winners hunt down a last ship that could never retake anything; its leftover units are removed.
+ */
 export function checkElimination(s: GameState, pid: PlayerId, events: GameEvent[]): void {
   const p = s.players[pid];
   if (p.eliminated) return;
   const hasCity = s.cities.some((c) => c.owner === pid);
-  const hasUnit = s.units.some((u) => u.owner === pid);
-  if (!hasCity && !hasUnit) {
+  const canTakeCity = s.units.some((u) => u.owner === pid && UNIT_STATS[u.type].domain === 'land');
+  if (!hasCity && !canTakeCity) {
+    for (const u of s.units.filter((x) => x.owner === pid)) destroyUnit(s, u, 'resigned', events);
     p.eliminated = true;
     events.push({ type: 'playerEliminated', player: pid });
   }

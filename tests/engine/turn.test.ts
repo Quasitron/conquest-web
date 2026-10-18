@@ -128,4 +128,52 @@ describe('elimination and victory', () => {
     resign(s, []);
     expect(s.winner).toBe(1);
   });
-});
+
+  describe('knock-out needs a unit that could take a city', () => {
+    /** Player 0 has lost every city; player 1 holds the others. */
+    function lost() {
+      const s = makeGame(['*###*..']);
+      s.cities[0].owner = 1;
+      s.cities[1].owner = 1;
+      return s;
+    }
+
+    it('a player left with only ships and fighters is knocked out when their turn ends, and those units go', () => {
+      const s = lost();
+      const ship = addUnit(s, 'cruiser', 0, 5, 0);
+      const plane = addUnit(s, 'fighter', 0, 2, 0);
+      const events: GameEvent[] = [];
+      endTurn(s, events);
+      expect(s.players[0].eliminated).toBe(true);
+      expect(s.units).not.toContain(ship);
+      expect(s.units).not.toContain(plane);
+      expect(s.over).toBe(true);
+      expect(s.winner).toBe(1);
+    });
+
+    it('an empty transport cannot take a city, so its owner is out', () => {
+      const s = lost();
+      addUnit(s, 'transport', 0, 5, 0);
+      endTurn(s, []);
+      expect(s.players[0].eliminated).toBe(true);
+    });
+
+    it('a player with an army, on land or aboard a transport, is still in', () => {
+      const a = lost();
+      addUnit(a, 'army', 0, 2, 0);
+      endTurn(a, []);
+      expect(a.players[0].eliminated).toBe(false);
+
+      const b = lost();
+      const t = addUnit(b, 'transport', 0, 5, 0);
+      addUnit(b, 'army', 0, 5, 0, { carriedBy: t.id });
+      endTurn(b, []);
+      expect(b.players[0].eliminated).toBe(false);
+    });
+
+    it('a player with a city is in even with no units', () => {
+      const s = makeGame(['*###*..']);
+      endTurn(s, []);
+      expect(s.players[0].eliminated).toBe(false);
+    });
+  });});

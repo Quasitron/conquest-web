@@ -14,5 +14,5 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
 };
 
-/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. 6: a patrol tied to a carrier moves with it. 7: aircraft wait a turn when blocked. 8: equal-length paths prefer the straight line. 9: fighters aboard a carrier await orders instead of sleeping. */
-export const RULES_VERSION = 9;
+/** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. 6: a patrol tied to a carrier moves with it. 7: aircraft wait a turn when blocked. 8: equal-length paths prefer the straight line. 9: fighters aboard a carrier await orders instead of sleeping. 10: a player with no city and no unit able to take one is knocked out. */
+export const RULES_VERSION = 10;
