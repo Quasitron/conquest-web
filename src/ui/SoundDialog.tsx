@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+﻿import { useState } from 'preact/hooks';
 import { getSettings, playAll, setSettings } from '../audio/engine';
 import { blur } from './blur';
 import { PlacedDialog } from './LeaderLine';
@@ -30,9 +30,10 @@ export function SoundDialog({ onClose }: Props) {
         </label>
       </p>
       <div class="picker-actions">
-        <button disabled={!s.enabled} onClick={(e) => { blur(e); playAll(['click', 'shot', 'explosion', 'capture']); }}>Test</button>
+        <button disabled={!s.enabled} onClick={(e) => { blur(e); playAll(['produce-army', 'shot', 'explosion', 'capture']); }}>Test</button>
         <button class="primary" onClick={(e) => { blur(e); onClose(); }}>Close</button>
       </div>
     </PlacedDialog>
   );
 }
+

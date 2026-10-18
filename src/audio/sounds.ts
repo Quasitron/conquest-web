@@ -1,9 +1,13 @@
-export type SoundName =
+﻿export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
-  | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose';
+  | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
+  | 'produce-army' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
+  | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
+  'produce-army', 'produce-fighter', 'produce-transport', 'produce-destroyer',
+  'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
 ];
 
 /**
@@ -41,7 +45,7 @@ function tone(
 /** A burst of filtered noise that fades out; the filter sweeps from `from` Hz down to `to` Hz. */
 function noise(
   ctx: AudioContext, out: AudioNode, t: number, dur: number,
-  o: { gain?: number; from?: number; to?: number; q?: number } = {},
+  o: { gain?: number; from?: number; to?: number; q?: number; filter?: BiquadFilterType } = {},
 ): void {
   const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
   const buf = ctx.createBuffer(1, n, ctx.sampleRate);
@@ -50,7 +54,7 @@ function noise(
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
+  filter.type = o.filter ?? 'lowpass';
   filter.Q.value = o.q ?? 0.7;
   filter.frequency.setValueAtTime(o.from ?? 3000, t);
   filter.frequency.exponentialRampToValueAtTime(o.to ?? 300, t + dur);
@@ -63,7 +67,64 @@ function noise(
   src.start(t);
 }
 
-export const SYNTH: Record<SoundName, SynthFn> = {
+/** A brass chord: detuned sawtooth voices through a lowpass filter, with a little vibrato. */
+function brass(ctx: AudioContext, out: AudioNode, t: number, freqs: number[], dur: number, gain: number): void {
+  const g = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(700, t);
+  filter.frequency.linearRampToValueAtTime(2400, t + Math.min(0.12, dur / 2));
+  filter.frequency.exponentialRampToValueAtTime(900, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain / Math.sqrt(freqs.length), t + 0.04);
+  g.gain.setValueAtTime(gain / Math.sqrt(freqs.length), t + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  filter.connect(g);
+  g.connect(out);
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.setValueAtTime(5.5, t);
+  lfoGain.gain.setValueAtTime(8, t);
+  lfo.connect(lfoGain);
+  lfo.start(t);
+  lfo.stop(t + dur + 0.02);
+  for (const f of freqs) {
+    for (const detune of [-7, 7]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f, t);
+      osc.detune.setValueAtTime(detune, t);
+      lfoGain.connect(osc.detune);
+      osc.connect(filter);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    }
+  }
+}
+
+/** A ship's horn: two slightly detuned low square/saw tones with a soft attack, lowpassed. */
+function horn(ctx: AudioContext, out: AudioNode, t: number, freq: number, dur: number, gain: number): void {
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(900, t);
+  filter.connect(out);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.06);
+  g.gain.setValueAtTime(gain, t + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  g.connect(filter);
+  for (const [mult, type] of [[1, 'sawtooth'], [1.005, 'square']] as const) {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq * mult, t);
+    osc.connect(g);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+}
+
+export const SYNTH:Record<SoundName, SynthFn> = {
   // A tiny tick.
   click: (c, o, t) => tone(c, o, t, 900, 0.05, { type: 'triangle', gain: 0.18, endFreq: 600 }),
   // A soft two-note ping: your turn.
@@ -92,9 +153,49 @@ export const SYNTH: Record<SoundName, SynthFn> = {
     noise(c, o, t + 0.55, 0.5, { gain: 0.5, from: 1200, to: 60 });
     tone(c, o, t + 0.55, 70, 0.4, { gain: 0.4, endFreq: 30 });
   },
-  // A city is yours: a rising three-note fanfare.
+  // A city is yours: a short brass fanfare, three rising notes ending on a held chord, with a cymbal-like tail.
   capture: (c, o, t) => {
-    [523, 659, 784].forEach((f, i) => tone(c, o, t + i * 0.11, f, 0.4, { type: 'triangle', gain: 0.22 }));
+    brass(c, o, t, [392], 0.16, 0.2);
+    brass(c, o, t + 0.17, [523], 0.16, 0.2);
+    brass(c, o, t + 0.34, [392, 494, 587, 784], 0.95, 0.2);
+    noise(c, o, t + 0.34, 1.0, { gain: 0.07, from: 9000, to: 5000, filter: 'highpass' });
+  },
+  // Army: a quick snare-like drum roll, a slight crescendo.
+  'produce-army': (c, o, t) => {
+    [0, 0.07, 0.13, 0.18, 0.22, 0.32].forEach((d, i) => {
+      noise(c, o, t + d, 0.07, { gain: 0.14 + i * 0.03, from: 7000, to: 1500, q: 0.5 });
+      tone(c, o, t + d, 190, 0.06, { type: 'triangle', gain: 0.1, endFreq: 140 });
+    });
+  },
+  // Fighter: a jet whoosh, a filtered noise sweep rising then fading.
+  'produce-fighter': (c, o, t) => {
+    noise(c, o, t, 0.7, { gain: 0.3, from: 400, to: 5000, q: 3, filter: 'bandpass' });
+  },
+  // Transport: one short low ship-horn blip.
+  'produce-transport': (c, o, t) => horn(c, o, t, 98, 0.45, 0.2),
+  // Destroyer: a bosun's-pipe style high glissando.
+  'produce-destroyer': (c, o, t) => {
+    tone(c, o, t, 1500, 0.3, { gain: 0.14, endFreq: 2600, attack: 0.05 });
+    tone(c, o, t + 0.3, 2600, 0.3, { gain: 0.12, endFreq: 2100 });
+  },
+  // Submarine: a sonar ping with an echo.
+  'produce-submarine': (c, o, t) => {
+    tone(c, o, t, 1000, 0.7, { gain: 0.25 });
+    tone(c, o, t + 0.28, 1000, 0.5, { gain: 0.09 });
+  },
+  // Cruiser: a double horn.
+  'produce-cruiser': (c, o, t) => {
+    horn(c, o, t, 131, 0.25, 0.18);
+    horn(c, o, t + 0.32, 131, 0.35, 0.18);
+  },
+  // Battleship: a deep horn over a low rumble.
+  'produce-battleship': (c, o, t) => {
+    horn(c, o, t, 65, 0.75, 0.3);
+    noise(c, o, t, 0.75, { gain: 0.2, from: 300, to: 60 });
+  },
+  // Carrier: a two-tone flight-deck klaxon.
+  'produce-carrier': (c, o, t) => {
+    [740, 520, 740, 520].forEach((f, i) => tone(c, o, t + i * 0.16, f, 0.15, { type: 'square', gain: 0.08 }));
   },
   // A city is lost: two low alternating tones, like an alarm.
   lost: (c, o, t) => {
@@ -120,3 +221,4 @@ export const SYNTH: Record<SoundName, SynthFn> = {
     [392, 349, 311, 262].forEach((f, i) => tone(c, o, t + i * 0.2, f, 0.35, { type: 'sine', gain: 0.25 }));
   },
 };
+

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, getSettings, play, playAll, resetAudio, setSettings, SETTINGS_KEY } from '../../src/audio/engine';
 import { SOUND_NAMES, SYNTH } from '../../src/audio/sounds';
 
@@ -30,7 +30,7 @@ class FakeContext {
     return n;
   }
   createOscillator() {
-    return this.node('osc', { type: 'sine', frequency: this.param(), start: () => { this.started++; }, stop() {} });
+    return this.node('osc', { type: 'sine', frequency: this.param(), detune: this.param(), start: () => { this.started++; }, stop() {} });
   }
   createBuffer(_c: number, n: number) { return { getChannelData: () => new Float32Array(n) }; }
   createBufferSource() { return this.node('src', { start: () => { this.started++; } }); }
@@ -148,3 +148,4 @@ describe('play', () => {
     expect(Object.keys(SYNTH).sort()).toEqual([...SOUND_NAMES].sort());
   });
 });
+

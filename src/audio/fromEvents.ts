@@ -1,4 +1,4 @@
-import type { GameEvent, PlayerId } from '../engine';
+﻿import type { GameEvent, PlayerId } from '../engine';
 import type { SoundName } from './sounds';
 
 /** At most this many sounds per batch, so a computer turn is not a wall of noise. */
@@ -9,6 +9,8 @@ export const SOUND_GAP_MS = 120;
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
   win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1,
+  'produce-army': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
+  'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
 
 function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
@@ -23,7 +25,10 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       if (e.by === me) return ['capture'];
       if (e.from === me) return ['lost'];
       return [];
-    case 'unitProduced': return ['chime'];
+    case 'unitProduced': {
+      const s = `produce-${e.unitType}` as SoundName;
+      return [s in PRIORITY ? s : 'chime'];
+    }
     case 'cargoUnloaded': return e.owner === me ? ['unload'] : [];
     case 'ordersEnded': return e.owner === me && e.reason === 'enemySighted' ? ['alert'] : [];
     case 'turnStarted': return e.player === me ? ['turn'] : [];
@@ -43,3 +48,4 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
   }
   return out;
 }
+
