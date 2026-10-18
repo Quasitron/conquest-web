@@ -50,6 +50,8 @@ const MENU_W = 220;
 const MENU_H = 400;
 // How long a newly given Move To / Patrol route stays on screen before the cycle moves on.
 const ROUTE_PAUSE_MS = 700;
+/** After an attack, how long the battle stays on screen before the cycle moves on to the next unit. */
+const BATTLE_PAUSE_MS = 1000;
 
 /** Group mode: waiting for a box, choosing the order for the units it caught, or waiting for a Move To square. */
 type GroupState = null | { step: 'box' } | { step: 'order'; ids: number[] } | { step: 'target'; ids: number[] };
@@ -317,6 +319,15 @@ export function GameScreen({ session, onQuit }: Props) {
     }
     return null;
   };
+  /** Runs `fn` now, or after BATTLE_PAUSE_MS if the last command was an attack by this player, so its result can be seen. */
+  const afterBattle = (fn: () => void) => {
+    if (!session.lastEvents.some((e) => e.type === 'combat' && e.attackerOwner === view.me)) return fn();
+    cancelAdvance();
+    advanceTimer.current = window.setTimeout(() => {
+      advanceTimer.current = undefined;
+      fn();
+    }, BATTLE_PAUSE_MS);
+  };
   /** After a command on `id`: stay if it is still ready, otherwise move on to the next ready unit. */
   const settle = (id: number, pre: readonly Unit[]) => {
     const fresh = readyNow();
@@ -472,19 +483,30 @@ export function GameScreen({ session, onQuit }: Props) {
         const text = combat ? describeEvent(combat, v.me, names, lookup) : null;
         if (text) setMessage(text);
       }
-      const next = nextReadyAfter(readyNow(), selId);
-      if (next) {
-        if (captured) setSelection({ kind: 'unit', id: next.id });
-        else selectUnit(next);
-      } else setSelection(null);
-      selId = next ? next.id : null;
+      const lostId = selId;
+      const moveOn = () => {
+        const next = nextReadyAfter(readyNow(), lostId);
+        if (next) {
+          if (captured) setSelection({ kind: 'unit', id: next.id });
+          else selectUnit(next);
+        } else setSelection(null);
+        refit(next ? next.id : null);
+        finish();
+      };
+      // A lost attack stays on screen for a moment so the outcome can be seen, then the cycle moves on.
+      if (captured) moveOn();
+      else afterBattle(moveOn);
+      return;
     }
-    const n = exploredCount(v);
-    if (n > (exploredAt.current.get(v.me) ?? 0)) {
-      exploredAt.current.set(v.me, n);
-      applyAutoFit(v, selId !== null ? v.myUnits.find((u) => u.id === selId) ?? null : null);
-    }
+    refit(selId);
     finish();
+    function refit(id: number | null) {
+      const n = exploredCount(v);
+      if (n > (exploredAt.current.get(v.me) ?? 0)) {
+        exploredAt.current.set(v.me, n);
+        applyAutoFit(v, id !== null ? v.myUnits.find((u) => u.id === id) ?? null : null);
+      }
+    }
   };
 
   /** Issues an order command for `u`, then moves the cycle on if `u` is no longer ready. */
@@ -597,7 +619,7 @@ export function GameScreen({ session, onQuit }: Props) {
         else focus(still);
         // Out of moves: move on to the next unit that needs orders, or deselect when none is left (the map
         // stays put) so only End Turn flashes.
-        settle(still.id, ready);
+        afterBattle(() => settle(still.id, ready));
       }
     }
   };
