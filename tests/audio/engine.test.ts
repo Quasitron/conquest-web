@@ -61,7 +61,7 @@ afterEach(() => {
 describe('sound settings', () => {
   it('default to on at a moderate volume', () => {
     expect(getSettings()).toEqual(DEFAULT_SETTINGS);
-    expect(DEFAULT_SETTINGS).toEqual({ enabled: true, volume: 0.6, music: true, musicVolume: 0.5 });
+    expect(DEFAULT_SETTINGS).toEqual({ enabled: true, volume: 0.6, music: true, musicVolume: 0.1 });
   });
 
   it('persist across a reload', () => {

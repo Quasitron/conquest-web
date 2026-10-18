@@ -11,7 +11,7 @@ export interface SoundSettings {
 }
 
 export const SETTINGS_KEY = 'conquest.sound';
-export const DEFAULT_SETTINGS: SoundSettings = { enabled: true, volume: 0.6, music: true, musicVolume: 0.5 };
+export const DEFAULT_SETTINGS: SoundSettings = { enabled: true, volume: 0.6, music: true, musicVolume: 0.1 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
