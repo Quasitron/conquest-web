@@ -74,6 +74,15 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([{ type: 'gameOver', winner: null }], 0)).toEqual(['lose']);
   });
 
+  it('leaves out battle sounds when the batch ends with your turn starting (the Combat report covers them)', () => {
+    const start: GameEvent = { type: 'turnStarted', player: 0, turn: 4 };
+    expect(soundsForEvents([combat, destroyed('combat'), start], 0)).toEqual(['turn']);
+    const lost: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
+    expect(soundsForEvents([combat, lost, start], 0)).toEqual(['lost', 'turn']);
+    // Another player's turn starting does not count.
+    expect(soundsForEvents([combat, { type: 'turnStarted', player: 1, turn: 4 }], 0)).toEqual(['shot', 'taps']);
+  });
+
   it('plays each sound once per batch, in order of first appearance', () => {
     const built = (id: number): GameEvent => ({ type: 'unitProduced', unitId: id, cityId: 1, unitType: 'army' });
     
@@ -82,7 +91,6 @@ describe('soundsForEvents', () => {
 
   it('caps a big batch, dropping the least important sounds first', () => {
     const events: GameEvent[] = [
-      { type: 'turnStarted', player: 0, turn: 5 },
       { type: 'unitProduced', unitId: 1, cityId: 1, unitType: 'army' },
       { type: 'cargoUnloaded', transportId: 1, owner: 0, unitIds: [2] },
       combat, destroyed('combat'), destroyed('crashed'),
@@ -93,11 +101,13 @@ describe('soundsForEvents', () => {
     expect(out.length).toBe(MAX_SOUNDS);
     expect(out).toContain('lost');
     expect(out).toContain('alert');
-    expect(out).not.toContain('turn');
+    expect(out).not.toContain('unload');
     // Order of appearance is kept.
     expect(out).toEqual(['taps', 'crash', 'alert', 'lost']);
   });
 });
+
+
 
 
 

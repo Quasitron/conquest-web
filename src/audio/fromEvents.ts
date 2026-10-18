@@ -48,7 +48,13 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
 /** The sounds to play for a batch of new events, from player `me`'s point of view: in order, no repeats, capped. */
 export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): SoundName[] {
   const out: SoundName[] = [];
-  for (const e of events) for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
+  // A batch that ends in your own turn starting is what happened during the other player's turn. Its battles are
+  // in the Combat report that opens by itself, so they are not also played as sounds.
+  const newTurn = events.some((e) => e.type === 'turnStarted' && e.player === me);
+  for (const e of events) {
+    if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
+    for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
+  }
   // Taking a city already plays the same fanfare, and a won fight needs no explosion on top of it.
   const won = out.includes('battle-won');
   for (let i = out.length - 1; i >= 0; i--) {
