@@ -29,14 +29,14 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `click` | You press End Turn |
 | `turn` | Your turn starts |
 | `chime` | Fallback for a produced unit of an unknown type (not normally heard) |
-| `produce-army` | The production screen for An army opens (synth: snare-like drum roll) |
-| `produce-fighter` | The production screen for A fighter opens (jet whoosh) |
-| `produce-transport` | The production screen for A transport opens (short low ship horn) |
-| `produce-destroyer` | The production screen for A destroyer opens (bosun's-pipe glissando) |
-| `produce-submarine` | The production screen for A submarine opens (sonar ping) |
-| `produce-cruiser` | The production screen for A cruiser opens (double horn) |
-| `produce-battleship` | The production screen for A battleship opens (deep horn and rumble) |
-| `produce-carrier` | The production screen for A carrier opens (two-tone klaxon) |
+| `produce-army` | The production screen for a new army opens (synth: snare-like drum roll) |
+| `produce-fighter` | The production screen for a new fighter opens (jet whoosh) |
+| `produce-transport` | The production screen for a new transport opens (short low ship horn) |
+| `produce-destroyer` | The production screen for a new destroyer opens (bosun's-pipe glissando) |
+| `produce-submarine` | The production screen for a new submarine opens (sonar ping) |
+| `produce-cruiser` | The production screen for a new cruiser opens (double horn) |
+| `produce-battleship` | The production screen for a new battleship opens (deep horn and rumble) |
+| `produce-carrier` | The production screen for a new carrier opens (two-tone klaxon) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle |
 | `crash` | An aircraft ran out of fuel and crashed |
@@ -55,4 +55,5 @@ Production sounds play as each new unit's production screen opens, one at a time
   credit has to be listed somewhere in the game.
 - Never use clips from the original Empire Deluxe, other commercial games, films or TV: they are copyrighted.
 - Keep files short (under 1.5 seconds) and normalised to a similar loudness so no single sound jumps out.
+
 
