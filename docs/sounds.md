@@ -41,7 +41,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `battle-won` | A fight your unit won, attacking or defending (same brass fanfare as `capture`) |
 | `battle-lost` | A fight your unit lost (a falling, swirling "down the drain" sound) |
 | `shot` | A battle you can see |
-| `explosion` | A unit was destroyed in a battle you only watch (recorded, 1 s; the synth boom is the fallback) |
+| `explosion` | A unit was destroyed in a battle (yours or one you watch), after the shot and before the fanfare or drain sound; recorded, 1 s, the synth boom is the fallback |
 | `crash` | An aircraft ran out of fuel and crashed |
 | `capture` | You captured a city (brass fanfare) |
 | `lost` | One of your cities was captured (alarm) |

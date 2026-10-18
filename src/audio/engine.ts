@@ -1,4 +1,4 @@
-import { SOUND_GAP_MS } from './fromEvents';
+import { LONG_GAP_MS, SOUND_GAP_MS } from './fromEvents';
 import { OVERRIDES, SYNTH, type SoundName } from './sounds';
 
 export interface SoundSettings {
@@ -136,7 +136,11 @@ export function playAll(names: readonly SoundName[]): void {
     const c = context();
     if (!c) return;
     if (c.state === 'suspended') void c.resume().catch(() => {});
-    names.forEach((n, i) => playAt(n, (i * SOUND_GAP_MS) / 1000));
+    let at = 0;
+    for (const n of names) {
+      playAt(n, at / 1000);
+      at += LONG_GAP_MS[n] ?? SOUND_GAP_MS;
+    }
   } catch { /* never let a sound problem break the game */ }
 }
 

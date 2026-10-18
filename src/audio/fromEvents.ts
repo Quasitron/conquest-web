@@ -5,6 +5,8 @@ import type { SoundName } from './sounds';
 export const MAX_SOUNDS = 4;
 /** Gap between the sounds of one batch, in milliseconds. */
 export const SOUND_GAP_MS = 120;
+/** The gap after these sounds is longer, so the next one does not smear into them. */
+export const LONG_GAP_MS: Partial<Record<SoundName, number>> = { explosion: 500 };
 
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
@@ -29,7 +31,7 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       return ['shot', (mine === 'attacker') === e.attackerWon ? 'battle-won' : 'battle-lost'];
     }
     case 'unitDestroyed':
-      if (e.reason === 'combat') return e.owner === me ? ['battle-lost'] : ['explosion'];
+      if (e.reason === 'combat') return ['explosion'];
       if (e.reason === 'crashed') return ['crash'];
       return [];
     case 'cityCaptured':
@@ -55,10 +57,13 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
     if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
     for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
   }
-  // Taking a city already plays the same fanfare, and a won fight needs no explosion on top of it.
-  const won = out.includes('battle-won');
+  // Taking a city already plays the same fanfare. The result of a fight comes last, after the shot and the explosion.
   for (let i = out.length - 1; i >= 0; i--) {
-    if ((out[i] === 'battle-won' && out.includes('capture')) || (out[i] === 'explosion' && won)) out.splice(i, 1);
+    if (out[i] === 'battle-won' && out.includes('capture')) out.splice(i, 1);
+  }
+  for (const r of ['battle-won', 'battle-lost'] as const) {
+    const at = out.indexOf(r);
+    if (at >= 0) out.push(...out.splice(at, 1));
   }
   while (out.length > MAX_SOUNDS) {
     let weakest = 0;
