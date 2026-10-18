@@ -109,6 +109,14 @@ button.linklike { border: 0; background: none; padding: 0; text-align: left; col
 .cargo-list button { width: 100%; text-align: left; font-size: 0.85rem; padding: 2px 8px; margin: 0; }
 .unit-info { text-align: left; max-width: 360px; }
 .unit-info h2, .unit-info p { margin: 0; }
+.report-tabs { display: flex; gap: 6px; }
+.report-tabs button { flex: 1; }
+.report-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 45vh; overflow-y: auto; }
+.report-list li { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; align-items: center; }
+.report-list li .muted { grid-column: 1; font-size: 0.8rem; }
+.report-list li button { grid-column: 2; grid-row: 1 / span 2; }
+.report-list .lost-battle { color: #ff8a80; }
+.report-list .won-battle { color: #9be7a5; }
 .status-facts { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; margin: 0; }
 .status-facts dt { color: var(--muted); }
 .status-facts dd { margin: 0; text-align: right; font-weight: 600; }

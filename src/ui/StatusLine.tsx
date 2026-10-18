@@ -16,17 +16,22 @@ interface Props {
   onToggleRoutes: () => void;
   /** Opens the list of all your units. */
   onUnits: () => void;
-  /** Opens the status report. */
-  onStatus: () => void;
+  /** Opens the reports (status, combat, recon). */
+  onReports: () => void;
+  /** Battles against you since your last turn, shown as a count on the Reports button. */
+  battleCount: number;
 }
 
 export function StatusLine({
-  unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onStatus,
+  unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onReports,
+  battleCount,
 }: Props) {
   return (
     <div class="statusline">
       <span class="statusline-text">{prodMap ? 'Production map: each city shows what it is building and the turns left.' : unit ? statusLine(unit) : ''}</span>
-      <button title="Cities, exploration, production, kills and losses" onClick={(e) => { blur(e); onStatus(); }}>Status</button>
+      <button title="Status, battles against you, and enemy sightings" onClick={(e) => { blur(e); onReports(); }}>
+        Reports{battleCount > 0 ? ` (${battleCount})` : ''}
+      </button>
       <button title="List all your units and jump to one" onClick={(e) => { blur(e); onUnits(); }}>Units</button>
       <button class={routesMap ? 'primary' : ''} title="Show the routes set on your cities" onClick={(e) => { blur(e); onToggleRoutes(); }}>
         {routesMap ? 'Hide Routes' : 'Routes'}

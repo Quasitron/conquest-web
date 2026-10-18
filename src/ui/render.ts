@@ -31,6 +31,8 @@ export interface DrawOptions {
   routeLabel: string | null;
   /** The two endpoints of each of the player's patrols, shown while choosing a patrol destination. */
   patrols?: [Pos, Pos][];
+  /** A square to flash with a ring (a report line was just shown), or null. */
+  flash?: Pos | null;
   /** The player's city routes, drawn as arrows from each route city to its destination. */
   cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   /** Production map: hides the units and shows what each own city is building. */
@@ -251,6 +253,20 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.fillText(city.name, sx + t / 2, sy + t);
       });
     }
+  }
+
+  // A flashing ring on a square picked out from a report.
+  if (o.flash && o.blinkOn) {
+    const f = o.flash;
+    each((mx, my, sx, sy) => {
+      if (mx !== f.x || my !== f.y) return;
+      ctx.strokeStyle = '#ffd24a';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(sx + t / 2, sy + t / 2, t * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+    });
   }
 
   // Other patrols: a dashed line between the endpoints, with a ring at each end.

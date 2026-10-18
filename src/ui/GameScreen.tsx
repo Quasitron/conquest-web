@@ -12,7 +12,8 @@ import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
 import { UnitList } from './UnitList';
-import { StatusReport } from './StatusReport';
+import { Reports, type ReportTab } from './Reports';
+import { battlesAgainstMe, recentSightings } from './reportLines';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
 import { downloadSave } from './exportFile';
@@ -98,7 +99,10 @@ export function GameScreen({ session, onQuit }: Props) {
   const [prodMap, setProdMap] = useState(false);
   const [routesMap, setRoutesMap] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
+  const [reportTab, setReportTab] = useState<ReportTab | null>(null);
+  // A square flashing on the map after a report line's Show button.
+  const [flash, setFlash] = useState<Pos | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
@@ -188,7 +192,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
-  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || statusOpen;
+  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null;
   // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
   const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
   useEffect(() => setDialogError(null), [dialogKey]);
@@ -324,7 +328,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setNoPath(null);
     setCityOpen(null);
     setUnitsOpen(false);
-    setStatusOpen(false);
+    setReportTab(null);
     setReports([]);
     setReportIdx(0);
     if (session.phase !== 'playing') return;
@@ -350,6 +354,8 @@ export function GameScreen({ session, onQuit }: Props) {
       } else selectUnit(first);
     } else if (fitOf(view.me).auto) applyAutoFit(view, null);
     else if (view.myCities[0]) focus(view.myCities[0]);
+    // If anything attacked you since your last turn, the Combat report opens on its own.
+    if (battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
   };
   const nextReport = () => {
     if (reportIdx + 1 < reports.length) {
@@ -709,6 +715,18 @@ export function GameScreen({ session, onQuit }: Props) {
     [view],
   );
 
+  // Reports: battles others started since your last turn (from the log), and recent enemy sightings (from fog).
+  const battles = useMemo(() => battlesAgainstMe(session.log(view.me), view.me, names, lookup), [view]);
+  const sightings = useMemo(() => recentSightings(view, names), [view]);
+  /** Centers the map on a square from a report and flashes it for a few seconds. */
+  const showAt = (p: Pos) => {
+    // The reports dialog sits mid-screen, so put the square in the left third instead of dead centre.
+    const { w, h } = viewport();
+    setCam(centerOn(camNow.current, p.x + (w / camNow.current.tile) * 0.2, p.y, w, h));
+    setFlash(p);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 3000);
+  };
   // Stable handlers so the memoised side panel is not re-rendered by hover or camera changes.
   const latest = useRef({ doAction, act, openCity, select: (id: number) => setSelection({ kind: 'unit', id }) });
   latest.current = { doAction, act, openCity, select: (id: number) => setSelection({ kind: 'unit', id }) };
@@ -759,7 +777,8 @@ export function GameScreen({ session, onQuit }: Props) {
           unit={playing ? selectedUnit : null} onFit={requestFit} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
           routesMap={routesMap} onToggleRoutes={() => setRoutesMap(!routesMap)}
           onUnits={() => { setTarget(null); setMenu(null); setUnitsOpen(true); }}
-          onStatus={() => { setTarget(null); setMenu(null); setStatusOpen(true); }}
+          onReports={() => { setTarget(null); setMenu(null); setReportTab(battles.length > 0 ? 'combat' : 'status'); }}
+          battleCount={battles.length}
           canDeselect={selection !== null} onDeselect={() => { setTarget(null); setSelection(null); }}
         />
         <MapCanvas
@@ -767,7 +786,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} cityRoutes={cityRoutes} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
         />
       </div>
@@ -858,7 +877,12 @@ export function GameScreen({ session, onQuit }: Props) {
           onClose={() => setCityOpen(null)}
         />
       )}
-      {statusOpen && <StatusReport view={view} onClose={() => setStatusOpen(false)} />}
+      {reportTab !== null && (
+        <Reports
+          view={view} tab={reportTab} battles={battles} sightings={sightings} onShow={showAt}
+          onClose={() => setReportTab(null)}
+        />
+      )}
       {unitsOpen && (
         <UnitList
           view={view}
