@@ -25,6 +25,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-transport': '/sounds/produce-transport.mp3',
   // Destroyer, seconds 13.2 to 15 of the original recording.
   'produce-destroyer': '/sounds/produce-destroyer.mp3',
+  // Submarine, the first 2.5 seconds of the original recording.
+  'produce-submarine': '/sounds/produce-submarine.mp3',
 };
 
 export type MusicName = 'title';
