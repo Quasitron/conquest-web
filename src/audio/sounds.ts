@@ -35,6 +35,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-carrier': '/sounds/produce-carrier.mp3',
   // Armor (not in the game yet), the first 4 seconds of the original recording.
   'produce-armor': '/sounds/produce-armor.mp3',
+  // Explosion, seconds 1.5 to 2.5 of the original recording; short enough to repeat for a combat animation.
+  explosion: '/sounds/explosion.mp3',
 };
 
 export type MusicName = 'title';

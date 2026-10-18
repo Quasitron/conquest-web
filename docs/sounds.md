@@ -41,7 +41,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `battle-won` | A fight your unit won, attacking or defending (same brass fanfare as `capture`) |
 | `battle-lost` | A fight your unit lost (a falling, swirling "down the drain" sound) |
 | `shot` | A battle you can see |
-| `explosion` | A unit was destroyed in a battle |
+| `explosion` | A unit was destroyed in a battle you only watch (recorded, 1 s; the synth boom is the fallback) |
 | `crash` | An aircraft ran out of fuel and crashed |
 | `capture` | You captured a city (brass fanfare) |
 | `lost` | One of your cities was captured (alarm) |
@@ -85,5 +85,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-carrier.mp3` | https://freesound.org/people/qubodup/sounds/162449/ (qubodup) | CC0 (checked by the game's owner) | 2:58 to 3:01 |
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 | `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
+| `explosion.mp3` | https://freesound.org/people/Anomaex/sounds/490266/ (Anomaex) | CC0 (checked by the game's owner) | seconds 1.5 to 2.5 |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
