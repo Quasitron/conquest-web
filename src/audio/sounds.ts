@@ -2,14 +2,12 @@ export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
-  | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier'
-  | 'battle-lost';
+  | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
   'produce-army', 'produce-armor', 'produce-fighter', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
-  'battle-lost',
 ];
 
 /**
@@ -196,33 +194,7 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   },
   // A city is yours: a short brass fanfare, three rising notes ending on a held chord, with a cymbal-like tail.
   capture: fanfare,
-  // Your unit was lost: a falling, wobbling whirl with a gurgle, like water going down a drain.
-  'battle-lost': (c, o, t) => {
-    const dur = 1.0;
-    const osc = c.createOscillator();
-    const g = c.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(900, t);
-    osc.frequency.exponentialRampToValueAtTime(70, t + dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.22, t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const wobble = c.createOscillator();
-    const depth = c.createGain();
-    wobble.frequency.setValueAtTime(7, t);
-    wobble.frequency.linearRampToValueAtTime(16, t + dur);
-    depth.gain.setValueAtTime(350, t);
-    wobble.connect(depth);
-    depth.connect(osc.detune);
-    osc.connect(g);
-    g.connect(o);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
-    wobble.start(t);
-    wobble.stop(t + dur + 0.02);
-    noise(c, o, t, dur, { gain: 0.16, from: 1800, to: 150, q: 4, filter: 'bandpass' });
-    tone(c, o, t + 0.8, 110, 0.18, { gain: 0.25, endFreq: 55 });
-  },  // Army: a quick snare-like drum roll, a slight crescendo.
+  // Army: a quick snare-like drum roll, a slight crescendo.
   'produce-army': (c, o, t) => {
     [0, 0.07, 0.13, 0.18, 0.22, 0.32].forEach((d, i) => {
       noise(c, o, t + d, 0.07, { gain: 0.14 + i * 0.03, from: 7000, to: 1500, q: 0.5 });

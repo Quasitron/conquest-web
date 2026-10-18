@@ -33,13 +33,13 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([combat, destroyed('combat')], 2)).toEqual(['shot', 'explosion']);
   });
 
-  it('a fight you lose ends with the drain sound, after any explosion; a win has no sound of its own', () => {
+  it('winning or losing a fight adds no sound of its own beyond the shot and any explosion', () => {
     // Player 1 attacked player 0's army and won.
     expect(soundsForEvents([combat, destroyed('combat')], 1)).toEqual(['shot', 'explosion']);
-    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion', 'battle-lost']);
+    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion']);
     const defended: GameEvent = { ...(combat as object), attackerWon: false } as GameEvent;
     expect(soundsForEvents([defended], 0)).toEqual(['shot']);
-    expect(soundsForEvents([defended], 1)).toEqual(['shot', 'battle-lost']);
+    expect(soundsForEvents([defended], 1)).toEqual(['shot']);
     // Taking a city does not play the fanfare twice.
     const taken: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
     expect(soundsForEvents([combat, taken], 1)).toEqual(['shot', 'capture']);
@@ -80,7 +80,7 @@ describe('soundsForEvents', () => {
     const lost: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
     expect(soundsForEvents([combat, lost, start], 0)).toEqual(['lost', 'turn']);
     // Another player's turn starting does not count.
-    expect(soundsForEvents([combat, { type: 'turnStarted', player: 1, turn: 4 }], 0)).toEqual(['shot', 'battle-lost']);
+    expect(soundsForEvents([combat, { type: 'turnStarted', player: 1, turn: 4 }], 0)).toEqual(['shot']);
   });
 
   it('plays each sound once per batch, in order of first appearance', () => {
@@ -102,8 +102,9 @@ describe('soundsForEvents', () => {
     expect(out).toContain('lost');
     expect(out).toContain('alert');
     expect(out).not.toContain('unload');
-    // Order of appearance is kept, with the result of the fight last.
-    expect(out).toEqual(['explosion', 'alert', 'lost', 'battle-lost']);
+    // Order of appearance is kept.
+    expect(out.length).toBe(MAX_SOUNDS);
+    expect(out).toEqual(['explosion', 'crash', 'alert', 'lost']);
   });
 });
 
