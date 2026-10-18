@@ -68,3 +68,14 @@ nothing plays.
 
 It loops, so use a track that loops cleanly or runs a minute or two. On an iPad (and in most browsers) music can only start after the
 first tap, so it begins then. The **Sound** button (title screen and in-game) has Music on/off and a separate music volume.
+
+## Where the recorded sounds came from
+
+Keep this list up to date: one line per recorded file, with the page it came from and its licence.
+
+| File | Source | Licence | Used |
+| --- | --- | --- | --- |
+| `produce-transport.mp3` | https://freesound.org/people/devy32/sounds/441223/ (devy32) | CC0 (checked by the game's owner) | seconds 16.7 to 19.2 |
+| `produce-fighter.mp3` | Freesound (link to be added) | CC0 (checked by the game's owner) | seconds 4 to 7 |
+
+The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
