@@ -38,7 +38,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-battleship` | The production screen for a new battleship opens (deep horn and rumble) |
 | `produce-carrier` | The production screen for a new carrier opens (two-tone klaxon) |
 | `battle-won` | A fight your unit won, attacking or defending (same brass fanfare as `capture`) |
-| `taps` | A fight your unit lost (the opening of the bugle call Taps) |
+| `battle-lost` | A fight your unit lost (a falling, swirling "down the drain" sound) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle |
 | `crash` | An aircraft ran out of fuel and crashed |
@@ -57,6 +57,7 @@ Production sounds play as each new unit's production screen opens, one at a time
   credit has to be listed somewhere in the game.
 - Never use clips from the original Empire Deluxe, other commercial games, films or TV: they are copyrighted.
 - Keep files short (under 1.5 seconds) and normalised to a similar loudness so no single sound jumps out.
+
 
 
 

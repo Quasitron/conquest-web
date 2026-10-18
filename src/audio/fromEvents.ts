@@ -8,7 +8,7 @@ export const SOUND_GAP_MS = 120;
 
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
-  win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1, 'battle-won': 8, taps: 8,
+  win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1, 'battle-won': 8, 'battle-lost': 8,
   'produce-army': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
   'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
@@ -23,13 +23,13 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
   switch (e.type) {
     // The log only holds events the player could see, so every combat in it counts.
     case 'combat': {
-      // A fight you are in ends with the fanfare if you won, taps if you lost.
+      // A fight you are in ends with the fanfare if you won, a draining whirl if you lost.
       const mine = e.attackerOwner === me ? 'attacker' : e.defender.owner === me ? 'defender' : null;
       if (!mine) return ['shot'];
-      return ['shot', (mine === 'attacker') === e.attackerWon ? 'battle-won' : 'taps'];
+      return ['shot', (mine === 'attacker') === e.attackerWon ? 'battle-won' : 'battle-lost'];
     }
     case 'unitDestroyed':
-      if (e.reason === 'combat') return e.owner === me ? ['taps'] : ['explosion'];
+      if (e.reason === 'combat') return e.owner === me ? ['battle-lost'] : ['explosion'];
       if (e.reason === 'crashed') return ['crash'];
       return [];
     case 'cityCaptured':
@@ -67,6 +67,7 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
   }
   return out;
 }
+
 
 
 

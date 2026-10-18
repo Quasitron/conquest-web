@@ -33,13 +33,13 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([combat, destroyed('combat')], 2)).toEqual(['shot', 'explosion']);
   });
 
-  it('a fight you win ends with the fanfare (no explosion), one you lose with taps', () => {
+  it('a fight you win ends with the fanfare (no explosion), one you lose with the drain sound', () => {
     // Player 1 attacked player 0's army and won.
     expect(soundsForEvents([combat, destroyed('combat')], 1)).toEqual(['shot', 'battle-won']);
-    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'taps']);
+    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'battle-lost']);
     const defended: GameEvent = { ...(combat as object), attackerWon: false } as GameEvent;
     expect(soundsForEvents([defended], 0)).toEqual(['shot', 'battle-won']);
-    expect(soundsForEvents([defended], 1)).toEqual(['shot', 'taps']);
+    expect(soundsForEvents([defended], 1)).toEqual(['shot', 'battle-lost']);
     // Taking a city does not play the fanfare twice.
     const taken: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
     expect(soundsForEvents([combat, taken], 1)).toEqual(['shot', 'capture']);
@@ -80,7 +80,7 @@ describe('soundsForEvents', () => {
     const lost: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
     expect(soundsForEvents([combat, lost, start], 0)).toEqual(['lost', 'turn']);
     // Another player's turn starting does not count.
-    expect(soundsForEvents([combat, { type: 'turnStarted', player: 1, turn: 4 }], 0)).toEqual(['shot', 'taps']);
+    expect(soundsForEvents([combat, { type: 'turnStarted', player: 1, turn: 4 }], 0)).toEqual(['shot', 'battle-lost']);
   });
 
   it('plays each sound once per batch, in order of first appearance', () => {
@@ -103,9 +103,10 @@ describe('soundsForEvents', () => {
     expect(out).toContain('alert');
     expect(out).not.toContain('unload');
     // Order of appearance is kept.
-    expect(out).toEqual(['taps', 'crash', 'alert', 'lost']);
+    expect(out).toEqual(['battle-lost', 'crash', 'alert', 'lost']);
   });
 });
+
 
 
 
