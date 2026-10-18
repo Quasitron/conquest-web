@@ -76,6 +76,6 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | File | Source | Licence | Used |
 | --- | --- | --- | --- |
 | `produce-transport.mp3` | https://freesound.org/people/devy32/sounds/441223/ (devy32) | CC0 (checked by the game's owner) | seconds 16.7 to 19.2 |
-| `produce-fighter.mp3` | Freesound (link to be added) | CC0 (checked by the game's owner) | seconds 4 to 7 |
+| `produce-fighter.mp3` | https://freesound.org/people/LukaCafuka/sounds/809207/ (LukaCafuka) | CC0 (checked by the game's owner) | seconds 4 to 7 |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
