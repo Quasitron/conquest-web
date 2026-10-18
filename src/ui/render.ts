@@ -4,7 +4,7 @@ import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
-import { fightFrame, type Fight } from './fights';
+import { fightActors, fightFrame, type Fight } from './fights';
 import { drawFightFx } from './fightFx';
 
 export interface DrawOptions {
@@ -197,11 +197,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
 
   // Enemy markers (fade with age).
   const showUnits = !o.productionMap;
+  // While a fight plays, its two squares show the fight's own units (see fightActors), not the finished result.
+  const running = (o.fx ?? []).flatMap((a) => {
+    const frame = fightFrame(a.age, a.fight, a.duration);
+    return frame ? [{ fight: a.fight, frame, actors: fightActors(a.fight, frame) }] : [];
+  });
+  const hiddenSquares = new Set<string>();
+  for (const r of running) {
+    if (r.actors.length === 0) continue;
+    hiddenSquares.add(`${r.fight.at.x},${r.fight.at.y}`);
+    if (r.fight.from) hiddenSquares.add(`${r.fight.from.x},${r.fight.from.y}`);
+  }
+  const hidden = (x: number, y: number) => hiddenSquares.has(`${x},${y}`);
   for (const e of showUnits ? view.enemies : []) {
     const age = view.turn - e.turnSeen;
     const alpha = e.visibleNow ? 1 : age < 1 ? 0.7 : 0.4;
     each((mx, my, sx, sy) => {
-      if (mx === e.x && my === e.y) glyph(sx, sy, colors[e.owner], UNIT_GLYPH[e.type], alpha);
+      if (mx === e.x && my === e.y && !hidden(mx, my)) glyph(sx, sy, colors[e.owner], UNIT_GLYPH[e.type], alpha);
     });
   }
 
@@ -216,7 +228,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const shown = stack.find(blinking) ?? top;
     const alpha = ownAlpha(shown);
     each((mx, my, sx, sy) => {
-      if (mx !== city.x || my !== city.y) return;
+      if (mx !== city.x || my !== city.y || hidden(mx, my)) return;
       if (badgeMode(t) === 'dot') {
         badge(sx, sy, stack.length, alpha);
         return;
@@ -230,7 +242,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   for (const u of showUnits ? view.myUnits : []) {
     if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
-      if (mx !== u.x || my !== u.y) return;
+      if (mx !== u.x || my !== u.y || hidden(mx, my)) return;
       glyph(sx, sy, colors[view.me], UNIT_GLYPH[face(u).type], ownAlpha(u));
       const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
       if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
@@ -307,15 +319,17 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     }
   }
 
-  // Fights being played out: each effect is drawn on every on-screen copy of its square.
-  for (const a of o.fx ?? []) {
-    const frame = fightFrame(a.age, a.fight, a.duration);
-    if (!frame) continue;
+  // Fights being played out: the two units (the loser fading, a winner that moves sliding in), then the effect, each
+  // drawn on every on-screen copy of the map.
+  const copies = view.wrap ? [-view.width, 0, view.width] : [0];
+  for (const r of running) {
+    for (const actor of r.actors) {
+      for (const off of copies) glyph((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], UNIT_GLYPH[actor.type], actor.alpha);
+    }
     each((mx, my, sx, sy) => {
-      if (mx === a.fight.at.x && my === a.fight.at.y) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, frame);
+      if (mx === r.fight.at.x && my === r.fight.at.y) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, r.frame);
     });
   }
-
   // Other patrols: a dashed line between the endpoints, with a ring at each end.
   for (const pair of o.patrols ?? []) {
     for (const pts of copiesOf(pair)) {

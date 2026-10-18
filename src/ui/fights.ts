@@ -7,11 +7,18 @@ import { describeEvent, type DescribeLookup } from './describe';
 export interface Fight {
   /** The square that was attacked. */
   at: Pos;
+  attackerId: number;
+  /** The square the attacker fought from, or null when the record does not say. */
+  from: Pos | null;
   attackerOwner: PlayerId;
   /** Whose unit or city was attacked (null for a neutral city). */
   defenderOwner: PlayerId | null;
   attackerType: UnitType;
+  /** The defending unit's type; null when the defender was a city. */
+  defenderType: UnitType | null;
   attackerWon: boolean;
+  /** The winning attacker moved into the defender's square afterwards. */
+  moved: boolean;
   /** A unit was destroyed in the fight (on either side). */
   destroyed: boolean;
   /** The attacker took a city. */
@@ -30,14 +37,18 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
   for (const e of events) {
     if (e.type === 'combat') {
       cur = {
-        at: { x: e.x, y: e.y }, attackerOwner: e.attackerOwner, defenderOwner: e.defender.owner, attackerType: e.attackerType,
-        attackerWon: e.attackerWon, destroyed: false, captured: false, text: describe(e) ?? '',
+        at: { x: e.x, y: e.y }, attackerId: e.attackerId, from: e.from ? { ...e.from } : null,
+        attackerOwner: e.attackerOwner, defenderOwner: e.defender.owner, attackerType: e.attackerType,
+        defenderType: e.defender.kind === 'unit' ? e.defender.unitType : null,
+        attackerWon: e.attackerWon, moved: false, destroyed: false, captured: false, text: describe(e) ?? '',
       };
       out.push(cur);
     } else if (cur && e.type === 'unitDestroyed' && e.reason === 'combat') {
       cur.destroyed = true;
     } else if (cur && e.type === 'cityCaptured') {
       cur.captured = true;
+    } else if (cur && e.type === 'unitMoved' && e.unitId === cur.attackerId && e.to.x === cur.at.x && e.to.y === cur.at.y) {
+      cur.moved = true; // the winner moved into the loser's square
     }
   }
   return out.filter((f) => f.text !== '');
@@ -71,7 +82,7 @@ export function replayFights(
 }
 
 /** How long a fight takes to play: your own attack, and one step of the turn-start replay. */
-export const FIGHT_MS = 800;
+export const FIGHT_MS = 1000;
 export const REPLAY_STEP_MS = 1500;
 
 export type FightOutcome = 'capture' | 'explosion' | 'hit';
@@ -79,13 +90,16 @@ export type FightOutcome = 'capture' | 'explosion' | 'hit';
 export interface FightFrame {
   /** 0 to 1 through the shot phase (the first part), then held at 1. */
   shots: number;
-  /** 0 to 1 through the result burst (the second part), 0 before it begins. */
+  /** 0 to 1 through the result burst (the middle part); 0 before it begins, 1 after. */
   burst: number;
+  /** 0 to 1 through the last part, when a winner that moves slides into the loser's square; 0 before it begins. */
+  slide: number;
   outcome: FightOutcome;
 }
 
-/** The share of the duration spent on shots before the result bursts. */
-export const SHOT_SHARE = 0.45;
+/** The share of the duration spent on shots before the result bursts, and where the burst ends (the slide follows). */
+export const SHOT_SHARE = 0.4;
+export const BURST_END = 0.75;
 
 /** Where a fight's animation is at `ageMs` into a run of `durationMs`; null once it is over (or before it starts). */
 export function fightFrame(ageMs: number, f: Fight, durationMs = FIGHT_MS): FightFrame | null {
@@ -93,11 +107,44 @@ export function fightFrame(ageMs: number, f: Fight, durationMs = FIGHT_MS): Figh
   const p = ageMs / durationMs;
   return {
     shots: Math.min(1, p / SHOT_SHARE),
-    burst: p <= SHOT_SHARE ? 0 : (p - SHOT_SHARE) / (1 - SHOT_SHARE),
+    burst: p <= SHOT_SHARE ? 0 : Math.min(1, (p - SHOT_SHARE) / (BURST_END - SHOT_SHARE)),
+    slide: p <= BURST_END ? 0 : (p - BURST_END) / (1 - BURST_END),
     outcome: f.captured ? 'capture' : f.destroyed ? 'explosion' : 'hit',
   };
 }
 
+/** A unit drawn during a fight, at a (possibly fractional) map square. */
+export interface FightActor {
+  x: number;
+  y: number;
+  alpha: number;
+  owner: PlayerId;
+  type: UnitType;
+}
+
+/**
+ * The two units of a fight as they should be drawn at this moment: both on their own squares for the shots, the
+ * loser fading out in the burst, and a winning attacker that moves sliding into the loser's square at the end. The
+ * map has already moved on to the result, so these stand in for the real units while the fight plays. A defending
+ * city is not an actor (it is part of the map); the attacker's start square may be unknown, in which case it is left out.
+ */
+export function fightActors(f: Fight, fr: FightFrame): FightActor[] {
+  const out: FightActor[] = [];
+  const loserAlpha = Math.max(0, 1 - fr.burst);
+  if (f.from) {
+    let { x, y } = f.from;
+    const slides = f.attackerWon && (f.moved || f.captured);
+    if (slides) {
+      x = f.from.x + (f.at.x - f.from.x) * fr.slide;
+      y = f.from.y + (f.at.y - f.from.y) * fr.slide;
+    }
+    out.push({ x, y, alpha: f.attackerWon ? 1 : loserAlpha, owner: f.attackerOwner, type: f.attackerType });
+  }
+  if (f.defenderType !== null && f.defenderOwner !== null) {
+    out.push({ x: f.at.x, y: f.at.y, alpha: f.attackerWon ? loserAlpha : 1, owner: f.defenderOwner, type: f.defenderType });
+  }
+  return out;
+}
 /** How long (ms) a fight is held at each pace; manual waits for the player. */
 export const PACE_MS: Record<ReplayPace, number | null> = { manual: null, slow: 3000, normal: 1500, fast: 800 };
 /** Fights that matter to you (one of your units destroyed, a city taken) are held this much longer. */

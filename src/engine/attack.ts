@@ -50,7 +50,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   att.damage = r.attackerDamage;
   def.damage = r.defenderDamage;
   events.push({
-    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type,
+    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'unit', unitId: def.id, owner: def.owner, unitType: def.type },
     x: target.x, y: target.y, attackerWon: r.attackerWon,
     attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,
@@ -85,7 +85,7 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
     rng,
   );
   events.push({
-    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type,
+    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'city', cityId: city.id, owner: city.owner },
     x: city.x, y: city.y, attackerWon: r.attackerWon,
     attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,

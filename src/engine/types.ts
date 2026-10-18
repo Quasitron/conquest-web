@@ -168,6 +168,8 @@ export type GameEvent =
       attackerId: number;
       attackerOwner: PlayerId;
       attackerType: UnitType;
+      /** The square the attacker fought from (before any move into the defender's square). */
+      from?: Pos;
       defender: CombatDefender;
       x: number;
       y: number;

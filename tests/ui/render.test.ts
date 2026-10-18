@@ -211,7 +211,10 @@ describe('render', () => {
   });
   it('a fight playing out draws its effect on its square, and nothing once it is over', () => {
     const s = makeGame(M);
-    const fight = { at: { x: 1, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const, attackerWon: true, destroyed: true, captured: false, text: 't' };
+    const fight = {
+      at: { x: 1, y: 1 }, attackerId: 9, from: { x: 2, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const,
+      defenderType: 'army' as const, attackerWon: true, moved: true, destroyed: true, captured: false, text: 't',
+    };
     const plain = paint(s, 20).strokes.length;
     const early = paint(s, 20, { fx: [{ fight, age: 100, duration: 800 }] }).strokes.length;
     const burst = paint(s, 20, { fx: [{ fight, age: 600, duration: 800 }] }).strokes.length;
@@ -234,6 +237,24 @@ describe('render', () => {
     const calls = paint(s, 20, {}, { x: -2, y: 0, tile: 20 });
     const unexplored = calls.rects.find((r) => r.style === TERRAIN_COLORS.unexplored)!;
     expect(unexplored).toMatchObject({ x: 0, w: 140 });
+  });
+  it('while a fight plays, the real unit on its square gives way to the fight\'s own two units', () => {
+    const s = makeGame(M);
+    addUnit(s, 'army', 0, 1, 1); // the finished result: an army standing on the attacked square
+    const fight = {
+      at: { x: 1, y: 1 }, attackerId: 9, from: { x: 2, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const,
+      defenderType: 'army' as const, attackerWon: false, moved: false, destroyed: true, captured: false, text: 't',
+    };
+    const armyGlyph = UNIT_GLYPH.army;
+    expect(paint(s, 20).fillText.filter((x) => x === armyGlyph)).toHaveLength(1);
+    const during = paint(s, 20, { fx: [{ fight, age: 100, duration: 800 }] }).fillText;
+    // One army (the defender's stand-in, replacing the real one) and the attacking cruiser on its own square.
+    expect(during.filter((x) => x === armyGlyph)).toHaveLength(1);
+    expect(during).toContain(UNIT_GLYPH.cruiser);
+    // Once the fight is over the map shows the result again, with no stand-ins.
+    const after = paint(s, 20, { fx: [{ fight, age: 900, duration: 800 }] }).fillText;
+    expect(after.filter((x) => x === armyGlyph)).toHaveLength(1);
+    expect(after).not.toContain(UNIT_GLYPH.cruiser);
   });
   it('a blinking active unit is drawn at alpha 0.25 while blink is off', () => {
     const s = makeGame(M);
