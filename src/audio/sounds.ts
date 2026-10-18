@@ -2,12 +2,14 @@
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
   | 'produce-army' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
-  | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
+  | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier'
+  | 'battle-won' | 'taps';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
   'produce-army', 'produce-fighter', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
+  'battle-won', 'taps',
 ];
 
 /**
@@ -124,7 +126,15 @@ function horn(ctx: AudioContext, out: AudioNode, t: number, freq: number, dur: n
   }
 }
 
-export const SYNTH:Record<SoundName, SynthFn> = {
+/** A short brass fanfare: three rising notes ending on a held chord, with a soft cymbal-like tail (~1.3 s). */
+const fanfare: SynthFn = (c, o, t) => {
+  brass(c, o, t, [392], 0.16, 0.2);
+  brass(c, o, t + 0.17, [523], 0.16, 0.2);
+  brass(c, o, t + 0.34, [392, 494, 587, 784], 0.95, 0.2);
+  noise(c, o, t + 0.34, 1.0, { gain: 0.07, from: 9000, to: 5000, filter: 'highpass' });
+};
+
+export const SYNTH: Record<SoundName, SynthFn> = {
   // A tiny tick.
   click: (c, o, t) => tone(c, o, t, 900, 0.05, { type: 'triangle', gain: 0.18, endFreq: 600 }),
   // A soft two-note ping: your turn.
@@ -154,11 +164,14 @@ export const SYNTH:Record<SoundName, SynthFn> = {
     tone(c, o, t + 0.55, 70, 0.4, { gain: 0.4, endFreq: 30 });
   },
   // A city is yours: a short brass fanfare, three rising notes ending on a held chord, with a cymbal-like tail.
-  capture: (c, o, t) => {
-    brass(c, o, t, [392], 0.16, 0.2);
-    brass(c, o, t + 0.17, [523], 0.16, 0.2);
-    brass(c, o, t + 0.34, [392, 494, 587, 784], 0.95, 0.2);
-    noise(c, o, t + 0.34, 1.0, { gain: 0.07, from: 9000, to: 5000, filter: 'highpass' });
+  capture: fanfare,
+  // Your unit won a fight: the same fanfare.
+  'battle-won': fanfare,
+  // Your unit was destroyed: the opening of the bugle call Taps, slow and muted.
+  taps: (c, o, t) => {
+    brass(c, o, t, [392], 0.2, 0.14);
+    brass(c, o, t + 0.24, [392], 0.14, 0.14);
+    brass(c, o, t + 0.42, [523], 0.75, 0.14);
   },
   // Army: a quick snare-like drum roll, a slight crescendo.
   'produce-army': (c, o, t) => {
@@ -221,4 +234,5 @@ export const SYNTH:Record<SoundName, SynthFn> = {
     [392, 349, 311, 262].forEach((f, i) => tone(c, o, t + i * 0.2, f, 0.35, { type: 'sine', gain: 0.25 }));
   },
 };
+
 

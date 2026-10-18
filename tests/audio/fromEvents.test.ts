@@ -29,8 +29,20 @@ describe('soundsForEvents', () => {
   });
 
   it('a fight is a shot, then an explosion when a unit died', () => {
-    expect(soundsForEvents([combat], 0)).toEqual(['shot']);
-    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion']);
+    expect(soundsForEvents([combat], 2)).toEqual(['shot']);
+    expect(soundsForEvents([combat, destroyed('combat')], 2)).toEqual(['shot', 'explosion']);
+  });
+
+  it('a fight you win ends with the fanfare (no explosion), one you lose with taps', () => {
+    // Player 1 attacked player 0's army and won.
+    expect(soundsForEvents([combat, destroyed('combat')], 1)).toEqual(['shot', 'battle-won']);
+    expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'taps']);
+    const defended: GameEvent = { ...(combat as object), attackerWon: false } as GameEvent;
+    expect(soundsForEvents([defended], 0)).toEqual(['shot', 'battle-won']);
+    expect(soundsForEvents([defended], 1)).toEqual(['shot', 'taps']);
+    // Taking a city does not play the fanfare twice.
+    const taken: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
+    expect(soundsForEvents([combat, taken], 1)).toEqual(['shot', 'capture']);
   });
 
   it('a crash is its own sound; disbanding is silent', () => {
@@ -65,7 +77,7 @@ describe('soundsForEvents', () => {
   it('plays each sound once per batch, in order of first appearance', () => {
     const built = (id: number): GameEvent => ({ type: 'unitProduced', unitId: id, cityId: 1, unitType: 'army' });
     
-    expect(soundsForEvents([combat, combat, destroyed('combat'), combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion']);
+    expect(soundsForEvents([combat, combat, destroyed('combat'), combat, destroyed('combat')], 2)).toEqual(['shot', 'explosion']);
   });
 
   it('caps a big batch, dropping the least important sounds first', () => {
@@ -82,10 +94,11 @@ describe('soundsForEvents', () => {
     expect(out).toContain('lost');
     expect(out).toContain('alert');
     expect(out).not.toContain('turn');
-    expect(out).not.toContain('turn');
     // Order of appearance is kept.
-    expect(out).toEqual(['explosion', 'crash', 'alert', 'lost']);
+    expect(out).toEqual(['taps', 'crash', 'alert', 'lost']);
   });
 });
+
+
 
 
