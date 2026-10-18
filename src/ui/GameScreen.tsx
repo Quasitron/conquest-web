@@ -365,6 +365,9 @@ export function GameScreen({ session, onQuit }: Props) {
     else if (view.myCities[0]) focus(view.myCities[0]);
     // If anything attacked you since your last turn, the Combat report opens on its own.
     if (battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
+    // A player's very first turn (one city, no units): its production screen opens so the default can be changed,
+    // as in the original. Last, so the city screen's focus wins over the camera moves above.
+    if (view.turn === 1 && view.myUnits.length === 0 && view.myCities.length === 1) openCity(view.myCities[0].id);
   };
   const nextReport = () => {
     if (reportIdx + 1 < reports.length) {
