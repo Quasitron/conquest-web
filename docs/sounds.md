@@ -1,4 +1,4 @@
-# Sounds in Theater of Conquest
+﻿# Sounds in Theater of Conquest
 
 Every sound is currently made by the computer in code (a "synth"), so the game ships with no audio files. Any sound can
 be replaced by a recorded file, with no other code change.
@@ -22,21 +22,21 @@ Use the **Sound** button in the top bar to switch sound off, change the volume, 
 
 ## The sounds
 
-Several events in one moment are limited to 4 sounds, played 120 ms apart, least important dropped first.
+Production sounds play as each new unit's production screen opens, one at a time. Several other events in one moment are limited to 4 sounds, played 120 ms apart, least important dropped first.
 
 | Name (file name to use) | Plays when |
 | --- | --- |
 | `click` | You press End Turn |
 | `turn` | Your turn starts |
 | `chime` | Fallback for a produced unit of an unknown type (not normally heard) |
-| `produce-army` | An army is built (synth: snare-like drum roll) |
-| `produce-fighter` | A fighter is built (jet whoosh) |
-| `produce-transport` | A transport is built (short low ship horn) |
-| `produce-destroyer` | A destroyer is built (bosun's-pipe glissando) |
-| `produce-submarine` | A submarine is built (sonar ping) |
-| `produce-cruiser` | A cruiser is built (double horn) |
-| `produce-battleship` | A battleship is built (deep horn and rumble) |
-| `produce-carrier` | A carrier is built (two-tone klaxon) |
+| `produce-army` | The production screen for An army opens (synth: snare-like drum roll) |
+| `produce-fighter` | The production screen for A fighter opens (jet whoosh) |
+| `produce-transport` | The production screen for A transport opens (short low ship horn) |
+| `produce-destroyer` | The production screen for A destroyer opens (bosun's-pipe glissando) |
+| `produce-submarine` | The production screen for A submarine opens (sonar ping) |
+| `produce-cruiser` | The production screen for A cruiser opens (double horn) |
+| `produce-battleship` | The production screen for A battleship opens (deep horn and rumble) |
+| `produce-carrier` | The production screen for A carrier opens (two-tone klaxon) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle |
 | `crash` | An aircraft ran out of fuel and crashed |
@@ -55,3 +55,4 @@ Several events in one moment are limited to 4 sounds, played 120 ms apart, least
   credit has to be listed somewhere in the game.
 - Never use clips from the original Empire Deluxe, other commercial games, films or TV: they are copyrighted.
 - Keep files short (under 1.5 seconds) and normalised to a similar loudness so no single sound jumps out.
+

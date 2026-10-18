@@ -13,6 +13,12 @@ const PRIORITY: Record<SoundName, number> = {
   'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
 
+/** The sound for a newly built unit of this type; 'chime' for an unknown type. */
+export function produceSound(unitType: string): SoundName {
+  const s = `produce-${unitType}` as SoundName;
+  return s in PRIORITY ? s : 'chime';
+}
+
 function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
   switch (e.type) {
     // The log only holds events the player could see, so every combat in it counts.
@@ -25,10 +31,7 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       if (e.by === me) return ['capture'];
       if (e.from === me) return ['lost'];
       return [];
-    case 'unitProduced': {
-      const s = `produce-${e.unitType}` as SoundName;
-      return [s in PRIORITY ? s : 'chime'];
-    }
+    // Production sounds play as each unit's report opens (see produceSound), not in the turn-start batch.
     case 'cargoUnloaded': return e.owner === me ? ['unload'] : [];
     case 'ordersEnded': return e.owner === me && e.reason === 'enemySighted' ? ['alert'] : [];
     case 'turnStarted': return e.player === me ? ['turn'] : [];
@@ -48,4 +51,5 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
   }
   return out;
 }
+
 

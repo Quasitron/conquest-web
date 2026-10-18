@@ -1,6 +1,6 @@
 ﻿import { describe, it, expect } from 'vitest';
 import type { GameEvent } from '../../src/engine';
-import { MAX_SOUNDS, soundsForEvents } from '../../src/audio/fromEvents';
+import { MAX_SOUNDS, produceSound, soundsForEvents } from '../../src/audio/fromEvents';
 
 const combat: GameEvent = {
   type: 'combat', attackerId: 1, attackerOwner: 1, attackerType: 'cruiser',
@@ -11,18 +11,16 @@ const destroyed = (reason: 'combat' | 'crashed' | 'disbanded'): GameEvent =>
   ({ type: 'unitDestroyed', unitId: 2, owner: 0, unitType: 'army', reason });
 
 describe('soundsForEvents', () => {
-  it('each unit type has its own production sound, and different types in a batch are different sounds', () => {
-    const types = ['army', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier'] as const;
-    for (const t of types) {
-      expect(soundsForEvents([{ type: 'unitProduced', unitId: 1, cityId: 1, unitType: t }], 0)).toEqual([`produce-${t}`]);
+  it('each unit type has its own production sound, with chime for an unknown type', () => {
+    for (const t of ['army', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier']) {
+      expect(produceSound(t)).toBe(`produce-${t}`);
     }
-    const two: GameEvent[] = [
-      { type: 'unitProduced', unitId: 1, cityId: 1, unitType: 'army' },
-      { type: 'unitProduced', unitId: 2, cityId: 1, unitType: 'fighter' },
-    ];
-    expect(soundsForEvents(two, 0)).toEqual(['produce-army', 'produce-fighter']);
-    const odd = { type: 'unitProduced', unitId: 1, cityId: 1, unitType: 'zeppelin' } as unknown as GameEvent;
-    expect(soundsForEvents([odd], 0)).toEqual(['chime']);
+    expect(produceSound('zeppelin')).toBe('chime');
+  });
+
+  it('does not play production sounds in the turn-start batch (they play as each report opens)', () => {
+    const built = (id: number): GameEvent => ({ type: 'unitProduced', unitId: id, cityId: 1, unitType: 'army' });
+    expect(soundsForEvents([built(1), built(2), { type: 'turnStarted', player: 0, turn: 2 }], 0)).toEqual(['turn']);
   });
 
   it('plays nothing for quiet events', () => {
@@ -66,7 +64,7 @@ describe('soundsForEvents', () => {
 
   it('plays each sound once per batch, in order of first appearance', () => {
     const built = (id: number): GameEvent => ({ type: 'unitProduced', unitId: id, cityId: 1, unitType: 'army' });
-    expect(soundsForEvents([built(1), built(2), built(3)], 0)).toEqual(['produce-army']);
+    
     expect(soundsForEvents([combat, combat, destroyed('combat'), combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion']);
   });
 
@@ -84,9 +82,10 @@ describe('soundsForEvents', () => {
     expect(out).toContain('lost');
     expect(out).toContain('alert');
     expect(out).not.toContain('turn');
-    expect(out).not.toContain('produce-army');
+    expect(out).not.toContain('turn');
     // Order of appearance is kept.
     expect(out).toEqual(['explosion', 'crash', 'alert', 'lost']);
   });
 });
+
 

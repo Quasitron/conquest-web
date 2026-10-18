@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+﻿import type { JSX } from 'preact';
 import { memo } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
@@ -12,7 +12,7 @@ import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
 import { installAudioUnlock, play, playAll } from '../audio/engine';
-import { soundsForEvents } from '../audio/fromEvents';
+import { produceSound, soundsForEvents } from '../audio/fromEvents';
 import { SoundDialog } from './SoundDialog';
 import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
@@ -337,6 +337,9 @@ export function GameScreen({ session, onQuit }: Props) {
     }
     soundSeen.current = { me: view.me, count: log.length };
   }, [view]);
+
+  // Each unit's production report opens with that unit type's sound.
+  useEffect(() => { if (report) play(produceSound(report.unitType)); }, [report?.unitId]);
 
   // New turn for the viewing player: reset held/skipped and pick the first ready unit.
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
@@ -871,7 +874,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
-        <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
+        <button onClick={(e) => { blur(e); save(false); }}>Save Asâ€¦</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
         <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Sound</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
@@ -1041,3 +1044,4 @@ export function GameScreen({ session, onQuit }: Props) {
     </div>
   );
 }
+
