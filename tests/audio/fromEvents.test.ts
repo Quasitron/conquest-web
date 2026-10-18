@@ -33,12 +33,12 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([combat, destroyed('combat')], 2)).toEqual(['shot', 'explosion']);
   });
 
-  it('a fight you are in ends with the fanfare if you won or the drain sound if you lost, after any explosion', () => {
+  it('a fight you lose ends with the drain sound, after any explosion; a win has no sound of its own', () => {
     // Player 1 attacked player 0's army and won.
-    expect(soundsForEvents([combat, destroyed('combat')], 1)).toEqual(['shot', 'explosion', 'battle-won']);
+    expect(soundsForEvents([combat, destroyed('combat')], 1)).toEqual(['shot', 'explosion']);
     expect(soundsForEvents([combat, destroyed('combat')], 0)).toEqual(['shot', 'explosion', 'battle-lost']);
     const defended: GameEvent = { ...(combat as object), attackerWon: false } as GameEvent;
-    expect(soundsForEvents([defended], 0)).toEqual(['shot', 'battle-won']);
+    expect(soundsForEvents([defended], 0)).toEqual(['shot']);
     expect(soundsForEvents([defended], 1)).toEqual(['shot', 'battle-lost']);
     // Taking a city does not play the fanfare twice.
     const taken: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };

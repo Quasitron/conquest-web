@@ -10,7 +10,7 @@ export const LONG_GAP_MS: Partial<Record<SoundName, number>> = { explosion: 500 
 
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
-  win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1, 'battle-won': 8, 'battle-lost': 8,
+  win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, unload: 4, chime: 3, turn: 2, click: 1, 'battle-lost': 8,
   'produce-army': 3, 'produce-armor': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
   'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
@@ -25,10 +25,10 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
   switch (e.type) {
     // The log only holds events the player could see, so every combat in it counts.
     case 'combat': {
-      // A fight you are in ends with the fanfare if you won, a draining whirl if you lost.
+      // A fight you lose ends with a draining whirl; a win has no sound of its own (the fanfare is for taking a city).
       const mine = e.attackerOwner === me ? 'attacker' : e.defender.owner === me ? 'defender' : null;
-      if (!mine) return ['shot'];
-      return ['shot', (mine === 'attacker') === e.attackerWon ? 'battle-won' : 'battle-lost'];
+      if (mine && (mine === 'attacker') !== e.attackerWon) return ['shot', 'battle-lost'];
+      return ['shot'];
     }
     case 'unitDestroyed':
       if (e.reason === 'combat') return ['explosion'];
@@ -57,14 +57,9 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
     if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
     for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
   }
-  // Taking a city already plays the same fanfare. The result of a fight comes last, after the shot and the explosion.
-  for (let i = out.length - 1; i >= 0; i--) {
-    if (out[i] === 'battle-won' && out.includes('capture')) out.splice(i, 1);
-  }
-  for (const r of ['battle-won', 'battle-lost'] as const) {
-    const at = out.indexOf(r);
-    if (at >= 0) out.push(...out.splice(at, 1));
-  }
+  // A lost fight's sound comes last, after the shot and the explosion.
+  const lostAt = out.indexOf('battle-lost');
+  if (lostAt >= 0) out.push(...out.splice(lostAt, 1));
   while (out.length > MAX_SOUNDS) {
     let weakest = 0;
     for (let i = 1; i < out.length; i++) if (PRIORITY[out[i]] <= PRIORITY[out[weakest]]) weakest = i;

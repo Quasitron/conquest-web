@@ -3,13 +3,13 @@ export type SoundName =
   | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier'
-  | 'battle-won' | 'battle-lost';
+  | 'battle-lost';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
   'produce-army', 'produce-armor', 'produce-fighter', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
-  'battle-won', 'battle-lost',
+  'battle-lost',
 ];
 
 /**
@@ -196,8 +196,6 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   },
   // A city is yours: a short brass fanfare, three rising notes ending on a held chord, with a cymbal-like tail.
   capture: fanfare,
-  // Your unit won a fight: the same fanfare.
-  'battle-won': fanfare,
   // Your unit was lost: a falling, wobbling whirl with a gurgle, like water going down a drain.
   'battle-lost': (c, o, t) => {
     const dur = 1.0;

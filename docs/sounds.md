@@ -38,12 +38,11 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-cruiser` | The production screen for a new cruiser opens (recorded, 2 s; the synth double horn is the fallback) |
 | `produce-battleship` | The production screen for a new battleship opens (recorded, 1.7 s; the synth horn and rumble is the fallback) |
 | `produce-carrier` | The production screen for a new carrier opens (recorded, 3 s; the synth klaxon is the fallback) |
-| `battle-won` | A fight your unit won, attacking or defending (same brass fanfare as `capture`) |
 | `battle-lost` | A fight your unit lost (a falling, swirling "down the drain" sound) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle (yours or one you watch), after the shot and before the fanfare or drain sound; recorded, 1 s, the synth boom is the fallback |
 | `crash` | An aircraft ran out of fuel and crashed |
-| `capture` | You captured a city (brass fanfare) |
+| `capture` | You captured a city (brass fanfare); winning an ordinary fight has no sound of its own beyond the shot and explosion |
 | `lost` | One of your cities was captured (alarm) |
 | `alert` | One of your units sighted an enemy and stopped |
 | `unload` | Your transport unloaded troops |
