@@ -1,4 +1,5 @@
-import type { City, GameState, PlayerId, Terrain, Unit, UnitType } from './types';
+import type { City, GameState, PlayerId, PlayerStats, Terrain, Unit, UnitType } from './types';
+import { emptyStats } from './stats';
 import type { HouseRules } from './rules';
 import { index } from './map';
 import { canPlayerSeeUnit, visibleSquares } from './fog';
@@ -33,6 +34,8 @@ export interface PlayerView {
   myCities: City[];
   knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null }[];
   enemies: EnemyMarker[];
+  /** This player's own kill and loss totals. */
+  stats: PlayerStats;
 }
 
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
@@ -62,5 +65,6 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
         const visibleNow = !!u && u.x === e.x && u.y === e.y && canPlayerSeeUnit(s, me, u);
         return { markerId, type: e.type, owner: e.owner, x: e.x, y: e.y, turnSeen: e.turnSeen, visibleNow };
       }),
+    stats: structuredClone(s.stats?.[me] ?? emptyStats()),
   };
 }

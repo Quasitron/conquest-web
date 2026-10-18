@@ -1,6 +1,7 @@
 import type { City, DestroyReason, GameEvent, GameState, PlayerId, Unit, UnitType } from './types';
 import { UNIT_STATS, cargoCapacity } from './units';
 import { areFriendly } from './relations';
+import { recordDestroyed } from './stats';
 
 export function unitById(s: GameState, id: number): Unit | undefined {
   return s.units.find((u) => u.id === id);
@@ -41,9 +42,12 @@ export function spawnUnit(s: GameState, type: UnitType, owner: PlayerId, x: numb
 }
 
 /** Removes a unit (and its cargo first). Safe to call on an already-removed unit. */
-export function destroyUnit(s: GameState, u: Unit, reason: DestroyReason, events: GameEvent[]): void {
+export function destroyUnit(
+  s: GameState, u: Unit, reason: DestroyReason, events: GameEvent[], killer?: PlayerId | null,
+): void {
   if (!s.units.includes(u)) return;
-  for (const c of cargoOf(s, u)) destroyUnit(s, c, 'cargoLost', events);
+  for (const c of cargoOf(s, u)) destroyUnit(s, c, 'cargoLost', events, killer);
+  recordDestroyed(s, u.owner, u.type, reason, killer);
   s.units = s.units.filter((x) => x !== u);
   events.push({ type: 'unitDestroyed', unitId: u.id, owner: u.owner, unitType: u.type, reason });
 }

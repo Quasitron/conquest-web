@@ -16,14 +16,17 @@ interface Props {
   onToggleRoutes: () => void;
   /** Opens the list of all your units. */
   onUnits: () => void;
+  /** Opens the status report. */
+  onStatus: () => void;
 }
 
 export function StatusLine({
-  unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits,
+  unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onStatus,
 }: Props) {
   return (
     <div class="statusline">
       <span class="statusline-text">{prodMap ? 'Production map: each city shows what it is building and the turns left.' : unit ? statusLine(unit) : ''}</span>
+      <button title="Cities, exploration, production, kills and losses" onClick={(e) => { blur(e); onStatus(); }}>Status</button>
       <button title="List all your units and jump to one" onClick={(e) => { blur(e); onUnits(); }}>Units</button>
       <button class={routesMap ? 'primary' : ''} title="Show the routes set on your cities" onClick={(e) => { blur(e); onToggleRoutes(); }}>
         {routesMap ? 'Hide Routes' : 'Routes'}

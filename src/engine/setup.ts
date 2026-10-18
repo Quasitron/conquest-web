@@ -5,6 +5,7 @@ import { CLASSIC_RULES } from './rules';
 import { updateFog } from './fog';
 import { advanceProduction } from './production';
 import { defaultCityName } from './names';
+import { emptyStats } from './stats';
 
 export interface NewGameOptions {
   map: ParsedMap;
@@ -47,6 +48,7 @@ export function createGame(o: NewGameOptions): GameState {
     rngState: o.seed | 0,
     winner: null,
     over: false,
+    stats: o.players.map(emptyStats),
   };
   o.startCityIndices.forEach((ci, pid) => {
     s.cities[ci].owner = pid;

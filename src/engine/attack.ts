@@ -57,7 +57,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   });
 
   if (r.attackerWon) {
-    destroyUnit(s, def, 'combat', events);
+    destroyUnit(s, def, 'combat', events, att.owner);
     trimCargo(s, att, events);
     const targetClear = topLevelUnitsAt(s, target.x, target.y).every((u) => areFriendly(s, u.owner, att.owner));
     if (targetClear && canOccupy(att, terrainAt(s, target.x, target.y))) {
@@ -67,7 +67,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
     if (isCrippled(att)) att.movesLeft = 0;
     settleAircraft(s, att, events);
   } else {
-    destroyUnit(s, att, 'combat', events);
+    destroyUnit(s, att, 'combat', events, def.owner);
     trimCargo(s, def, events);
   }
   return null;
@@ -91,7 +91,7 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
     attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,
   });
   if (!r.attackerWon) {
-    destroyUnit(s, att, 'combat', events);
+    destroyUnit(s, att, 'combat', events, city.owner);
     return null;
   }
   const from = city.owner;

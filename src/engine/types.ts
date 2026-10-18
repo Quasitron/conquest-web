@@ -109,6 +109,14 @@ export interface PlayerFog {
   knownCityOwner: Record<number, PlayerId | null>;
 }
 
+/** One player's running totals of units destroyed, by unit type. */
+export interface PlayerStats {
+  /** Enemy units this player destroyed. */
+  killed: Partial<Record<UnitType, number>>;
+  /** This player's own units destroyed in combat, by cargo loss or by crashing. */
+  lost: Partial<Record<UnitType, number>>;
+}
+
 export interface GameState {
   version: 3;
   rules: HouseRules;
@@ -127,6 +135,8 @@ export interface GameState {
   rngState: number;
   winner: PlayerId | null;
   over: boolean;
+  /** Per player, indexed by PlayerId; absent in games saved before the status report existed. */
+  stats?: PlayerStats[];
 }
 
 export type Command =
