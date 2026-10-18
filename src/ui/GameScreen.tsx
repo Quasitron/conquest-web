@@ -11,6 +11,9 @@ import type { SaveStore } from '../storage';
 import { availableActions, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
+import { installAudioUnlock, play, playAll } from '../audio/engine';
+import { soundsForEvents } from '../audio/fromEvents';
+import { SoundDialog } from './SoundDialog';
 import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
 import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
@@ -106,6 +109,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [prodMap, setProdMap] = useState(false);
   const [routesMap, setRoutesMap] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
@@ -199,7 +203,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
-  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null;
+  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen;
   // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
   const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
   useEffect(() => setDialogError(null), [dialogKey]);
@@ -321,6 +325,18 @@ export function GameScreen({ session, onQuit }: Props) {
     if (next) selectUnit(next);
     else setSelection(null);
   };
+
+  // Sounds for the viewer's new log entries. A loaded save, or a different viewer in hotseat, is synced silently.
+  const soundSeen = useRef<{ me: number; count: number } | null>(null);
+  useEffect(installAudioUnlock, []);
+  useEffect(() => {
+    const log = session.log(view.me);
+    const seen = soundSeen.current;
+    if (seen && seen.me === view.me && log.length > seen.count) {
+      playAll(soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me));
+    }
+    soundSeen.current = { me: view.me, count: log.length };
+  }, [view]);
 
   // New turn for the viewing player: reset held/skipped and pick the first ready unit.
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
@@ -857,6 +873,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
+        <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Sound</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
           {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
@@ -865,7 +882,7 @@ export function GameScreen({ session, onQuit }: Props) {
           {!target && !groupHint && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}
           {!target && !groupHint && !message && allMoved && <span class="message" role="status">All units have moved. Press Enter or click End Turn.</span>}
           {session.saveError && <span class="error" role="alert">{session.saveError}</span>}
-          <button class={endTurnBlinks ? 'primary blink' : 'primary'} onClick={(e) => { blur(e); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
+          <button class={endTurnBlinks ? 'primary blink' : 'primary'} onClick={(e) => { blur(e); play('click'); act({ type: 'endTurn' }); }} disabled={!playing}>End Turn</button>
         </span>
       </header>
       <div class="mapcol">
@@ -984,6 +1001,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onClose={() => setReportTab(null)}
         />
       )}
+      {soundOpen && <SoundDialog onClose={() => setSoundOpen(false)} />}
       {unitsOpen && (
         <UnitList
           view={view}
