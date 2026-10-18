@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import type { Fight } from './fights';
 import type { PlayerView, Pos, UnitType } from '../engine';
 import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
@@ -32,6 +33,8 @@ interface Props {
   patrols?: [Pos, Pos][];
   productionMap?: boolean;
   flash?: Pos | null;
+  /** Fights to play out: `start` is a performance.now() time. The map repaints every frame while any is running. */
+  fx?: ActiveFx[];
   cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
@@ -46,9 +49,30 @@ interface Props {
   onBoxDone?: (box: GroupBox) => void;
 }
 
+/** A fight playing out on the map. */
+export interface ActiveFx {
+  fight: Fight;
+  /** performance.now() when it began. */
+  start: number;
+  duration: number;
+}
+
 export function MapCanvas(p: Props) {
   // The blink state lives here so a tick redraws only the canvas, not the whole game screen.
   const blinkOn = useBlink(p.blinkActive);
+  // While fights are playing, repaint every animation frame; the loop stops as soon as there are none.
+  const [, setFrame] = useState(0);
+  const animating = !!p.fx && p.fx.length > 0;
+  useEffect(() => {
+    if (!animating) return;
+    let id = 0;
+    const loop = () => {
+      setFrame((n) => n + 1);
+      id = requestAnimationFrame(loop);
+    };
+    id = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(id);
+  }, [animating]);
   const ref = useRef<HTMLCanvasElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const dragged = useRef(false);
@@ -79,7 +103,9 @@ export function MapCanvas(p: Props) {
     drawMap(ctx, {
       view: p.view, cam: p.cam, width: w, height: h, selected: p.selected, targets: p.targets, colors: p.colors,
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
-      route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, flash: p.flash, cityRoutes: p.cityRoutes, attack: p.attack,
+      route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, flash: p.flash,
+      fx: p.fx?.map((a) => ({ fight: a.fight, age: performance.now() - a.start, duration: a.duration })),
+      cityRoutes: p.cityRoutes, attack: p.attack,
       groupBox: p.groupBox,
     });
   });

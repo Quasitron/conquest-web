@@ -13,7 +13,7 @@ import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type 
 import { CityScreen } from './CityScreen';
 import { installAudioUnlock, play, playAll } from '../audio/engine';
 import { produceSound, SOUND_GAP_MS, soundsForEvents } from '../audio/fromEvents';
-import { SoundDialog } from './SoundDialog';
+import { SettingsDialog } from './SettingsDialog';
 import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
 import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
@@ -27,7 +27,9 @@ import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
 import { approachSquare, attackLabel, cityAttackChance } from './plans';
 import { ProductionReport } from './ProductionReport';
-import { MapCanvas } from './MapCanvas';
+import { MapCanvas, type ActiveFx } from './MapCanvas';
+import { getCombatMode } from './combatMode';
+import { fightsFromEvents, replayFights, FIGHT_MS, REPLAY_STEP_MS, SHOT_SHARE, type Fight } from './fights';
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
@@ -52,6 +54,8 @@ const MENU_H = 400;
 const ROUTE_PAUSE_MS = 700;
 /** After an attack, how long the battle stays on screen before the cycle moves on to the next unit. */
 const BATTLE_PAUSE_MS = 1000;
+/** The replay zooms in to at least this tile size so each fight is easy to see. */
+const REPLAY_TILE = 36;
 
 /** Group mode: waiting for a box, choosing the order for the units it caught, or waiting for a Move To square. */
 type GroupState = null | { step: 'box' } | { step: 'order'; ids: number[] } | { step: 'target'; ids: number[] };
@@ -112,6 +116,10 @@ export function GameScreen({ session, onQuit }: Props) {
   const [routesMap, setRoutesMap] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
+  // Fights playing out on the map, and the turn-start replay of what the other players did (null when none).
+  const [fx, setFx] = useState<ActiveFx[]>([]);
+  const [replay, setReplay] = useState<{ steps: Fight[]; more: number; index: number } | null>(null);
+  const fxTimer = useRef<number | undefined>(undefined);
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
@@ -205,7 +213,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
-  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen;
+  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen || replay !== null;
   // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
   const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
   useEffect(() => setDialogError(null), [dialogKey]);
@@ -390,14 +398,53 @@ export function GameScreen({ session, onQuit }: Props) {
     setHeld(new Set());
     setSkipped([]);
     exploredAt.current.set(view.me, exploredCount(view));
-    // Production reports come first; the unit cycle starts after the last one.
+    // Animated mode replays what the other players did since the last turn first; the turn proper begins after it.
+    const rp = getCombatMode() === 'animated' ? replayFights(session.log(view.me), view.me, names, lookup) : null;
+    if (rp && rp.steps.length > 0) setReplay({ ...rp, index: 0 });
+    else beginTurn();
+  }, [turnKey]);
+
+  /** The start of the turn proper: production reports come first; the unit cycle starts after the last one. */
+  const beginTurn = () => {
     const queue = reportQueue(session.log(view.me), view.turn, view.me, view.myCities)
       .filter((r) => view.myUnits.some((u) => u.id === r.unitId));
     if (queue.length > 0) {
       applyAutoFit(view, null);
       setReports(queue);
     } else startCycle();
-  }, [turnKey]);
+  };
+
+  // The turn-start replay: pan to each fight in turn, play it with its sounds, then carry on with the turn.
+  // (The batch sounds skip battles at turn start, and the sound of a captured city is already in that batch.)
+  const finishReplay = () => {
+    const rp = replay;
+    window.clearTimeout(fxTimer.current);
+    setFx([]);
+    setReplay(null);
+    if (replayCam.current) setCam(replayCam.current); // back to the view from before the replay zoomed in
+    replayCam.current = null;
+    beginTurn();
+    if (rp && rp.more > 0) setReportTab('combat'); // fights beyond the cap are left to the Combat report
+  };
+  const replayCam = useRef<Camera | null>(null);
+  const finishRef = useRef(finishReplay);
+  finishRef.current = finishReplay;
+  useEffect(() => {
+    if (!replay) return;
+    const step = replay.steps[replay.index];
+    const { w, h } = viewport();
+    // Zoom in on each fight so it can be seen, remembering the view to restore afterwards.
+    replayCam.current ??= camNow.current;
+    setCam(centerOn({ ...camNow.current, tile: Math.max(camNow.current.tile, REPLAY_TILE) }, step.at.x, step.at.y, w, h));
+    runFx([step], REPLAY_STEP_MS);
+    play('shot');
+    const boom = window.setTimeout(() => { if (step.destroyed) play('explosion'); }, REPLAY_STEP_MS * SHOT_SHARE);
+    const next = window.setTimeout(() => {
+      if (replay.index + 1 < replay.steps.length) setReplay({ ...replay, index: replay.index + 1 });
+      else finishRef.current();
+    }, REPLAY_STEP_MS + 150);
+    return () => { window.clearTimeout(boom); window.clearTimeout(next); };
+  }, [replay?.index, replay !== null]);
 
   /** Selects the first ready unit of a fresh turn (built-this-turn first), else looks at a city. */
   const startCycle = () => {
@@ -409,8 +456,8 @@ export function GameScreen({ session, onQuit }: Props) {
       } else selectUnit(first);
     } else if (fitOf(view.me).auto) applyAutoFit(view, null);
     else if (view.myCities[0]) focus(view.myCities[0]);
-    // If anything attacked you since your last turn, the Combat report opens on its own.
-    if (battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
+    // Reports mode: if anything attacked you since your last turn, the Combat report opens on its own.
+    if (getCombatMode() === 'reports' && battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
     // A player's very first turn (one city, no units): its production screen opens so the default can be changed,
     // as in the original. Last, so the city screen's focus wins over the camera moves above.
     if (view.turn === 1 && view.myUnits.length === 0 && view.myCities.length === 1) openCity(view.myCities[0].id);
@@ -458,8 +505,26 @@ export function GameScreen({ session, onQuit }: Props) {
     }
     setMessage(null);
     setDialogError(null);
-    if (cmd.type !== 'endTurn' && cmd.type !== 'resign') afterOwnAct();
+    if (cmd.type !== 'endTurn' && cmd.type !== 'resign') {
+      afterOwnAct();
+      showOwnFights();
+    }
     return true;
+  };
+
+  /** Starts the fight effects for ights and clears them when the run is over. */
+  const runFx = (fights: Fight[], duration: number) => {
+    const start = performance.now();
+    setFx(fights.map((fight) => ({ fight, start, duration })));
+    window.clearTimeout(fxTimer.current);
+    fxTimer.current = window.setTimeout(() => setFx([]), duration + 60);
+  };
+  /** Animated mode: the fights of the player's own last command play out on the map. */
+  const showOwnFights = () => {
+    if (getCombatMode() !== 'animated') return;
+    const mine = fightsFromEvents(session.lastEvents, (e) => describeEvent(e, view.me, names, lookup))
+      .filter((f) => f.attackerOwner === view.me);
+    if (mine.length > 0) runFx(mine, FIGHT_MS);
   };
 
   /**
@@ -794,6 +859,14 @@ export function GameScreen({ session, onQuit }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (replay) {
+        // During the replay only Esc, Enter and Space do anything: they skip the rest of it.
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          finishReplay();
+        }
+        return;
+      }
       if (dialogOpen) return; // the city screen and the reports take their own keys
       const tag = (e.target as HTMLElement).tagName;
       // Keys typed into form controls or focused buttons keep their native behavior.
@@ -914,7 +987,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
-        <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Sound</button>
+        <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Settings</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
           {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
@@ -941,10 +1014,17 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} cityRoutes={cityRoutes} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
           boxMode={playing && group?.step === 'box'} groupBox={groupBox} onBox={setGroupBox} onBoxDone={onBoxDone}
         />
+        {replay && (
+          <div class="replay-bar" role="status">
+            <span class="replay-text">{replay.steps[replay.index].text}</span>
+            <span class="muted">{replay.index + 1} of {replay.steps.length + replay.more}</span>
+            <button class="primary" onClick={(e) => { blur(e); finishReplay(); }}>Skip</button>
+          </div>
+        )}
       </div>
       <div class="side">
         <canvas class="minimap" width={200} height={140} onClick={(e) => {
@@ -1042,7 +1122,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onClose={() => setReportTab(null)}
         />
       )}
-      {soundOpen && <SoundDialog onClose={() => setSoundOpen(false)} />}
+      {soundOpen && <SettingsDialog onClose={() => setSoundOpen(false)} />}
       {unitsOpen && (
         <UnitList
           view={view}

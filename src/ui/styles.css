@@ -54,7 +54,13 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .topbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 12px; background: var(--panel); }
 .topbar .message { color: var(--muted); }
 .topbar-right { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
-.mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.mapcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.combat-choice { display: flex; flex-direction: column; gap: 6px; }
+.combat-choice label { padding: 6px 8px; border: 1px solid #333c48; border-radius: 6px; cursor: pointer; }
+.combat-choice label.selected { border-color: var(--accent); }
+.dialog h3 { margin: 0; font-size: 0.95rem; }
+.replay-bar { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(18, 22, 28, 0.92); border: 1px solid #333c48; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); }
+.replay-bar .replay-text { flex: 1; font-weight: 600; }
 .statusline { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px; background: var(--panel); border-bottom: 1px solid #333c48; font-size: 0.9rem; }
 .statusline-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusline button { padding: 2px 10px; flex: 0 0 auto; }

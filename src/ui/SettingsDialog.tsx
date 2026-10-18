@@ -2,19 +2,28 @@
 import { getSettings, playAll, setSettings } from '../audio/engine';
 import { MUSIC } from '../audio/sounds';
 import { blur } from './blur';
+import { COMBAT_MODES, getCombatMode, setCombatMode, type CombatMode } from './combatMode';
 import { PlacedDialog } from './LeaderLine';
 
 interface Props {
   onClose: () => void;
 }
 
-/** The Sound dialog: on/off, volume and a test button. A broader Settings dialog can grow from here. */
-export function SoundDialog({ onClose }: Props) {
+const COMBAT_CHOICES: Record<CombatMode, { label: string; hint: string }> = {
+  animated: { label: 'Animated', hint: 'Fights play out on the map, and what the other players did is replayed at the start of your turn.' },
+  reports: { label: 'Reports', hint: 'No animation. The Combat report opens by itself at the start of your turn.' },
+  off: { label: 'Off', hint: 'No animation and nothing opens by itself. The Reports button still lists the fights.' },
+};
+
+/** The Settings dialog: sound (on/off, volume, music, a test button) and how fights are shown. */
+export function SettingsDialog({ onClose }: Props) {
   const [s, setS] = useState(getSettings());
+  const [combat, setCombat] = useState(getCombatMode());
   const change = (patch: Partial<typeof s>) => setS(setSettings(patch));
   return (
-    <PlacedDialog anchor={null} label="Sound" onKey={(e) => { if (e.key === 'Escape') { onClose(); return true; } return false; }}>
-      <h2>Sound</h2>
+    <PlacedDialog anchor={null} label="Settings" onKey={(e) => { if (e.key === 'Escape') { onClose(); return true; } return false; }}>
+      <h2>Settings</h2>
+      <h3>Sound</h3>
       <p>
         <label>
           <input type="checkbox" checked={s.enabled} onChange={(e) => change({ enabled: (e.currentTarget as HTMLInputElement).checked })} />
@@ -45,6 +54,19 @@ export function SoundDialog({ onClose }: Props) {
           />
         </label>
       </p>
+      <h3>Combat</h3>
+      <div class="combat-choice" role="radiogroup" aria-label="Combat">
+        {COMBAT_MODES.map((m) => (
+          <label key={m} class={combat === m ? 'selected' : ''}>
+            <input
+              type="radio" name="combat" checked={combat === m}
+              onChange={() => setCombat(setCombatMode(m))}
+            />
+            {' '}<strong>{COMBAT_CHOICES[m].label}</strong>
+            <span class="muted"> {COMBAT_CHOICES[m].hint}</span>
+          </label>
+        ))}
+      </div>
       <div class="picker-actions">
         <button disabled={!s.enabled} onClick={(e) => { blur(e); playAll(['produce-army', 'shot', 'explosion', 'capture']); }}>Test</button>
         <button class="primary" onClick={(e) => { blur(e); onClose(); }}>Close</button>
@@ -52,5 +74,3 @@ export function SoundDialog({ onClose }: Props) {
     </PlacedDialog>
   );
 }
-
-

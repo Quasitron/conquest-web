@@ -4,6 +4,8 @@ import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
+import { fightFrame, type Fight } from './fights';
+import { drawFightFx } from './fightFx';
 
 export interface DrawOptions {
   view: PlayerView;
@@ -34,6 +36,8 @@ export interface DrawOptions {
   patrols?: [Pos, Pos][];
   /** A square to flash with a ring (a report line was just shown), or null. */
   flash?: Pos | null;
+  /** Fights playing out now: `age` ms into a run of `duration` ms. */
+  fx?: { fight: Fight; age: number; duration: number }[];
   /** The box being dragged in Group mode, drawn as a yellow rectangle. */
   groupBox?: GroupBox | null;
   /** The player's city routes, drawn as arrows from each route city to its destination. */
@@ -287,6 +291,15 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       ctx.setLineDash([]);
       ctx.strokeRect(rx, ry, rw, rh);
     }
+  }
+
+  // Fights being played out: each effect is drawn on every on-screen copy of its square.
+  for (const a of o.fx ?? []) {
+    const frame = fightFrame(a.age, a.fight, a.duration);
+    if (!frame) continue;
+    each((mx, my, sx, sy) => {
+      if (mx === a.fight.at.x && my === a.fight.at.y) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, frame);
+    });
   }
 
   // Other patrols: a dashed line between the endpoints, with a ring at each end.

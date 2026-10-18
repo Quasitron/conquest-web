@@ -206,6 +206,17 @@ describe('render', () => {
     const calls = paint(s, 20, { selected: { x: 5, y: 1 }, path: [{ x: 6, y: 1 }] }, { x: 0, y: 0, tile: 20 });
     expect(calls.points.some((p) => p.x >= 0 && p.x <= 140 && p.y >= 0 && p.y <= 60)).toBe(true);
   });
+  it('a fight playing out draws its effect on its square, and nothing once it is over', () => {
+    const s = makeGame(M);
+    const fight = { at: { x: 1, y: 1 }, attackerOwner: 1, attackerType: 'cruiser' as const, attackerWon: true, destroyed: true, captured: false, text: 't' };
+    const plain = paint(s, 20).strokes.length;
+    const early = paint(s, 20, { fx: [{ fight, age: 100, duration: 800 }] }).strokes.length;
+    const burst = paint(s, 20, { fx: [{ fight, age: 600, duration: 800 }] }).strokes.length;
+    const over = paint(s, 20, { fx: [{ fight, age: 900, duration: 800 }] }).strokes.length;
+    expect(early).toBeGreaterThan(plain);
+    expect(burst).toBeGreaterThan(plain);
+    expect(over).toBe(plain);
+  });
   it('a blinking active unit is drawn at alpha 0.25 while blink is off', () => {
     const s = makeGame(M);
     const a = addUnit(s, 'army', 0, 1, 1);
