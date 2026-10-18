@@ -21,6 +21,8 @@ export const SOUND_NAMES: SoundName[] = [
 export const OVERRIDES: Partial<Record<SoundName, string>> = {
   // Jet flyby, seconds 4 to 7 of the original recording, trimmed and faded in public/sounds/.
   'produce-fighter': '/sounds/produce-fighter.mp3',
+  // Ship horn, seconds 16.7 to 19.2 of the original recording.
+  'produce-transport': '/sounds/produce-transport.mp3',
 };
 
 export type MusicName = 'title';
