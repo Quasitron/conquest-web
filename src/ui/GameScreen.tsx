@@ -335,7 +335,12 @@ export function GameScreen({ session, onQuit }: Props) {
     const log = session.log(view.me);
     const seen = soundSeen.current;
     if (seen && seen.me === view.me && log.length > seen.count) {
-      const sounds = soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me);
+      let sounds = soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me);
+      // The turn ping is only for a quiet turn start: a production screen or the Combat report opening says it already.
+      if (sounds.includes('turn') && (
+        battlesAgainstMe(log, view.me, names, lookup).length > 0
+        || reportQueue(log, view.turn, view.me, view.myCities).some((r) => view.myUnits.some((u) => u.id === r.unitId))
+      )) sounds = sounds.filter((x) => x !== 'turn');
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
     }
@@ -1055,5 +1060,7 @@ export function GameScreen({ session, onQuit }: Props) {
     </div>
   );
 }
+
+
 
 
