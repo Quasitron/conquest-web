@@ -38,6 +38,12 @@ function validSquare(s: GameState, u: Unit, p: unknown): p is Pos {
   return s.fog[u.owner].explored[index(s, x, y)] === 1;
 }
 
+/** True when `u` stands in a city of its owner (where damage is repaired). */
+function inFriendlyCity(s: GameState, u: Unit): boolean {
+  const c = cityAt(s, u.x, u.y);
+  return c !== null && c !== undefined && areFriendly(s, c.owner, u.owner);
+}
+
 /** Returns an error message, or null when `u` may be given `o`. */
 export function validateOrders(s: GameState, u: Unit, o: Orders): string | null {
   const air = UNIT_STATS[u.type].domain === 'air';
@@ -48,6 +54,10 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
       return null;
     case 'explore':
       return air ? NO_AIR_EXPLORE : null;
+    case 'repair':
+      if (u.damage === 0) return 'nothing to repair';
+      if (u.carriedBy !== null || !inFriendlyCity(s, u)) return 'repairs need a friendly city';
+      return null;
     case 'goto': {
       if (!validSquare(s, u, o.target)) return 'target is not an explored square';
       if (o.target.x === u.x && o.target.y === u.y) return 'already there';
@@ -168,7 +178,7 @@ export function executeOrders(
 
   for (;;) {
     const o = u.orders;
-    if (!s.units.includes(u) || o === null || o.kind === 'sentry' || u.movesLeft <= 0) return;
+    if (!s.units.includes(u) || o === null || o.kind === 'sentry' || o.kind === 'repair' || u.movesLeft <= 0) return;
     if (o.kind === 'goto' && o.routeCity !== undefined) {
       const dest = s.cities.find((c) => c.id === o.routeCity);
       if (!dest || dest.owner !== u.owner) return endOrders(u, 'destinationLost', events);
@@ -250,11 +260,21 @@ export function wakeSentries(s: GameState, pid: PlayerId, events: GameEvent[]): 
   }
 }
 
-/** Start-of-turn orders for one player: wake sentries, then run moving orders in unit-id order. */
+/** Wakes units under repair orders once they are fully repaired, or when their city is gone. */
+export function wakeRepaired(s: GameState, pid: PlayerId, events: GameEvent[]): void {
+  for (const u of [...s.units]) {
+    if (u.owner !== pid || u.orders?.kind !== 'repair') continue;
+    if (!inFriendlyCity(s, u)) endOrders(u, 'cityLost', events);
+    else if (u.damage === 0) endOrders(u, 'repaired', events);
+  }
+}
+
+/** Start-of-turn orders for one player: wake sentries and repaired units, then run moving orders in unit-id order. */
 export function runPlayerOrders(s: GameState, rng: RandomSource, pid: PlayerId, events: GameEvent[]): void {
   wakeSentries(s, pid, events);
+  wakeRepaired(s, pid, events);
   const ids = s.units
-    .filter((u) => u.owner === pid && u.orders !== null && u.orders.kind !== 'sentry')
+    .filter((u) => u.owner === pid && u.orders !== null && u.orders.kind !== 'sentry' && u.orders.kind !== 'repair')
     .map((u) => u.id)
     .sort((a, b) => a - b);
   for (const id of ids) {

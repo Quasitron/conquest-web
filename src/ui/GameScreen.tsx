@@ -794,6 +794,7 @@ export function GameScreen({ session, onQuit }: Props) {
       }
       case 'sentry': return setOrders(u, { kind: 'sentry' });
       case 'explore': return setOrders(u, { kind: 'explore' });
+      case 'repair': return setOrders(u, { kind: 'repair' });
       case 'clearOrders': return setOrders(u, null);
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':

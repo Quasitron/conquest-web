@@ -13,6 +13,19 @@ function viewOf(s: ReturnType<typeof makeGame>, id: number) {
   return { v, u: v.myUnits.find((x) => x.id === id)! };
 }
 
+describe('repair action', () => {
+  it('is offered only to a damaged unit in a city of ours that is not already repairing', () => {
+    const s = makeGame(M);
+    const hurt = addUnit(s, 'destroyer', 0, 0, 0, { damage: 1 });
+    const fit = addUnit(s, 'destroyer', 0, 0, 0);
+    const out = addUnit(s, 'destroyer', 0, 4, 1, { damage: 1 });
+    const busy = addUnit(s, 'destroyer', 0, 0, 0, { damage: 1, orders: { kind: 'repair' } });
+    const can = (id: number) => { const { v, u } = viewOf(s, id); return availableActions(v, u).repair; };
+    expect([can(hurt.id), can(fit.id), can(out.id), can(busy.id)]).toEqual([true, false, false, false]);
+    expect(describeOrders({ kind: 'repair' })).toBe('Repair');
+  });
+});
+
 describe('availableActions', () => {
   it('offers an army in a city everything except load, unload and go home', () => {
     const s = makeGame(M);
@@ -105,7 +118,7 @@ describe('describeOrders', () => {
 describe('UNIT_BUTTONS and the new actions', () => {
   it('lists the unit buttons in order', () => {
     expect(UNIT_BUTTONS).toEqual([
-      'next', 'skip', 'hold', 'sentry', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
     ]);
   });
 

@@ -6,7 +6,7 @@ import type { ActionId } from './keys';
 import { blur } from './blur';
 
 const ORDER_ITEMS: ActionId[] = [
-  'moveTo', 'patrol', 'goHome', 'explore', 'sentry', 'load', 'unload', 'clearOrders', 'skip', 'hold', 'disband',
+  'moveTo', 'patrol', 'goHome', 'explore', 'sentry', 'repair', 'load', 'unload', 'clearOrders', 'skip', 'hold', 'disband',
 ];
 
 interface Props {

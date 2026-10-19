@@ -13,7 +13,7 @@ export function loadCandidates(view: PlayerView, t: Unit): Unit[] {
 }
 
 export const UNIT_BUTTONS: ActionId[] = [
-  'next', 'skip', 'hold', 'sentry', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
@@ -38,6 +38,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     explore: !air,
     sentry: !air || inCity || u.carriedBy !== null,
     clearOrders: u.orders !== null,
+    // Damaged and in a city of ours: sit there until repaired, then wake up.
+    repair: u.damage > 0 && inCity && u.carriedBy === null && u.orders?.kind !== 'repair',
   };
 }
 
@@ -54,5 +56,6 @@ export function describeOrders(o: Orders | null): string {
     case 'goto': return `Go-to ${o.target.x},${o.target.y}`;
     case 'patrol': return `Patrol ${o.a.x},${o.a.y} ↔ ${o.b.x},${o.b.y}`;
     case 'explore': return 'Explore';
+    case 'repair': return 'Repair';
   }
 }

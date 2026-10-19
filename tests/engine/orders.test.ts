@@ -400,6 +400,43 @@ describe('aircraft', () => {
   });
 });
 
+describe('repair', () => {
+  const PORT = ['*.*', '...'];
+
+  it('is only for a damaged unit in a friendly city', () => {
+    const s = game(PORT);
+    const fit = addUnit(s, 'destroyer', 0, 0, 0);
+    expect(setOrders(s, fit.id, { kind: 'repair' })).toEqual({ ok: false, error: 'nothing to repair' });
+    const away = addUnit(s, 'destroyer', 0, 1, 1, { damage: 1 });
+    expect(setOrders(s, away.id, { kind: 'repair' })).toEqual({ ok: false, error: 'repairs need a friendly city' });
+    const enemyPort = addUnit(s, 'destroyer', 0, 2, 0, { damage: 1 }); // city 1 belongs to player 1
+    expect(setOrders(s, enemyPort.id, { kind: 'repair' }).ok).toBe(false);
+  });
+
+  it('sits in the city, repairing a point a turn, and wakes once fully repaired', () => {
+    const s = game(PORT);
+    const d = addUnit(s, 'destroyer', 0, 0, 0, { damage: 2 });
+    const set = run(s, { type: 'setOrders', player: 0, unitId: d.id, orders: { kind: 'repair' } });
+    const r1 = fullRound(set.state);
+    expect(unitById(r1.state, d.id)).toMatchObject({ damage: 1, orders: { kind: 'repair' } });
+    expect(ended(r1.events)).toEqual([]);
+    const r2 = fullRound(r1.state);
+    expect(unitById(r2.state, d.id)).toMatchObject({ damage: 0, orders: null });
+    expect(ended(r2.events).map((e) => e.reason)).toEqual(['repaired']);
+  });
+
+  it('stops when the city is lost', () => {
+    const s = game(['*.*.*', '.....']);
+    s.cities[2].owner = 0; // a second city, so losing the first does not end the game
+    const d = addUnit(s, 'destroyer', 0, 0, 0, { damage: 2 });
+    const set = run(s, { type: 'setOrders', player: 0, unitId: d.id, orders: { kind: 'repair' } });
+    set.state.cities[0].owner = 1; // the city changes hands
+    const r = fullRound(set.state);
+    expect(ended(r.events).map((e) => e.reason)).toContain('cityLost');
+    expect(unitById(r.state, d.id)?.orders ?? null).toBeNull();
+  });
+});
+
 describe('go home', () => {
   const ROW = ['*###*###*'];
 

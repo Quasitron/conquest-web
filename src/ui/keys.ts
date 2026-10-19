@@ -1,6 +1,6 @@
 import type { Dir } from '../engine';
 
-export type ActionId = 'next' | 'skip' | 'hold' | 'sentry' | 'moveTo' | 'patrol' | 'goHome' | 'explore'
+export type ActionId = 'next' | 'skip' | 'hold' | 'sentry' | 'repair' | 'moveTo' | 'patrol' | 'goHome' | 'explore'
   | 'load' | 'unload' | 'clearOrders' | 'disband' | 'center' | 'endTurn' | 'info' | 'fit';
 
 export type KeyAction =
@@ -20,7 +20,7 @@ const ARROWS: Record<string, { dir: Dir; dx: number; dy: number }> = {
   ArrowLeft: { dir: 6, dx: -3, dy: 0 },
 };
 const ACTIONS: Record<string, ActionId> = {
-  n: 'next', ' ': 'skip', tab: 'hold', s: 'sentry', t: 'moveTo', p: 'patrol', h: 'goHome', x: 'explore',
+  n: 'next', ' ': 'skip', tab: 'hold', s: 'sentry', r: 'repair', t: 'moveTo', p: 'patrol', h: 'goHome', x: 'explore',
   l: 'load', u: 'unload', insert: 'clearOrders', delete: 'disband', c: 'center', enter: 'endTurn', i: 'info', z: 'fit',
 };
 

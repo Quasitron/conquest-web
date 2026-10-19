@@ -55,11 +55,13 @@ export type Orders =
       /** Aircraft patrols: the carrier that one end of the patrol is tied to; that end moves with it. */
       carrier?: { id: number; end: 'a' | 'b' };
     }
-  | { kind: 'explore' };
+  | { kind: 'explore' }
+  /** Sits in a friendly city until its damage is repaired, then wakes up. */
+  | { kind: 'repair' };
 
 export type OrdersEndReason =
   | 'arrived' | 'blocked' | 'enemySighted' | 'lowFuel' | 'nothingToExplore' | 'cityFound' | 'returning' | 'destinationLost'
-  | 'baseLost' | 'baseOutOfRange';
+  | 'baseLost' | 'baseOutOfRange' | 'repaired' | 'cityLost';
 
 /** A city's standing route: matching units it builds head for another city of the owner. */
 export interface CityRoute {

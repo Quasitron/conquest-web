@@ -11,7 +11,7 @@ const REASON: Record<DestroyReason, string | null> = {
   resigned: null,
 };
 
-const ORDERS_END: Record<Exclude<OrdersEndReason, 'arrived' | 'returning' | 'baseLost' | 'baseOutOfRange'>, string> = {
+const ORDERS_END: Record<Exclude<OrdersEndReason, 'arrived' | 'returning' | 'baseLost' | 'baseOutOfRange' | 'repaired' | 'cityLost'>, string> = {
   cityFound: 'found a city',
   blocked: 'path blocked',
   enemySighted: 'enemy sighted',
@@ -69,6 +69,8 @@ export function describeEvent(
       if (e.reason === 'returning') return `${unitName(e.unitId)} low on fuel: heading home.`;
       if (e.reason === 'baseOutOfRange') return `${unitName(e.unitId)} base carrier moved out of range: heading home.`;
       if (e.reason === 'baseLost') return `${unitName(e.unitId)} base carrier is gone or full: heading home.`;
+      if (e.reason === 'repaired') return `${unitName(e.unitId)} is repaired.`;
+      if (e.reason === 'cityLost') return `${unitName(e.unitId)} stopped repairing: its city is lost.`;
       return `${unitName(e.unitId)} stopped: ${ORDERS_END[e.reason]}.`;    case 'turnStarted':
       return null;
     case 'playerEliminated':

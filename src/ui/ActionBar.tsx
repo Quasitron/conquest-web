@@ -8,6 +8,7 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   skip: { label: 'Standby', key: 'Space' },
   hold: { label: 'Hold Position', key: 'Tab' },
   sentry: { label: 'Sentry', key: 'S' },
+  repair: { label: 'Repair', key: 'R' },
   moveTo: { label: 'Move To', key: 'T' },
   patrol: { label: 'Patrol', key: 'P' },
   goHome: { label: 'Go Home', key: 'H' },
