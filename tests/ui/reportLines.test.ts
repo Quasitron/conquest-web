@@ -30,6 +30,17 @@ describe('battlesAgainstMe', () => {
     expect(lines[0].text).toBe("Computer's Cruiser attacked your Army and won.");
   });
 
+  it('gives each line its fight, so the report can play it again', () => {
+    const log: LogEntry[] = [
+      started(1, 0), combat(1, 0, true), // my own attack is not a line, and must not shift the fights
+      started(1, 1), combat(1, 1, true, 5, 2), combat(1, 1, false, 6, 2),
+      started(2, 0),
+    ];
+    const lines = battlesAgainstMe(log, 0, names, lookup);
+    expect(lines.map((l) => l.fight?.at)).toEqual([{ x: 5, y: 2 }, { x: 6, y: 2 }]);
+    expect(lines.map((l) => l.fight?.attackerWon)).toEqual([true, false]);
+  });
+
   it('does not repeat fights from before your previous turn started', () => {
     const log: LogEntry[] = [
       started(1, 0), started(1, 1), combat(1, 1, true, 1, 1), // old

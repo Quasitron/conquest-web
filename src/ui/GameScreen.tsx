@@ -984,10 +984,17 @@ export function GameScreen({ session, onQuit }: Props) {
   const battles = useMemo(() => battlesAgainstMe(session.log(view.me), view.me, names, lookup), [view]);
   const sightings = useMemo(() => recentSightings(view, names), [view]);
   /** Centers the map on a square from a report and flashes it for a few seconds. */
-  const showAt = (p: Pos) => {
+  const showAt = (p: Pos, fight?: Fight) => {
     // The reports dialog sits mid-screen, so put the square in the left third instead of dead centre.
     const { w, h } = viewport();
-    setCam(centerOn(camNow.current, p.x + (w / camNow.current.tile) * 0.2, p.y, w, h));
+    // A battle is zoomed in on and played out again (never zooming out), with its sounds.
+    const tile = fight ? Math.max(camNow.current.tile, REPLAY_TILE) : camNow.current.tile;
+    setCam(centerOn({ ...camNow.current, tile }, p.x + (w / tile) * 0.2, p.y, w, h));
+    if (fight) {
+      runFx([fight], REPLAY_FX_MS);
+      play('shot');
+      window.setTimeout(() => { if (fight.destroyed) play('explosion'); }, REPLAY_FX_MS * SHOT_SHARE);
+    }
     setFlash(p);
     window.clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setFlash(null), 3000);

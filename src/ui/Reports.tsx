@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { UNIT_STATS, type PlayerView, type Pos } from '../engine';
+import type { Fight } from './fights';
 import { blur } from './blur';
 import { UNIT_GLYPH } from './colors';
 import { PlacedDialog } from './LeaderLine';
@@ -13,8 +14,8 @@ interface Props {
   tab: ReportTab;
   battles: BattleLine[];
   sightings: Sighting[];
-  /** Centers the map on a square and flashes it, so a line in a report can be found on the map. */
-  onShow: (at: Pos) => void;
+  /** Centers the map on a square and flashes it, so a line in a report can be found on the map; a battle also plays out. */
+  onShow: (at: Pos, fight?: Fight) => void;
   onClose: () => void;
 }
 
@@ -53,7 +54,7 @@ export function Reports({ view, tab: first, battles, sightings, onShow, onClose 
                 <li key={i}>
                   <span class={b.attackerWon ? 'lost-battle' : 'won-battle'}>{b.text}</span>
                   <span class="muted">at {b.at.x},{b.at.y}</span>
-                  <button onClick={(e) => { blur(e); onShow(b.at); }}>Show</button>
+                  <button onClick={(e) => { blur(e); onShow(b.at, b.fight); }}>Show</button>
                 </li>
               ))}
             </ul>

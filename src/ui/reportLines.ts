@@ -1,6 +1,7 @@
 import { UNIT_STATS, type PlayerId, type PlayerView, type Pos, type UnitType } from '../engine';
 import type { LogEntry } from '../app/session';
 import { describeEvent, type DescribeLookup } from './describe';
+import { fightsFromEvents, type Fight } from './fights';
 
 export interface BattleLine {
   turn: number;
@@ -10,6 +11,8 @@ export interface BattleLine {
   at: Pos;
   /** True when the attacker won. */
   attackerWon: boolean;
+  /** The fight, so the report's Show button can play it on the map. */
+  fight?: Fight;
 }
 
 /**
@@ -26,12 +29,16 @@ export function battlesAgainstMe(
   });
   // The latest start is the turn now under way; the one before it opens the span we want.
   const from = starts.length >= 2 ? starts[starts.length - 2] : 0;
+  const span = entries.slice(from);
+  // The fights are built the same way as the lines (same filters), so the nth line goes with the nth fight.
+  const fights = fightsFromEvents(span.map((x) => x.event), (ev) => describeEvent(ev, me, names, lookup))
+    .filter((f) => f.attackerOwner !== me);
   const out: BattleLine[] = [];
-  for (const entry of entries.slice(from)) {
+  for (const entry of span) {
     const e = entry.event;
     if (e.type !== 'combat' || e.attackerOwner === me) continue;
     const text = describeEvent(e, me, names, lookup);
-    if (text !== null) out.push({ turn: entry.turn, text, at: { x: e.x, y: e.y }, attackerWon: e.attackerWon });
+    if (text !== null) out.push({ turn: entry.turn, text, at: { x: e.x, y: e.y }, attackerWon: e.attackerWon, fight: fights[out.length] });
   }
   return out;
 }
