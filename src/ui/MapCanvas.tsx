@@ -35,6 +35,8 @@ interface Props {
   flash?: Pos | null;
   /** Fights to play out: `start` is a performance.now() time. The map repaints every frame while any is running. */
   fx?: ActiveFx[];
+  /** Fights of a replay still to come, drawn as they were before the fight. */
+  pending?: Fight[];
   cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
@@ -105,7 +107,7 @@ export function MapCanvas(p: Props) {
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
       route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, flash: p.flash,
       fx: p.fx?.map((a) => ({ fight: a.fight, age: performance.now() - a.start, duration: a.duration })),
-      cityRoutes: p.cityRoutes, attack: p.attack,
+      pending: p.pending, cityRoutes: p.cityRoutes, attack: p.attack,
       groupBox: p.groupBox,
     });
   });

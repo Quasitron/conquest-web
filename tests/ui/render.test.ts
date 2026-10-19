@@ -256,6 +256,17 @@ describe('render', () => {
     expect(after.filter((x) => x === armyGlyph)).toHaveLength(1);
     expect(after).not.toContain(UNIT_GLYPH.cruiser);
   });
+  it('a unit that dies in a later fight of a replay is still drawn until then', () => {
+    const s = makeGame(M); // the finished result: the army is gone, killed in the later fight
+    const later = {
+      at: { x: 1, y: 1 }, attackerId: 9, from: { x: 2, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const,
+      defenderType: 'army' as const, attackerWon: true, moved: false, destroyed: true, captured: false, text: 't',
+    };
+    expect(paint(s, 20).fillText).not.toContain(UNIT_GLYPH.army);
+    const waiting = paint(s, 20, { pending: [later] }).fillText;
+    expect(waiting).toContain(UNIT_GLYPH.army);
+    expect(waiting).toContain(UNIT_GLYPH.cruiser);
+  });
   it('a blinking active unit is drawn at alpha 0.25 while blink is off', () => {
     const s = makeGame(M);
     const a = addUnit(s, 'army', 0, 1, 1);

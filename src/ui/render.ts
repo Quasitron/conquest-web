@@ -38,6 +38,8 @@ export interface DrawOptions {
   flash?: Pos | null;
   /** Fights playing out now: `age` ms into a run of `duration` ms. */
   fx?: { fight: Fight; age: number; duration: number }[];
+  /** Fights of a replay still to come: their units are drawn as they were before the fight, so none vanishes early. */
+  pending?: Fight[];
   /** The box being dragged in Group mode, drawn as a yellow rectangle. */
   groupBox?: GroupBox | null;
   /** The player's city routes, drawn as arrows from each route city to its destination. */
@@ -203,11 +205,19 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     return frame ? [{ fight: a.fight, frame, actors: fightActors(a.fight, frame) }] : [];
   });
   const hiddenSquares = new Set<string>();
-  for (const r of running) {
-    if (r.actors.length === 0) continue;
-    hiddenSquares.add(`${r.fight.at.x},${r.fight.at.y}`);
-    if (r.fight.from) hiddenSquares.add(`${r.fight.from.x},${r.fight.from.y}`);
-  }
+  const hide = (f: Fight) => {
+    hiddenSquares.add(`${f.at.x},${f.at.y}`);
+    if (f.from) hiddenSquares.add(`${f.from.x},${f.from.y}`);
+  };
+  for (const r of running) if (r.actors.length > 0) hide(r.fight);
+  // A fight still to come in a replay: its units stand as they did before it (a unit that survives one fight and dies
+  // in a later one must not vanish early). One that shares a square with a fight playing now gives way to it.
+  const waiting = (o.pending ?? []).flatMap((f) => {
+    const actors = fightActors(f, { shots: 0, burst: 0, slide: 0, outcome: 'hit' });
+    const clash = hiddenSquares.has(`${f.at.x},${f.at.y}`) || (f.from !== null && hiddenSquares.has(`${f.from.x},${f.from.y}`));
+    return actors.length > 0 && !clash ? [{ fight: f, actors }] : [];
+  });
+  for (const w of waiting) hide(w.fight);
   const hidden = (x: number, y: number) => hiddenSquares.has(`${x},${y}`);
   for (const e of showUnits ? view.enemies : []) {
     const age = view.turn - e.turnSeen;
@@ -322,6 +332,11 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   // Fights being played out: the two units (the loser fading, a winner that moves sliding in), then the effect, each
   // drawn on every on-screen copy of the map.
   const copies = view.wrap ? [-view.width, 0, view.width] : [0];
+  for (const w of waiting) {
+    for (const actor of w.actors) {
+      for (const off of copies) glyph((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], UNIT_GLYPH[actor.type], actor.alpha);
+    }
+  }
   for (const r of running) {
     for (const actor of r.actors) {
       for (const off of copies) glyph((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], UNIT_GLYPH[actor.type], actor.alpha);

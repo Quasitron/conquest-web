@@ -126,6 +126,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const [replay, setReplay] = useState<{ steps: Fight[]; more: number; index: number } | null>(null);
   const fxTimer = useRef<number | undefined>(undefined);
   const [replayPaused, setReplayPaused] = useState(false);
+  // The last replay step whose fight has started playing (-1 before any); later steps' units still stand as they were.
+  const [playedStep, setPlayedStep] = useState(-1);
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
@@ -408,6 +410,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const rp = getCombatMode() === 'animated' ? replayFights(session.log(view.me), view.me, names, lookup) : null;
     if (rp && rp.steps.length > 0) {
       setReplayPaused(false);
+      setPlayedStep(-1);
       setReplay({ ...rp, index: 0 });
     }
     else beginTurn();
@@ -434,6 +437,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setFlash(null);
     setReplay(null);
     setReplayPaused(false);
+    setPlayedStep(-1);
     if (replayCam.current) setCam(replayCam.current); // back to the view from before the replay
     replayCam.current = null;
     // The Combat report opens once the turn proper has begun (after any production reports), if wanted.
@@ -471,6 +475,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const zoom = window.setTimeout(() => {
       setCam(centerOn({ ...camNow.current, tile: Math.max(base.tile, REPLAY_TILE) }, step.at.x, step.at.y, w, h));
       runFx([step], fxMs);
+      setPlayedStep(replay.index);
       play('shot');
     }, wideMs);
     const boom = window.setTimeout(() => { if (step.destroyed) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
@@ -984,6 +989,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const battles = useMemo(() => battlesAgainstMe(session.log(view.me), view.me, names, lookup), [view]);
   const sightings = useMemo(() => recentSightings(view, names), [view]);
   /** Centers the map on a square from a report and flashes it for a few seconds. */
+  const pendingFights = replay ? replay.steps.slice(replay.index + (playedStep >= replay.index ? 1 : 0)) : undefined;
   const showAt = (p: Pos, fight?: Fight) => {
     // The reports dialog sits mid-screen, so put the square in the left third instead of dead centre.
     const { w, h } = viewport();
@@ -1065,7 +1071,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} cityRoutes={cityRoutes} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} pending={pendingFights} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
           boxMode={playing && group?.step === 'box'} groupBox={groupBox} onBox={setGroupBox} onBoxDone={onBoxDone}
         />
