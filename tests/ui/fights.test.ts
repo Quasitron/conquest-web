@@ -140,28 +140,28 @@ describe('replay pace and the report after the replay', () => {
   beforeEach(() => { resetCombatMode(); });
   afterEach(() => { resetCombatMode(); vi.unstubAllGlobals(); });
 
-  it('default to normal pace with the report opening afterwards, and remember changes', () => {
+  it('default to normal pace with the report not opening afterwards, and remember changes', () => {
     const m = new Map<string, string>();
     vi.stubGlobal('localStorage', { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); } });
     expect(getReplayPace()).toBe(DEFAULT_REPLAY_PACE);
     expect(DEFAULT_REPLAY_PACE).toBe('normal');
-    expect(getReportAfter()).toBe(true);
+    expect(getReportAfter()).toBe(false);
     setReplayPace('manual');
-    setReportAfter(false);
-    expect([m.get(REPLAY_PACE_KEY), m.get(REPORT_AFTER_KEY)]).toEqual(['manual', 'false']);
+    setReportAfter(true);
+    expect([m.get(REPLAY_PACE_KEY), m.get(REPORT_AFTER_KEY)]).toEqual(['manual', 'true']);
     resetCombatMode();
     expect(getReplayPace()).toBe('manual');
-    expect(getReportAfter()).toBe(false);
+    expect(getReportAfter()).toBe(true);
   });
 
   it('ignore junk in storage and survive storage that throws', () => {
     vi.stubGlobal('localStorage', { getItem: () => 'whenever', setItem: () => { throw new Error('blocked'); } });
     expect(getReplayPace()).toBe('normal');
-    expect(getReportAfter()).toBe(true);
-    expect(() => setReplayPace('fast')).not.toThrow();
-    expect(() => setReportAfter(false)).not.toThrow();
-    expect(getReplayPace()).toBe('fast');
     expect(getReportAfter()).toBe(false);
+    expect(() => setReplayPace('fast')).not.toThrow();
+    expect(() => setReportAfter(true)).not.toThrow();
+    expect(getReplayPace()).toBe('fast');
+    expect(getReportAfter()).toBe(true);
   });
 });
 

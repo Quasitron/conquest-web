@@ -88,7 +88,7 @@ export function SettingsDialog({ onClose }: Props) {
       <p>
         <label>
           <input type="checkbox" checked={after} disabled={combat !== 'animated'} onChange={(e) => setAfter(setReportAfter((e.currentTarget as HTMLInputElement).checked))} />
-          {' '}Open the Combat report when the replay ends
+          {' '}Always open the Combat report when the replay ends (it opens anyway if some fights were left out)
         </label>
       </p>
       <div class="picker-actions">

@@ -40,7 +40,7 @@ export type ReplayPace = 'manual' | 'slow' | 'normal' | 'fast';
 export const REPLAY_PACES: readonly ReplayPace[] = ['manual', 'slow', 'normal', 'fast'];
 export const REPLAY_PACE_KEY = 'conquest.replayPace';
 export const DEFAULT_REPLAY_PACE: ReplayPace = 'normal';
-/** Whether the Combat report opens when the replay ends, so every outcome can be read at leisure. */
+/** Whether the Combat report always opens when the replay ends. Off by default: it opens anyway when fights were left out of the replay. */
 export const REPORT_AFTER_KEY = 'conquest.reportAfterReplay';
 
 let pace: ReplayPace | null = null;
@@ -69,7 +69,7 @@ export function getReportAfter(): boolean {
     const raw = globalThis.localStorage?.getItem(REPORT_AFTER_KEY);
     if (raw === 'true' || raw === 'false') return (reportAfter = raw === 'true');
   } catch { /* storage blocked or unreadable: use the default */ }
-  return (reportAfter = true);
+  return (reportAfter = false);
 }
 
 export function setReportAfter(next: boolean): boolean {
