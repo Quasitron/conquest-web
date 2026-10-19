@@ -1,6 +1,6 @@
 import {
   CITY_COMBAT, DIRS, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
-  type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit,
+  type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 
 /** Geometry only: normalize and chebyshev never read terrain. */
@@ -69,6 +69,21 @@ export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId 
   );
 }
 
-export function attackLabel(chance: number | null): string {
-  return chance === null ? 'Attack' : `Attack (${Math.round(chance * 100)}%)`;
+/**
+ * Chance that `u` beats a unit of `type`. The enemy's damage is not known to the player, so it is assumed to have
+ * none; ships bombarding land units fight at half the defence, as in the engine.
+ */
+export function unitAttackChance(u: Unit, type: UnitType): number {
+  const a = UNIT_STATS[u.type];
+  const d = UNIT_STATS[type];
+  const bombard = a.domain === 'sea' && d.domain === 'land';
+  return combatWinChance(
+    { attack: a.attack, shot: a.shot, hits: a.hits, damage: u.damage },
+    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits, damage: 0 },
+  );
+}
+
+/** "Attack (62%)", or "Attack (~62%)" when the odds are an estimate (the defender's damage is unknown). */
+export function attackLabel(chance: number | null, estimate = false): string {
+  return chance === null ? 'Attack' : `Attack (${estimate ? '~' : ''}${Math.round(chance * 100)}%)`;
 }

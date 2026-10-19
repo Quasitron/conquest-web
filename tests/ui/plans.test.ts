@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { updateFog } from '../../src/engine/fog';
-import { approachSquare, attackLabel, cityAttackChance, landingPlan } from '../../src/ui/plans';
+import { approachSquare, attackLabel, cityAttackChance, landingPlan, unitAttackChance } from '../../src/ui/plans';
 import { addUnit, makeGame } from '../helpers';
 
 function viewOf(s: ReturnType<typeof makeGame>) {
@@ -107,6 +107,17 @@ describe('attackLabel and cityAttackChance', () => {
     expect(attackLabel(0.5)).toBe('Attack (50%)');
     expect(attackLabel(0.667)).toBe('Attack (67%)');
     expect(attackLabel(null)).toBe('Attack');
+  });
+
+  it('marks odds against units as estimates, and works them out from both units\' stats', () => {
+    expect(attackLabel(0.5, true)).toBe('Attack (~50%)');
+    const s = makeGame(['*#*', '###']);
+    const a = addUnit(s, 'army', 0, 1, 1);
+    expect(unitAttackChance(a, 'army')).toBeCloseTo(0.5, 6); // equal units
+    const wounded = addUnit(s, 'army', 0, 1, 1, { damage: 1 });
+    expect(unitAttackChance(wounded, 'army')).toBeLessThan(0.5);
+    const cruiser = addUnit(s, 'cruiser', 0, 1, 1);
+    expect(unitAttackChance(cruiser, 'army')).toBeGreaterThan(unitAttackChance(cruiser, 'battleship'));
   });
 
   it('a fresh army has even odds against a neutral city, better with easier neutral cities', () => {
