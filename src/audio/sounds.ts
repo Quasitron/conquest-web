@@ -29,7 +29,7 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-cruiser': '/sounds/produce-cruiser.mp3',
   // Battleship, the first 1.7 seconds of the original recording.
   'produce-battleship': '/sounds/produce-battleship.mp3',
-  // Carrier, 2:56 to 3:00 of the original recording (a jet taking off).
+  // Carrier: 13 s to 18 s of a US Navy video of F/A-18 launches (public domain, see docs/sounds.md).
   'produce-carrier': '/sounds/produce-carrier.mp3',
   // Armor (not in the game yet), the first 4 seconds of the original recording.
   'produce-armor': '/sounds/produce-armor.mp3',

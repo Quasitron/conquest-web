@@ -37,7 +37,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-submarine` | The production screen for a new submarine opens (recorded, 2.5 s; the synth sonar ping is the fallback) |
 | `produce-cruiser` | The production screen for a new cruiser opens (recorded, 2 s; the synth double horn is the fallback) |
 | `produce-battleship` | The production screen for a new battleship opens (recorded, 1.7 s; the synth horn and rumble is the fallback) |
-| `produce-carrier` | The production screen for a new carrier opens (recorded, 4 s; the synth klaxon is the fallback) |
+| `produce-carrier` | The production screen for a new carrier opens (recorded, 5 s; the synth klaxon is the fallback) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle (yours or one you watch), after the shot; recorded, 1 s, the synth boom is the fallback |
 | `crash` | An aircraft ran out of fuel and crashed |
@@ -80,7 +80,7 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-submarine.mp3` | https://freesound.org/people/Timbre/sounds/203562/ (Timbre) | CC0 (checked by the game's owner) | first 2.5 seconds |
 | `produce-cruiser.mp3` | https://freesound.org/people/Grotelue/sounds/64601/ (Grotelue) | CC0 (checked by the game's owner) | seconds 2.5 to 4.5 |
 | `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | first 1.7 seconds |
-| `produce-carrier.mp3` | https://freesound.org/people/qubodup/sounds/162449/ (qubodup) | CC0 (checked by the game's owner) | 2:56 to 3:00 (a jet taking off) |
+| `produce-carrier.mp3` | https://www.dvidshub.net/video/999721/f-18f-super-hornets-launch-uss-abraham-lincoln (U.S. Navy video, U.S. Central Command Public Affairs, taken 2026-03-14) | Public domain (as stated on the DVIDS page, checked by the game's owner); no endorsement by the Navy is implied | audio from 13 s to 18 s |
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 | `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
 | `explosion.mp3` | https://freesound.org/people/Anomaex/sounds/490266/ (Anomaex) | CC0 (checked by the game's owner) | seconds 1.5 to 2.5 |
@@ -93,5 +93,5 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 
 | File | Source | Licence | Used |
 | --- | --- | --- | --- |
-| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the same recording as the carrier sound | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded (0.65 s) into the next part |
+| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the recording the carrier sound used before the Navy clip | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded (0.65 s) into the next part |
 | `produce-airfield.mp3` (air traffic control part) | https://freesound.org/people/deleted_user_2906614/sounds/256852/ (alaskan air traffic control) | CC0 (checked by the game's owner) | 2:12 to 2:16.5 |
