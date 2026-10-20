@@ -1,0 +1,14 @@
+{
+  "name": "Theater of Conquest: Global Command",
+  "short_name": "Theater of Conquest",
+  "description": "A turn-based strategy game of global conquest. Plays offline once installed.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#12161c",
+  "theme_color": "#12161c",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
