@@ -170,3 +170,5 @@ svg.leader circle { fill: #ffd24a; }
 .plain-list { margin: 0; padding-left: 18px; }
 .report-text { line-height: 1.4; }
 .group-orders { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+
+.update-banner { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 100; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); border: 1px solid #333c48; border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }

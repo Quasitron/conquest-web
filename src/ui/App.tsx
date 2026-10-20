@@ -1,10 +1,11 @@
-﻿import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { installAudioUnlock } from '../audio/engine';
 import { startMusic, stopMusic } from '../audio/music';
 import { GameSession } from '../app/session';
 import { IndexedDbSaveStore } from '../storage';
 import { TitleScreen } from './TitleScreen';
 import { GameScreen } from './GameScreen';
+import { UpdateBanner } from './UpdateBanner';
 
 const store = new IndexedDbSaveStore();
 
@@ -16,10 +17,15 @@ export function App() {
     if (session) stopMusic();
     else startMusic('title');
   }, [session === null]);
-  return session ? (
-    <GameScreen session={session} store={store} onQuit={() => setSession(null)} />
-  ) : (
-    <TitleScreen store={store} onStart={setSession} />
+  return (
+    <>
+      {session ? (
+        <GameScreen session={session} store={store} onQuit={() => setSession(null)} />
+      ) : (
+        <TitleScreen store={store} onStart={setSession} />
+      )}
+      <UpdateBanner />
+    </>
   );
 }
 
