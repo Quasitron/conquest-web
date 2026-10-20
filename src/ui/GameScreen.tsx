@@ -967,13 +967,21 @@ export function GameScreen({ session, onQuit }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  // Minimap.
+  // Minimap, with the selected unit or city blinking on it so you can tell where in the world it is. The blink has its own
+  // timer: only the minimap is redrawn, not the whole screen.
+  const minimapMarker = playing ? selectedPos : null;
   useEffect(() => {
     const c = document.querySelector('canvas.minimap') as HTMLCanvasElement | null;
     if (!c) return;
     const { w, h } = viewport();
-    drawMinimap(c.getContext('2d')!, view, colors, c.width, c.height, cam, w, h, replay ? replay.steps[replay.index].at : null);
-  });
+    const ping = replay ? replay.steps[replay.index].at : null;
+    const draw = (on: boolean) => drawMinimap(c.getContext('2d')!, view, colors, c.width, c.height, cam, w, h, ping, on ? minimapMarker : null);
+    draw(true);
+    if (!minimapMarker) return;
+    let on = true;
+    const id = window.setInterval(() => { on = !on; draw(on); }, 400);
+    return () => window.clearInterval(id);
+  }, [view, cam.x, cam.y, cam.tile, replay?.index, replay !== null, minimapMarker?.x, minimapMarker?.y]);
 
   const lookup = {
     unit: (id: number) => session.unitInfo(view.me, id),
@@ -1063,7 +1071,7 @@ export function GameScreen({ session, onQuit }: Props) {
       </header>
       <div class="mapcol">
         <StatusLine
-          unit={playing ? selectedUnit : null} onFit={requestFit} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
+          unit={playing ? selectedUnit : null} onFit={requestFit} onCenter={() => { if (selectedPos) focus(selectedPos); }} prodMap={prodMap} onToggleProdMap={() => setProdMap(!prodMap)}
           routesMap={routesMap} onToggleRoutes={() => setRoutesMap(!routesMap)}
           onUnits={() => { setTarget(null); setMenu(null); setUnitsOpen(true); }}
           onReports={() => { setTarget(null); setMenu(null); setReportTab(battles.length > 0 ? 'combat' : 'status'); }}

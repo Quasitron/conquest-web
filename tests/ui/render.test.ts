@@ -273,6 +273,18 @@ describe('render', () => {
     expect(paint(s, 20, { activeId: a.id, blinkOn: false }).arcs.map((x) => x.alpha)).toContain(0.25);
   });
 
+  it('the minimap draws a marker for the selected unit only when given one (the caller blinks it)', () => {
+    const s = makeGame(M);
+    const v = getPlayerView(s, 0);
+    const mini = (marker: { x: number; y: number } | null) => {
+      const { ctx, calls } = fakeCtx();
+      drawMinimap(ctx, v, PLAYER_COLORS, 70, 30, { x: 0, y: 0, tile: 20 }, 140, 60, null, marker);
+      return calls.arcs.length;
+    };
+    expect(mini(null)).toBe(0);
+    expect(mini({ x: 2, y: 1 })).toBe(1);
+  });
+
   it('draws a minimap without throwing', () => {
     const s = makeGame(M);
     const { ctx, calls } = fakeCtx();

@@ -5,6 +5,8 @@ import { blur } from './blur';
 interface Props {
   unit: Unit | null;
   onFit: () => void;
+  /** Centres the map on the selected unit or city; the button shows only when something is selected. */
+  onCenter: () => void;
   /** Clears the selection like Esc; the button shows only when canDeselect. */
   onDeselect: () => void;
   canDeselect: boolean;
@@ -26,7 +28,7 @@ interface Props {
 }
 
 export function StatusLine({
-  unit, onFit, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onReports,
+  unit, onFit, onCenter, onDeselect, canDeselect, prodMap, onToggleProdMap, routesMap, onToggleRoutes, onUnits, onReports,
   battleCount, groupActive, onGroup,
 }: Props) {
   return (
@@ -45,6 +47,7 @@ export function StatusLine({
       <button class={prodMap ? 'primary' : ''} title="Show what every city is building and when it finishes" onClick={(e) => { blur(e); onToggleProdMap(); }}>
         {prodMap ? 'Exit Prod. Map' : 'Prod. Map'}
       </button>
+      {canDeselect && <button title="Centre the map on the selected unit (C)" onClick={(e) => { blur(e); onCenter(); }}>Center</button>}
       {canDeselect && <button title="Clear the selection (Esc)" onClick={(e) => { blur(e); onDeselect(); }}>Deselect (Esc)</button>}
       <button title="Fit the map to the window (Z)" onClick={(e) => { blur(e); onFit(); }}>Fit</button>
     </div>

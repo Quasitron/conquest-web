@@ -516,7 +516,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
 
 export function drawMinimap(
   ctx: CanvasRenderingContext2D, view: PlayerView, colors: string[],
-  w: number, h: number, cam: Camera, viewW: number, viewH: number, ping: Pos | null = null,
+  w: number, h: number, cam: Camera, viewW: number, viewH: number, ping: Pos | null = null, marker: Pos | null = null,
 ): void {
   const sx = w / view.width;
   const sy = h / view.height;
@@ -537,6 +537,16 @@ export function drawMinimap(
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 1;
   ctx.strokeRect(cam.x * sx, cam.y * sy, (viewW / cam.tile) * sx, (viewH / cam.tile) * sy);
+  // The selected unit: a bright dot (the caller blinks it by passing the marker only on every other beat).
+  if (marker) {
+    ctx.fillStyle = '#ffe45c';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc((marker.x + 0.5) * sx, (marker.y + 0.5) * sy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
   // A ping on the minimap marks where a replayed fight is.
   if (ping) {
     const px = (ping.x + 0.5) * sx;
