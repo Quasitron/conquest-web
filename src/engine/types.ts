@@ -45,7 +45,7 @@ export type Orders =
       /** Turns a blocked path is waited out before the orders end (default 3). */
       wait?: number;
       /** What the unit does on arrival (default: wait for orders). */
-      arrival?: 'sentry';
+      arrival?: 'sentry' | 'repair';
     }
   | {
       kind: 'patrol';
@@ -148,7 +148,8 @@ export type Command =
   | { type: 'load'; player: PlayerId; transportId: number; unitIds: number[] }
   | { type: 'unload'; player: PlayerId; transportId: number; unitIds: number[] | null }
   | { type: 'setOrders'; player: PlayerId; unitId: number; orders: Orders | null }
-  | { type: 'goHome'; player: PlayerId; unitId: number }
+  /** `repair`: a damaged unit goes to the nearest suitable own city (or is already in one) and repairs there. */
+  | { type: 'goHome'; player: PlayerId; unitId: number; repair?: boolean }
   | { type: 'setRoute'; player: PlayerId; cityId: number; route: Omit<CityRoute, 'by'> | null }
   | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
   | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }

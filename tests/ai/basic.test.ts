@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine';
 import type { GameState } from '../../src/engine';
 import { GameSession } from '../../src/app/session';
@@ -249,14 +249,14 @@ describe('AI warships', () => {
     expect(Math.abs(target.x - 9)).toBe(1);
   });
 
-  it('a hurt ship goes home to repair and waits there', () => {
+  it('a hurt ship goes home to repair, and in port sleeps on repair orders', () => {
     const s = sea();
     const d = addUnit(s, 'destroyer', 1, 5, 0, { damage: 1 });
-    expect(next(s)).toMatchObject({ type: 'setOrders', unitId: d.id, orders: { kind: 'goto' } });
+    expect(next(s)).toMatchObject({ type: 'goHome', unitId: d.id, repair: true });
     const home = s.cities[0];
     d.x = home.x;
     d.y = home.y;
-    expect(next(s)).toBeNull();
+    expect(next(s)).toMatchObject({ type: 'setOrders', unitId: d.id, orders: { kind: 'repair' } });
   });
 
   it('with nothing to hunt, patrols out to sea toward the enemy city', () => {

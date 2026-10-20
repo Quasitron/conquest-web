@@ -359,11 +359,11 @@ function decideWarship(view: PlayerView, u: Unit): SessionCommand | null {
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
 
-  // Hurt: go home and sit out the repair (doing nothing while in a city, so it is looked at again each turn).
+  // Hurt: repair in port (sleeping until it is fit again), going there first when it is at sea.
   if (u.damage > 0) {
-    if (inCity) return null;
+    if (inCity) return setOrders(u, { kind: 'repair' });
     const home = nearestOwnCity(view, u, true);
-    return home ? goTo(view, u, home) : null;
+    return home && goTo(view, u, home) ? { type: 'goHome', unitId: u.id, repair: true } : null;
   }
 
   // A ship was seen lately within reach: sail to the square beside it.

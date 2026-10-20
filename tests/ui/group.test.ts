@@ -77,4 +77,13 @@ describe('eligibleFor', () => {
     expect(eligibleFor(v, all, 'moveTo')).toHaveLength(2);
     expect(eligibleFor(v, all, 'hold')).toHaveLength(2);
   });
+
+  it('repair takes only the damaged units, in a city or at sea', () => {
+    const s = makeGame(M);
+    const hurtInPort = addUnit(s, 'destroyer', 0, 0, 0, { damage: 1 });
+    const hurtAtSea = addUnit(s, 'cruiser', 0, 4, 1, { damage: 2 });
+    const fit = addUnit(s, 'destroyer', 0, 3, 1);
+    const v = view(s);
+    expect(eligibleFor(v, [hurtInPort.id, hurtAtSea.id, fit.id], 'repair').map((u) => u.id)).toEqual([hurtInPort.id, hurtAtSea.id]);
+  });
 });

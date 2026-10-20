@@ -20,6 +20,7 @@ export const GROUP_ORDERS = [
   { id: 'moveTo', action: 'moveTo', label: 'Move To' },
   { id: 'explore', action: 'explore', label: 'Explore' },
   { id: 'goHome', action: 'goHome', label: 'Go Home' },
+  { id: 'repair', action: 'repair', label: 'Repair' },
   { id: 'clearOrders', action: 'clearOrders', label: 'Clear Orders' },
   { id: 'hold', action: 'hold', label: 'Hold Position' },
 ] as const satisfies readonly { id: string; action: ActionId; label: string }[];

@@ -156,9 +156,10 @@ export function executeOrders(
       events.push({ type: 'ordersEnded', unitId: u.id, owner: u.owner, reason: 'arrived' });
       return;
     }
-    const sentry = u.orders?.kind === 'goto' && u.orders.arrival === 'sentry';
+    const arrival = u.orders?.kind === 'goto' ? u.orders.arrival : undefined;
     endOrders(u, 'arrived', events);
-    if (sentry) u.orders = { kind: 'sentry' };
+    if (arrival === 'sentry') u.orders = { kind: 'sentry' };
+    else if (arrival === 'repair' && u.damage > 0 && inFriendlyCity(s, u)) u.orders = { kind: 'repair' };
     else pickUpRoute(s, u);
   };
 

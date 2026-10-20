@@ -38,8 +38,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     explore: !air,
     sentry: !air || inCity || u.carriedBy !== null,
     clearOrders: u.orders !== null,
-    // Damaged and in a city of ours: sit there until repaired, then wake up.
-    repair: u.damage > 0 && inCity && u.carriedBy === null && u.orders?.kind !== 'repair',
+    // Damaged: in a city of ours it sits there until repaired, elsewhere it first goes to the nearest suitable city.
+    repair: u.damage > 0 && u.carriedBy === null && u.orders?.kind !== 'repair' && (inCity || view.myCities.length > 0),
   };
 }
 

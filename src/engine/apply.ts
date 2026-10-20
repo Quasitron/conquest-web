@@ -65,11 +65,16 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       const u = unitById(s, cmd.unitId);
       if (!u) error = 'no such unit';
       else if (u.owner !== actor) error = 'not your unit';
-      else if (cityAt(s, u.x, u.y)?.owner === actor) error = 'already home';
-      else {
+      else if (cmd.repair && u.damage === 0) error = 'nothing to repair';
+      else if (cityAt(s, u.x, u.y)?.owner === actor) {
+        error = cmd.repair ? giveOrders(s, rng, u, { kind: 'repair' }, events) : 'already home';
+      } else {
         const home = chooseHome(s, u);
         if (!home) error = 'no reachable city';
-        else error = giveOrders(s, rng, u, { kind: 'goto', target: { x: home.city.x, y: home.city.y } }, events);
+        else {
+          const goto = { kind: 'goto' as const, target: { x: home.city.x, y: home.city.y }, ...(cmd.repair ? { arrival: 'repair' as const } : {}) };
+          error = giveOrders(s, rng, u, goto, events);
+        }
       }
       break;
     }

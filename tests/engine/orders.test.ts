@@ -425,6 +425,31 @@ describe('repair', () => {
     expect(ended(r2.events).map((e) => e.reason)).toEqual(['repaired']);
   });
 
+  it('a damaged unit at sea goes to the nearest city on goHome-with-repair, then repairs there', () => {
+    const s = game(['*....*', '......']);
+    const d = addUnit(s, 'destroyer', 0, 4, 1, { damage: 2 });
+    const go = run(s, { type: 'goHome', player: 0, unitId: d.id, repair: true });
+    // 4 squares away, the destroyer moves 3: it is under way with the arrive-and-repair orders.
+    expect(unitById(go.state, d.id)).toMatchObject({ orders: { kind: 'goto', arrival: 'repair' } });
+    const r1 = fullRound(go.state); // it arrives at the start of its next turn, and that turn is spent moving
+    expect(unitById(r1.state, d.id)).toMatchObject({ orders: { kind: 'repair' }, damage: 2 });
+    const r2 = fullRound(r1.state);
+    expect(unitById(r2.state, d.id)).toMatchObject({ orders: { kind: 'repair' }, damage: 2 }); // the arrival turn repairs nothing
+    const r3 = fullRound(r2.state);
+    expect(unitById(r3.state, d.id)).toMatchObject({ orders: { kind: 'repair' }, damage: 1 });
+    const r4 = fullRound(r3.state);
+    expect(unitById(r4.state, d.id)).toMatchObject({ orders: null, damage: 0 });
+    expect(ended(r4.events).map((e) => e.reason)).toContain('repaired');
+  });
+
+  it('goHome with repair in a city starts repairing, and refuses an undamaged unit', () => {
+    const s = game(PORT);
+    const hurt = addUnit(s, 'destroyer', 0, 0, 0, { damage: 1 });
+    const fit = addUnit(s, 'destroyer', 0, 0, 0);
+    expect(unitById(run(s, { type: 'goHome', player: 0, unitId: hurt.id, repair: true }).state, hurt.id)!.orders).toEqual({ kind: 'repair' });
+    expect(apply(s, { type: 'goHome', player: 0, unitId: fit.id, repair: true })).toEqual({ ok: false, error: 'nothing to repair' });
+  });
+
   it('stops when the city is lost', () => {
     const s = game(['*.*.*', '.....']);
     s.cities[2].owner = 0; // a second city, so losing the first does not end the game

@@ -704,6 +704,7 @@ export function GameScreen({ session, onQuit }: Props) {
       }
       const cmd: SessionCommand =
         id === 'goHome' ? { type: 'goHome', unitId: u.id }
+        : id === 'repair' ? { type: 'goHome', unitId: u.id, repair: true }
         : { type: 'setOrders', unitId: u.id, orders: id === 'sentry' ? { kind: 'sentry' } : id === 'explore' ? { kind: 'explore' } : id === 'moveTo' ? { kind: 'goto', target: at! } : null };
       if (act(cmd)) done++;
     }
@@ -794,7 +795,7 @@ export function GameScreen({ session, onQuit }: Props) {
       }
       case 'sentry': return setOrders(u, { kind: 'sentry' });
       case 'explore': return setOrders(u, { kind: 'explore' });
-      case 'repair': return setOrders(u, { kind: 'repair' });
+      case 'repair': return order(u, { type: 'goHome', unitId: u.id, repair: true });
       case 'clearOrders': return setOrders(u, null);
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':
