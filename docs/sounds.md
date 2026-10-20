@@ -89,9 +89,9 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 
 ### Prepared, not in the game yet
 
-`produce-airfield.mp3` (6.5 s) is the finished sound for the Airfield / Airbase of the Advanced rules. It is kept in `sound-originals` until that unit is built; to ship it, copy it to `public/sounds/`, register it in `src/audio/sounds.ts` and move these rows into the table above.
+`produce-airfield.mp3` (6.3 s) is the finished sound for the Airfield / Airbase of the Advanced rules. It is kept in `sound-originals` until that unit is built; to ship it, copy it to `public/sounds/`, register it in `src/audio/sounds.ts` and move these rows into the table above.
 
 | File | Source | Licence | Used |
 | --- | --- | --- | --- |
-| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the same recording as the carrier sound | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded into the next part |
+| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the same recording as the carrier sound | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded (0.65 s) into the next part |
 | `produce-airfield.mp3` (air traffic control part) | https://freesound.org/people/deleted_user_2906614/sounds/256852/ (alaskan air traffic control) | CC0 (checked by the game's owner) | 2:12 to 2:16.5 |
