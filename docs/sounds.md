@@ -84,7 +84,7 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 | `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
 | `explosion.mp3` | https://freesound.org/people/Anomaex/sounds/490266/ (Anomaex) | CC0 (checked by the game's owner) | seconds 1.5 to 2.5 |
-| `warship-gunfire` (added to the end of the destroyer, cruiser and battleship sounds) | https://freesound.org/people/morganpurkis/sounds/399853/ (morganpurkis, "Warship Main Battery Opening Fire") | CC0 (checked by the game's owner and on the page) | first second; 1, 2 or 3 shots 0.35 s apart, a little quieter each time, 5 dB under the opening sound's peak level |
+| `warship-gunfire` (added to the end of the destroyer, cruiser and battleship sounds) | https://freesound.org/people/morganpurkis/sounds/399853/ (morganpurkis, "Warship Main Battery Opening Fire") | CC0 (checked by the game's owner and on the page) | first second; 1, 2 or 3 shots 0.35 s apart, a little quieter each time; the gunfire peaks at about -6.5 dB, louder than the rest of the sound |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
 
