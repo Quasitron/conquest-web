@@ -13,6 +13,11 @@ export function StatusTab({ view }: { view: PlayerView }) {
         <dt>World explored</dt><dd>{s.worldExplored}%</dd>
         <dt>Map edges</dt><dd>{view.wrap ? 'Wraps east-west' : 'No wrap'}</dd>
       </dl>
+      {view.cityless.map((p) => (
+        <p key={p.id} class="status-note">
+          {p.name} has no cities left but still has {p.units} {p.units === 1 ? 'unit' : 'units'} somewhere.
+        </p>
+      ))}
       <table class="status-table">
         <thead>
           <tr>

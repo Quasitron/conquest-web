@@ -36,6 +36,8 @@ export interface PlayerView {
   enemies: EnemyMarker[];
   /** This player's own kill and loss totals. */
   stats: PlayerStats;
+  /** Other players still in the game that hold no city any more, with how many units they have left (just the count). */
+  cityless: { id: PlayerId; name: string; units: number }[];
 }
 
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
@@ -66,5 +68,8 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
         return { markerId, type: e.type, owner: e.owner, x: e.x, y: e.y, turnSeen: e.turnSeen, visibleNow };
       }),
     stats: structuredClone(s.stats?.[me] ?? emptyStats()),
+    cityless: s.players
+      .filter((p) => p.id !== me && !p.eliminated && !s.cities.some((c) => c.owner === p.id))
+      .map((p) => ({ id: p.id, name: p.name, units: s.units.filter((x) => x.owner === p.id).length })),
   };
 }
