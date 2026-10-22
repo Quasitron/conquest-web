@@ -8,6 +8,7 @@ import { cityIsCoastal, inProductionCount, statsText, turnsToComplete } from './
 import { PlacedDialog } from './LeaderLine';
 import type { Pt } from './placement';
 import { blur } from './blur';
+import { UnitCard } from './UnitCard';
 
 interface Props {
   view: PlayerView;
@@ -100,10 +101,11 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
   );
 
   return (
-    <PlacedDialog anchor={anchor} label={`City ${city.name}`} onKey={onKey}>
+    <PlacedDialog anchor={anchor} label={`City ${city.name}`} onKey={onKey} wide={mode === 'list'}>
       {mode === 'list' ? (
         <>
           <h2>{city.name} <span class="muted">Production</span></h2>
+          <div class="prod-layout">
           <ul class="prod-list" role="listbox" aria-label="Production">
             <li class="prod-head" aria-hidden="true"><span /><span /><span class="num">Turns</span><span class="num">In production</span></li>
             {ROWS.map((t) => {
@@ -126,6 +128,8 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
               );
             })}
           </ul>
+          {shown && <UnitCard type={shown} />}
+          </div>
           <p class="muted stats-line">{shown ? `${UNIT_STATS[shown].name}: ${statsText(shown)}` : 'Nothing will be built.'}</p>
           {bar}
         </>

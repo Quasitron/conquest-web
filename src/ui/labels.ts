@@ -84,6 +84,12 @@ export function statusLine(u: Unit): string {
 }
 
 /** One-line type stats, e.g. "Move 5, attack 2, defense 2, hits 1, range 20". */
+/** The short stat lines shown on a unit's card (Move, Attack, Defense, Hits and, for aircraft, Range). */
+export function cardLines(type: UnitType): string[] {
+  const st = UNIT_STATS[type];
+  return [`Move ${st.move}`, `Attack ${st.attack}`, `Defense ${st.defense}`, `Hits ${st.hits}`, ...(st.range !== null ? [`Range ${st.range}`] : [])];
+}
+
 export function statsText(type: UnitType): string {
   const st = UNIT_STATS[type];
   return `Move ${st.move}, attack ${st.attack}, defense ${st.defense}, hits ${st.hits}${st.range !== null ? `, range ${st.range}` : ''}`;

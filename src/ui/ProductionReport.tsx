@@ -5,6 +5,7 @@ import { statsText, withArticle } from './labels';
 import { PlacedDialog } from './LeaderLine';
 import type { Pt } from './placement';
 import { blur } from './blur';
+import { UnitCard } from './UnitCard';
 
 /** One short description per unit type, for the Help line. */
 export const UNIT_BLURB: Record<UnitType, string> = {
@@ -48,6 +49,7 @@ export function ProductionReport({ view, report, anchor, error, onRename, onProd
       }}
     >
       <h2>Production report</h2>
+      <UnitCard type={report.unitType} />
       <p class="report-text">City <strong>{city.name}</strong> reports production of <strong>{withArticle(st.name)}</strong>.</p>
       {unit && (
         <form class="rename" onSubmit={(e) => { e.preventDefault(); onRename(name); }}>
