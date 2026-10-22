@@ -5,6 +5,7 @@ let audio: HTMLAudioElement | null = null;
 let gain: GainNode | null = null;
 let wanted: MusicName | null = null;
 let fade: number | undefined;
+let hold: number | undefined;
 let retryArmed = false;
 let settingsHooked = false;
 
@@ -50,6 +51,7 @@ export function startMusic(name: MusicName): void {
   const url = MUSIC[name];
   if (!url || typeof Audio === 'undefined') return;
   clearInterval(fade);
+  clearTimeout(hold);
   wanted = name;
   if (!settingsHooked) {
     settingsHooked = true;
@@ -78,21 +80,31 @@ export function startMusic(name: MusicName): void {
   void begin();
 }
 
-/** Fades the music out over `ms` and stops it. */
-export function stopMusic(ms = 1200): void {
+/** When a game starts, the title music plays on this long, then fades out over the next (so the change is not abrupt). */
+export const GAME_MUSIC_HOLD_MS = 2000;
+export const GAME_MUSIC_FADE_MS = 2000;
+
+/** Lets the music play on for `holdMs`, then fades it out over `ms` and stops it. Starting music again cancels it. */
+export function stopMusic(ms = 1200, holdMs = 0): void {
   wanted = null;
   const a = audio;
   if (!a) return;
   clearInterval(fade);
+  clearTimeout(hold);
   const done = () => {
     a.pause();
     if (audio === a) { audio = null; gain = null; }
   };
   const start = target();
-  if (start === 0 || ms <= 0) { done(); return; }
-  const t0 = Date.now();
-  fade = setInterval(() => {
-    const k = 1 - (Date.now() - t0) / ms;
-    if (k <= 0) { clearInterval(fade); done(); } else setLevel(start * k);
-  }, 50);
+  const fadeOut = () => {
+    if (ms <= 0) { done(); return; }
+    const t0 = Date.now();
+    fade = setInterval(() => {
+      const k = 1 - (Date.now() - t0) / ms;
+      if (k <= 0) { clearInterval(fade); done(); } else setLevel(start * k);
+    }, 50);
+  };
+  if (start === 0) done();
+  else if (holdMs > 0) hold = setTimeout(fadeOut, holdMs);
+  else fadeOut();
 }

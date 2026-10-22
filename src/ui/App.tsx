@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { installAudioUnlock } from '../audio/engine';
-import { startMusic, stopMusic } from '../audio/music';
+import { GAME_MUSIC_FADE_MS, GAME_MUSIC_HOLD_MS, startMusic, stopMusic } from '../audio/music';
 import { GameSession } from '../app/session';
 import { IndexedDbSaveStore } from '../storage';
 import { TitleScreen } from './TitleScreen';
@@ -14,7 +14,7 @@ export function App() {
   // The title theme plays on the title screen and fades out when a game starts.
   useEffect(installAudioUnlock, []);
   useEffect(() => {
-    if (session) stopMusic();
+    if (session) stopMusic(GAME_MUSIC_FADE_MS, GAME_MUSIC_HOLD_MS);
     else startMusic('title');
   }, [session === null]);
   return (

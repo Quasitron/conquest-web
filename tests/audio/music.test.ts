@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetAudio, setSettings } from '../../src/audio/engine';
 import { startMusic, stopMusic } from '../../src/audio/music';
 import { MUSIC } from '../../src/audio/sounds';
@@ -52,6 +52,36 @@ describe('music', () => {
     expect(a.paused).toBe(false);
     stopMusic(0);
     expect(a.paused).toBe(true);
+  });
+
+  it('can play on for a while into the game before fading out, and starting again cancels that', () => {
+    vi.useFakeTimers();
+    try {
+      MUSIC.title = '/music/title.mp3';
+      setSettings({ musicVolume: 0.4 });
+      startMusic('title');
+      const a = FakeAudio.made[0];
+      stopMusic(1000, 2000);
+      vi.advanceTimersByTime(1900);
+      expect(a.paused).toBe(false); // still playing, at full volume, during the hold
+      expect(a.volume).toBe(0.4);
+      vi.advanceTimersByTime(600); // the fade has begun
+      expect(a.volume).toBeLessThan(0.4);
+      expect(a.paused).toBe(false);
+      vi.advanceTimersByTime(1000);
+      expect(a.paused).toBe(true); // faded out and stopped
+      // Returning to the title during the hold keeps the music going.
+      startMusic('title');
+      const b = FakeAudio.made[1];
+      stopMusic(1000, 2000);
+      vi.advanceTimersByTime(1000);
+      startMusic('title');
+      vi.advanceTimersByTime(5000);
+      expect(b.paused).toBe(false);
+      expect(b.volume).toBe(0.4);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('stays silent when music or sound is off, and starts when turned on', () => {
