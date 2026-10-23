@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { LogEntry } from '../../src/app/session';
-import { ICON_MIN_TILE, UNIT_ICONS, iconFlipped, unitsHeadingLeft } from '../../src/ui/unitIcons';
+import { ICON_MIN_TILE, UNIT_ICONS, iconFlipped, iconSize, unitsHeadingLeft } from '../../src/ui/unitIcons';
 
 const moved = (unitId: number, fromX: number, toX: number): LogEntry => ({
   turn: 1, event: { type: 'unitMoved', unitId, from: { x: fromX, y: 0 }, to: { x: toX, y: 0 } },
@@ -15,7 +15,16 @@ describe('unit icons', () => {
     expect([iconFlipped('destroyer', false), iconFlipped('destroyer', true)]).toEqual([false, true]);
     expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([true, false]);
     expect([iconFlipped('army', false), iconFlipped('army', true)]).toEqual([false, false]);
-    expect(iconFlipped('cruiser', true)).toBe(false); // no picture yet
+    expect(iconFlipped('carrier', true)).toBe(false); // no picture yet
+    expect([iconFlipped('cruiser', false), iconFlipped('cruiser', true)]).toEqual([false, true]);
+  });
+
+  it('draws the bigger ships bigger, so a destroyer, cruiser and battleship differ at a glance', () => {
+    expect(iconSize('destroyer')).toBeLessThan(iconSize('cruiser'));
+    expect(iconSize('cruiser')).toBeLessThan(iconSize('battleship'));
+    expect(iconSize('battleship')).toBeLessThanOrEqual(1);
+    expect(iconSize('carrier')).toBe(1); // no picture yet
+    for (const icon of Object.values(UNIT_ICONS)) expect(icon.size).toBeGreaterThan(0.5);
   });
 
   it('shows pictures only on squares of a reasonable size', () => {

@@ -5,7 +5,7 @@ import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
 import { fightActors, fightFrame, type Fight } from './fights';
-import { ICON_MIN_TILE, iconFlipped, iconImage } from './unitIcons';
+import { ICON_MIN_TILE, iconFlipped, iconImage, iconSize } from './unitIcons';
 import { drawFightFx } from './fightFx';
 
 export interface DrawOptions {
@@ -201,7 +201,8 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.lineWidth = band;
     ctx.strokeRect(cx - frame / 2, cy - frame / 2, frame, frame);
     // The picture fills most of the frame; a long ship may reach nearly edge to edge.
-    const k = Math.min((size * 0.9) / img.naturalWidth, (size * 0.84) / img.naturalHeight);
+    const fill = iconSize(type);
+    const k = Math.min((size * 0.9 * fill) / img.naturalWidth, (size * 0.84 * fill) / img.naturalHeight);
     const w = img.naturalWidth * k;
     const h = img.naturalHeight * k;
     ctx.save();

@@ -349,9 +349,9 @@ describe('unit pictures on the map', () => {
   it('a unit with no picture keeps its letter at any zoom', () => {
     g.Image = LoadedImage;
     const s = makeGame(M);
-    addUnit(s, 'cruiser', 0, 1, 1);
+    addUnit(s, 'carrier', 0, 1, 1);
     const calls = paint(s, 60);
     expect(calls.pictures).toBe(0);
-    expect(calls.fillText).toContain(UNIT_GLYPH.cruiser);
+    expect(calls.fillText).toContain(UNIT_GLYPH.carrier);
   });
 });

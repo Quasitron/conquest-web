@@ -9,17 +9,24 @@ export interface UnitIcon {
   src: string;
   /** Which way the picture faces; the game mirrors it when the unit moves the other way. null: it never flips. */
   faces: 'left' | 'right' | null;
+  /** How much of the square the picture may fill (1 = all of it): bigger units are drawn bigger, so they differ at a glance. */
+  size: number;
 }
 
 export const UNIT_ICONS: Partial<Record<UnitType, UnitIcon>> = {
-  army: { src: '/art/units/army.webp', faces: null },
-  destroyer: { src: '/art/units/destroyer.webp', faces: 'right' },
-  transport: { src: '/art/units/transport.webp', faces: 'right' },
-  fighter: { src: '/art/units/fighter.webp', faces: 'left' },
+  army: { src: '/art/units/army.webp', faces: null, size: 1 },
+  fighter: { src: '/art/units/fighter.webp', faces: 'left', size: 0.92 },
+  destroyer: { src: '/art/units/destroyer.webp', faces: 'right', size: 0.84 },
+  transport: { src: '/art/units/transport.webp', faces: 'right', size: 0.9 },
+  cruiser: { src: '/art/units/cruiser.webp', faces: 'right', size: 0.93 },
+  battleship: { src: '/art/units/battleship.webp', faces: 'right', size: 1 },
 };
 
 /** Squares at least this many pixels wide show the picture; smaller ones keep the letter badge. */
 export const ICON_MIN_TILE = 28;
+
+/** The share of the square this unit's picture may fill (see UnitIcon.size); 1 for a unit with no picture. */
+export const iconSize = (type: UnitType): number => UNIT_ICONS[type]?.size ?? 1;
 
 /** Whether the picture must be mirrored: the unit heads left but the picture faces right, or the other way round. */
 export function iconFlipped(type: UnitType, movingLeft: boolean): boolean {
