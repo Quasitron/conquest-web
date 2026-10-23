@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { drawMap, drawMinimap, type DrawOptions } from '../../src/ui/render';
 import { PLAYER_COLORS, TERRAIN_COLORS, UNIT_GLYPH } from '../../src/ui/colors';
@@ -20,6 +20,8 @@ function fakeCtx() {
     rects: [] as { x: number; y: number; w: number; h: number; style: string }[],
     dashes: [] as number[][],
     points: [] as { x: number; y: number }[],
+    pictures: 0,
+    flips: 0,
   };
   const target = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', textAlign: '', textBaseline: '', globalAlpha: 1,
@@ -29,6 +31,8 @@ function fakeCtx() {
     // The diagonal hatch beyond the map's edges is background, not an overlay: counted apart from the strokes.
     stroke: () => { if (target.strokeStyle === '#1b222c') calls.hatches++; else calls.strokes.push(target.strokeStyle); },
     setLineDash: (d: number[]) => { calls.dashes.push(d); },
+    drawImage: () => { calls.pictures++; },
+    scale: (x: number) => { if (x < 0) calls.flips++; },
     moveTo: (x: number, y: number) => { calls.points.push({ x, y }); },
     lineTo: (x: number, y: number) => { calls.points.push({ x, y }); },
   };
@@ -290,5 +294,54 @@ describe('render', () => {
     const { ctx, calls } = fakeCtx();
     drawMinimap(ctx, getPlayerView(s, 0), PLAYER_COLORS, 70, 30, { x: 0, y: 0, tile: 20 }, 140, 60);
     expect(calls.fillRect).toBeGreaterThan(0);
+  });
+});
+
+describe('unit pictures on the map', () => {
+  // A stand-in for the browser's Image: every picture is already loaded and 160 x 100.
+  class LoadedImage {
+    complete = true;
+    naturalWidth = 160;
+    naturalHeight = 100;
+    onload: (() => void) | null = null;
+    src = '';
+  }
+  const g = globalThis as unknown as Record<string, unknown>;
+  afterAll(() => { delete g.Image; });
+
+  it('shows the letter badge when zoomed out, and the picture once the square is big enough', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    addUnit(s, 'destroyer', 0, 1, 1);
+    // Zoomed out (20 px squares): the letter, no picture.
+    const far = paint(s, 20);
+    expect(far.fillText).toContain(UNIT_GLYPH.destroyer);
+    expect(far.pictures).toBe(0);
+    // Zoomed in (40 px squares): the picture instead of the letter.
+    const near = paint(s, 40);
+    expect(near.pictures).toBe(1);
+    expect(near.fillText).not.toContain(UNIT_GLYPH.destroyer);
+  });
+
+  it('mirrors a picture when the unit heads the other way from the way it faces', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    const d = addUnit(s, 'destroyer', 0, 1, 1); // the destroyer picture faces right
+    const f = addUnit(s, 'fighter', 0, 2, 1, { fuel: 20 }); // the fighter picture faces left
+    const army = addUnit(s, 'army', 0, 0, 1); // the army picture never flips
+    const flips = (left: number[]) => paint(s, 40, { headingLeft: new Set(left) }).flips;
+    expect(flips([])).toBe(1); // only the fighter: it faces left, the unit heads right
+    expect(flips([d.id])).toBe(2); // the destroyer heads left too
+    expect(flips([f.id])).toBe(0); // the fighter heads left, as drawn
+    expect(flips([army.id])).toBe(1); // the army is never mirrored
+  });
+
+  it('a unit with no picture keeps its letter at any zoom', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    addUnit(s, 'cruiser', 0, 1, 1);
+    const calls = paint(s, 60);
+    expect(calls.pictures).toBe(0);
+    expect(calls.fillText).toContain(UNIT_GLYPH.cruiser);
   });
 });

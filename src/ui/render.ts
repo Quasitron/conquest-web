@@ -5,6 +5,7 @@ import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
 import { fightActors, fightFrame, type Fight } from './fights';
+import { ICON_MIN_TILE, iconFlipped, iconImage } from './unitIcons';
 import { drawFightFx } from './fightFx';
 
 export interface DrawOptions {
@@ -38,6 +39,8 @@ export interface DrawOptions {
   flash?: Pos | null;
   /** Fights playing out now: `age` ms into a run of `duration` ms. */
   fx?: { fight: Fight; age: number; duration: number }[];
+  /** Ids of own units heading left (see unitsHeadingLeft), so their pictures are mirrored; others face right. */
+  headingLeft?: ReadonlySet<number>;
   /** Fights of a replay still to come: their units are drawn as they were before the fight, so none vanishes early. */
   pending?: Fight[];
   /** The box being dragged in Group mode, drawn as a yellow rectangle. */
@@ -165,6 +168,40 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.globalAlpha = 1;
   };
 
+  /**
+   * A unit on the map: its picture inside a frame in the owner's colour when the square is big enough, else the
+   * letter badge. The picture is mirrored when the unit heads the other way from the way the picture faces.
+   */
+  const unitMark = (
+    sx: number, sy: number, color: string, type: UnitType, alpha: number, scale = 1, ox = 0.5, oy = 0.5, headingLeft = false,
+  ) => {
+    const img = t * scale >= ICON_MIN_TILE ? iconImage(type) : null;
+    if (!img) {
+      glyph(sx, sy, color, UNIT_GLYPH[type], alpha, scale, ox, oy);
+      return;
+    }
+    const size = t * scale;
+    const cx = sx + t * ox;
+    const cy = sy + t * oy;
+    const frame = size * 0.94;
+    ctx.globalAlpha = alpha * 0.28;
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - frame / 2, cy - frame / 2, frame, frame);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(2, size * 0.06);
+    ctx.strokeRect(cx - frame / 2, cy - frame / 2, frame, frame);
+    // The picture fills most of the frame; a long ship may reach nearly edge to edge.
+    const k = Math.min((size * 0.9) / img.naturalWidth, (size * 0.84) / img.naturalHeight);
+    const w = img.naturalWidth * k;
+    const h = img.naturalHeight * k;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (iconFlipped(type, headingLeft)) ctx.scale(-1, 1);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  };
   /** Top-right badge: a white dot below 16px tiles, else a white circle with a dark count. */
   const badge = (sx: number, sy: number, count: number, alpha = 1) => {
     const cx = sx + t * 0.8;
@@ -195,6 +232,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   /** The unit whose glyph and alpha represent u on the map. */
   const face = (u: Unit): Unit => (activeCargo && u.id === activeCarrier ? activeCargo : u);
   const blinking = (u: Unit) => u.id === o.activeId || u.id === activeCarrier;
+  const left = (u: Unit) => o.headingLeft?.has(u.id) ?? false;
   const ownAlpha = (u: Unit) => (blinking(u) && !o.blinkOn ? 0.25 : face(u).movesLeft > 0 ? 1 : 0.6);
 
   // Enemy markers (fade with age).
@@ -223,7 +261,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const age = view.turn - e.turnSeen;
     const alpha = e.visibleNow ? 1 : age < 1 ? 0.7 : 0.4;
     each((mx, my, sx, sy) => {
-      if (mx === e.x && my === e.y && !hidden(mx, my)) glyph(sx, sy, colors[e.owner], UNIT_GLYPH[e.type], alpha);
+      if (mx === e.x && my === e.y && !hidden(mx, my)) unitMark(sx, sy, colors[e.owner], e.type, alpha);
     });
   }
 
@@ -243,7 +281,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         badge(sx, sy, stack.length, alpha);
         return;
       }
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[face(shown).type], alpha, 0.6, 0.3, 0.3);
+      unitMark(sx, sy, colors[view.me], face(shown).type, alpha, 0.6, 0.3, 0.3, left(face(shown)));
       if (stack.length >= 2) badge(sx, sy, stack.length, alpha);
     });
   }
@@ -253,7 +291,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
       if (mx !== u.x || my !== u.y || hidden(mx, my)) return;
-      glyph(sx, sy, colors[view.me], UNIT_GLYPH[face(u).type], ownAlpha(u));
+      unitMark(sx, sy, colors[view.me], face(u).type, ownAlpha(u), 1, 0.5, 0.5, left(face(u)));
       const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
       if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
       if (isCrippled(u)) {
@@ -334,12 +372,12 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const copies = view.wrap ? [-view.width, 0, view.width] : [0];
   for (const w of waiting) {
     for (const actor of w.actors) {
-      for (const off of copies) glyph((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], UNIT_GLYPH[actor.type], actor.alpha);
+      for (const off of copies) unitMark((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], actor.type, actor.alpha, 1, 0.5, 0.5, actor.faceLeft);
     }
   }
   for (const r of running) {
     for (const actor of r.actors) {
-      for (const off of copies) glyph((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], UNIT_GLYPH[actor.type], actor.alpha);
+      for (const off of copies) unitMark((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], actor.type, actor.alpha, 1, 0.5, 0.5, actor.faceLeft);
     }
     each((mx, my, sx, sy) => {
       if (mx === r.fight.at.x && my === r.fight.at.y) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, r.frame);

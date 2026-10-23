@@ -8,3 +8,11 @@
 - **The made-up lettering:** every card has nonsense text baked into its top-left corner (a usual look of AI-generated lettering). The game covers it with a dark panel (`.unit-card-hud` in `src/ui/styles.css`) that lists the unit's real numbers (`cardLines` in `src/ui/labels.ts`), so the pictures themselves are unchanged.
 - **Adding a unit:** make `public/art/<type>.webp` (the same recipe: scale to 560 px, WebP quality about 82) and the card appears; the test `tests/ui/unitCards.test.ts` checks that every unit type has one.
 - **Map icons** are separate: the cards are too busy for a map square, so a later art pass would add small simplified icons.
+## Map icons
+
+`public/art/units/<unit>.webp` are the pictures drawn on the map when the squares are big enough (28 px and up, `ICON_MIN_TILE` in `src/ui/unitIcons.ts`); zoomed out, a unit is still its letter badge. They are made from the pictures in `Documents\Claude\art-originals\units` by `tools/make-unit-icons.ps1` (run it from the project folder): the plain background is removed by flood-filling inward from the picture's edges (so light patches inside the unit stay), the unit is trimmed and scaled to at most 320 px.
+
+- **Adding a unit's picture:** drop it in `art-originals\units`, add it to the `$units` list in the script (and to `UNIT_ICONS` in `src/ui/unitIcons.ts`, with the way it faces), run the script. A picture that needs a stray line cleared at an edge can be listed in `$ignoreRight`.
+- **Facing:** each picture records which way it faces (`faces`). A unit is drawn mirrored when its last move was the other way (`unitsHeadingLeft`, from the move events in the log, so after a reload everyone faces right until it moves; enemy units are not mirrored). In a fight the two units face each other. A picture with `faces: null` (the Army) never flips.
+- **Drawing:** a thin frame and a faint tint in the owner's colour, with the picture inside (`unitMark` in `src/ui/render.ts`).
+- **Ready but not in the game:** `bomber.webp` (for the Advanced rules); Armor, Spy and the other ships still show letters until their pictures are made.

@@ -19,6 +19,7 @@ import { GroupDialog } from './GroupDialog';
 import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
 import { Reports, type ReportTab } from './Reports';
 import { battlesAgainstMe, recentSightings } from './reportLines';
+import { unitsHeadingLeft } from './unitIcons';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
 import { downloadSave } from './exportFile';
@@ -1001,6 +1002,8 @@ export function GameScreen({ session, onQuit }: Props) {
   // Reports: battles others started since your last turn (from the log), and recent enemy sightings (from fog).
   const battles = useMemo(() => battlesAgainstMe(session.log(view.me), view.me, names, lookup), [view]);
   const sightings = useMemo(() => recentSightings(view, names), [view]);
+  // Which way each of your units last moved, so a ship or aircraft picture can face the way it is going.
+  const headingLeft = useMemo(() => unitsHeadingLeft(session.log(view.me), view.width, view.wrap, view.me), [view]);
   /** Centers the map on a square from a report and flashes it for a few seconds. */
   const pendingFights = replay ? replay.steps.slice(replay.index + (playedStep >= replay.index ? 1 : 0)) : undefined;
   const showAt = (p: Pos, fight?: Fight) => {
@@ -1084,7 +1087,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} pending={pendingFights} cityRoutes={cityRoutes} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} pending={pendingFights} headingLeft={headingLeft} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
           boxMode={playing && group?.step === 'box'} groupBox={groupBox} onBox={setGroupBox} onBoxDone={onBoxDone}
         />

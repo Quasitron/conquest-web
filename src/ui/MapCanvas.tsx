@@ -5,6 +5,7 @@ import { clampCamera, pan, screenToMap, zoomAt, type Camera } from './camera';
 import { drawMap } from './render';
 import type { StepTarget } from './targets';
 import { useBlink } from './useBlink';
+import { onIconsLoaded } from './unitIcons';
 import { boxBetween, rawSquareAt, type GroupBox } from './group';
 
 interface Props {
@@ -37,6 +38,8 @@ interface Props {
   fx?: ActiveFx[];
   /** Fights of a replay still to come, drawn as they were before the fight. */
   pending?: Fight[];
+  /** Own units heading left, so their pictures are mirrored. */
+  headingLeft?: ReadonlySet<number>;
   cityRoutes?: { from: Pos; to: Pos; types: UnitType[] }[];
   attack: { at: Pos; label: string } | null;
   /** The user zoomed with the wheel or a pinch (turns auto-fit off). */
@@ -65,6 +68,8 @@ export function MapCanvas(p: Props) {
   // While fights are playing, repaint every animation frame; the loop stops as soon as there are none.
   const [, setFrame] = useState(0);
   const animating = !!p.fx && p.fx.length > 0;
+  // A unit picture that finishes loading is drawn at once.
+  useEffect(() => onIconsLoaded(() => setFrame((n) => n + 1)), []);
   useEffect(() => {
     if (!animating) return;
     let id = 0;
@@ -107,7 +112,7 @@ export function MapCanvas(p: Props) {
       activeId: p.activeId, blinkOn, path: p.path, pathOk: p.pathOk, pathLabel: p.pathLabel, pathTarget: p.pathTarget,
       route: p.route, routeLabel: p.routeLabel, patrols: p.patrols, productionMap: p.productionMap, flash: p.flash,
       fx: p.fx?.map((a) => ({ fight: a.fight, age: performance.now() - a.start, duration: a.duration })),
-      pending: p.pending, cityRoutes: p.cityRoutes, attack: p.attack,
+      pending: p.pending, headingLeft: p.headingLeft, cityRoutes: p.cityRoutes, attack: p.attack,
       groupBox: p.groupBox,
     });
   });

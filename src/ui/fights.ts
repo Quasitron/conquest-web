@@ -120,6 +120,8 @@ export interface FightActor {
   alpha: number;
   owner: PlayerId;
   type: UnitType;
+  /** Heading left on the screen (the two units face each other). */
+  faceLeft: boolean;
 }
 
 /**
@@ -138,10 +140,10 @@ export function fightActors(f: Fight, fr: FightFrame): FightActor[] {
       x = f.from.x + (f.at.x - f.from.x) * fr.slide;
       y = f.from.y + (f.at.y - f.from.y) * fr.slide;
     }
-    out.push({ x, y, alpha: f.attackerWon ? 1 : loserAlpha, owner: f.attackerOwner, type: f.attackerType });
+    out.push({ x, y, alpha: f.attackerWon ? 1 : loserAlpha, owner: f.attackerOwner, type: f.attackerType, faceLeft: f.at.x < f.from.x });
   }
   if (f.defenderType !== null && f.defenderOwner !== null) {
-    out.push({ x: f.at.x, y: f.at.y, alpha: f.attackerWon ? loserAlpha : 1, owner: f.defenderOwner, type: f.defenderType });
+    out.push({ x: f.at.x, y: f.at.y, alpha: f.attackerWon ? loserAlpha : 1, owner: f.defenderOwner, type: f.defenderType, faceLeft: f.from !== null && f.from.x < f.at.x });
   }
   return out;
 }
