@@ -15,7 +15,7 @@ describe('unit icons', () => {
     expect([iconFlipped('destroyer', false), iconFlipped('destroyer', true)]).toEqual([false, true]);
     expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([true, false]);
     expect([iconFlipped('army', false), iconFlipped('army', true)]).toEqual([false, false]);
-    expect(iconFlipped('submarine', true)).toBe(false); // no picture yet
+    expect([iconFlipped('submarine', false), iconFlipped('submarine', true)]).toEqual([false, true]);
     expect([iconFlipped('carrier', false), iconFlipped('carrier', true)]).toEqual([false, true]);
     expect([iconFlipped('cruiser', false), iconFlipped('cruiser', true)]).toEqual([false, true]);
   });
@@ -24,7 +24,8 @@ describe('unit icons', () => {
     expect(iconSize('destroyer')).toBeLessThan(iconSize('cruiser'));
     expect(iconSize('cruiser')).toBeLessThan(iconSize('battleship'));
     expect(iconSize('battleship')).toBeLessThanOrEqual(1);
-    expect(iconSize('submarine')).toBe(1); // no picture yet
+    expect(iconSize('submarine')).toBeLessThan(iconSize('cruiser')); // the smallest ship after the destroyer
+    expect(iconSize('carrier')).toBe(1);
     for (const icon of Object.values(UNIT_ICONS)) expect(icon.size).toBeGreaterThan(0.5);
   });
 

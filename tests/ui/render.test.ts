@@ -3,6 +3,7 @@ import { getPlayerView } from '../../src/engine/view';
 import { drawMap, drawMinimap, type DrawOptions } from '../../src/ui/render';
 import { PLAYER_COLORS, TERRAIN_COLORS, UNIT_GLYPH } from '../../src/ui/colors';
 import { addUnit, makeGame } from '../helpers';
+import { UNIT_ICONS } from '../../src/ui/unitIcons';
 import type { GameState } from '../../src/engine/types';
 
 /**
@@ -351,9 +352,15 @@ describe('unit pictures on the map', () => {
     g.Image = LoadedImage;
     const s = makeGame(M);
     addUnit(s, 'submarine', 0, 1, 1);
-    const calls = paint(s, 60);
-    expect(calls.pictures).toBe(1); // only the city's: the submarine has no picture yet
-    expect(calls.fillText).toContain(UNIT_GLYPH.submarine);
+    const picture = UNIT_ICONS.submarine; // every unit has one now, so take it away for this test
+    delete UNIT_ICONS.submarine;
+    try {
+      const calls = paint(s, 60);
+      expect(calls.pictures).toBe(1); // only the city's
+      expect(calls.fillText).toContain(UNIT_GLYPH.submarine);
+    } finally {
+      UNIT_ICONS.submarine = picture;
+    }
   });
 });
 describe('cities', () => {

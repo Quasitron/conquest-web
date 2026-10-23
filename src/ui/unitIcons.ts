@@ -21,6 +21,7 @@ export const UNIT_ICONS: Partial<Record<UnitType, UnitIcon>> = {
   cruiser: { src: '/art/units/cruiser.webp', faces: 'right', size: 0.93 },
   battleship: { src: '/art/units/battleship.webp', faces: 'right', size: 1 },
   carrier: { src: '/art/units/carrier.webp', faces: 'right', size: 1 },
+  submarine: { src: '/art/units/submarine.webp', faces: 'right', size: 0.8 },
 };
 
 /** Squares at least this many pixels wide show the picture; smaller ones keep the letter badge. */

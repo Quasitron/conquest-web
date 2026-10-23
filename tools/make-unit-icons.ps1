@@ -28,6 +28,23 @@ public static class IconKey {
       int k = q.Dequeue(); int x = k % w, y = k / w;
       push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
     }
+    // stray specks and lines the picture generator left in the background: kept pieces much smaller than the unit go
+    int[] comp = new int[w * h];
+    var sizes = new List<int>();
+    var stack = new Stack<int>();
+    for (int start = 0; start < w * h; start++) {
+      if (gone[start] || comp[start] != 0) continue;
+      sizes.Add(0); int id = sizes.Count; comp[start] = id; stack.Push(start);
+      while (stack.Count > 0) {
+        int k = stack.Pop(); sizes[id - 1]++; int x = k % w, y = k / w;
+        if (x > 0 && !gone[k - 1] && comp[k - 1] == 0) { comp[k - 1] = id; stack.Push(k - 1); }
+        if (x < w - 1 && !gone[k + 1] && comp[k + 1] == 0) { comp[k + 1] = id; stack.Push(k + 1); }
+        if (y > 0 && !gone[k - w] && comp[k - w] == 0) { comp[k - w] = id; stack.Push(k - w); }
+        if (y < h - 1 && !gone[k + w] && comp[k + w] == 0) { comp[k + w] = id; stack.Push(k + w); }
+      }
+    }
+    int biggest = 0; foreach (int sz in sizes) if (sz > biggest) biggest = sz;
+    for (int k = 0; k < w * h; k++) if (!gone[k] && sizes[comp[k] - 1] < biggest * 0.03) gone[k] = true;
     // the fringe: kept pixels touching a cleared one and fairly light get half transparent (or cleared if very light)
     int wide = tol * 2 + 10;
     for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
@@ -49,12 +66,20 @@ New-Item -ItemType Directory -Force $out, $tmp | Out-Null
 $units = [ordered]@{ army = 'Army'; destroyer = 'destroyer'; fighter = 'fighter'; bomber = 'Bomber-v2'; transport = 'transport'; cruiser = 'Cruiser'; battleship = 'Battleship'; carrier = 'Carrier'; submarine = 'Submarine'; armor = 'Armor'; spy = 'Spy'; city = 'City' }
 # pixels along the right edge to ignore (a stray line the picture generator left there)
 $ignoreRight = @{ bomber = 40 }
+# degrees to turn a picture clockwise first (negative = counter-clockwise), for pictures drawn on a slant
+$rotate = @{ submarine = -35 }
 foreach ($name in $units.Keys) {
   # a picture named <name>-v2 (a redo) is used in preference to the first one
   $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq ($units[$name] + '-v2') } | Select-Object -First 1
   if (-not $file) { $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq $units[$name] } | Select-Object -First 1 }
   if (-not $file) { Write-Warning "no picture for $name"; continue }
-  $src32 = New-Object System.Drawing.Bitmap $file.FullName
+  $input = $file.FullName
+  if ($rotate.ContainsKey($name)) {
+    $input = Join-Path $tmp ('{0}-rotated.png' -f $name)
+    $rad = $rotate[$name] * [Math]::PI / 180
+    ffmpeg -hide_banner -loglevel error -y -i $file.FullName -vf ('rotate={0}:ow=rotw({0}):oh=roth({0}):c=white' -f $rad.ToString([Globalization.CultureInfo]::InvariantCulture)) $input
+  }
+  $src32 = New-Object System.Drawing.Bitmap $input
   $w = $src32.Width; $h = $src32.Height
   $bmp = New-Object System.Drawing.Bitmap $w, $h, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp); $g.DrawImage($src32, 0, 0, $w, $h); $g.Dispose(); $src32.Dispose()
