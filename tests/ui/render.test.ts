@@ -340,12 +340,12 @@ describe('unit pictures on the map', () => {
     const s = makeGame(M);
     const d = addUnit(s, 'destroyer', 0, 1, 1); // the destroyer picture faces right
     const f = addUnit(s, 'fighter', 0, 2, 1, { fuel: 20 }); // the fighter picture faces left
-    const army = addUnit(s, 'army', 0, 0, 1); // the army picture never flips
+    const army = addUnit(s, 'army', 0, 0, 1); // the army picture faces right
     const flips = (left: number[]) => paint(s, 40, { headingLeft: new Set(left) }).flips;
     expect(flips([])).toBe(1); // only the fighter: it faces left, the unit heads right
     expect(flips([d.id])).toBe(2); // the destroyer heads left too
     expect(flips([f.id])).toBe(0); // the fighter heads left, as drawn
-    expect(flips([army.id])).toBe(1); // the army is never mirrored
+    expect(flips([army.id])).toBe(2); // the army heads left, so it is mirrored
   });
 
   it('a unit with no picture keeps its letter at any zoom', () => {

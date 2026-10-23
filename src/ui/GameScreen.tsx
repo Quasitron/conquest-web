@@ -1126,6 +1126,7 @@ export function GameScreen({ session, onQuit }: Props) {
         }} />
         <SidePanel
           view={view}
+          myColor={colors[view.me]}
           selection={selection}
           onSelectUnit={stable.onSelectUnit}
           onProduction={stable.onProduction}
