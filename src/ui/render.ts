@@ -184,12 +184,21 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const cx = sx + t * ox;
     const cy = sy + t * oy;
     const frame = size * 0.94;
-    ctx.globalAlpha = alpha * 0.28;
+    // A dark underlay, then the owner's colour over it, then a dark outline round a thick coloured border: the owner
+    // reads on any terrain, even a blue player's ship on blue water.
+    ctx.globalAlpha = alpha * 0.45;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(cx - frame / 2, cy - frame / 2, frame, frame);
+    ctx.globalAlpha = alpha * 0.42;
     ctx.fillStyle = color;
     ctx.fillRect(cx - frame / 2, cy - frame / 2, frame, frame);
+    const band = Math.max(3, size * 0.08);
     ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = band + 2;
+    ctx.strokeRect(cx - frame / 2, cy - frame / 2, frame, frame);
     ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, size * 0.06);
+    ctx.lineWidth = band;
     ctx.strokeRect(cx - frame / 2, cy - frame / 2, frame, frame);
     // The picture fills most of the frame; a long ship may reach nearly edge to edge.
     const k = Math.min((size * 0.9) / img.naturalWidth, (size * 0.84) / img.naturalHeight);
