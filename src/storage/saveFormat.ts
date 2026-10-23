@@ -1,11 +1,14 @@
 import type { Command, GameState } from '../engine';
 import { getPlayerView, hashState, replay, RULES_VERSION } from '../engine';
 import { migrateSave } from './migrations';
+import { DIFFICULTIES, type Difficulty } from '../ai/difficulty';
 
 export interface SeatConfig {
   name: string;
   kind: 'human' | 'idle' | 'ai';
   color: string;
+  /** How a computer seat plays; absent (older games) means Normal. */
+  difficulty?: Difficulty;
 }
 
 export interface SaveFile {
@@ -30,7 +33,8 @@ export function serializeSave(save: SaveFile): string {
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 function isSeat(v: unknown): v is SeatConfig {
-  return isObj(v) && typeof v.name === 'string' && (v.kind === 'human' || v.kind === 'idle' || v.kind === 'ai') && typeof v.color === 'string';
+  return isObj(v) && typeof v.name === 'string' && (v.kind === 'human' || v.kind === 'idle' || v.kind === 'ai') && typeof v.color === 'string'
+    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty));
 }
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);

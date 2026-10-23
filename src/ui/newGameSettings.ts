@@ -2,6 +2,7 @@ import { validateMapSize, type HouseRules } from '../engine';
 import type { CityDensity, Landmass, WorldOptions } from '../mapgen';
 import type { SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
+import { DIFFICULTIES, type Difficulty } from '../ai/difficulty';
 
 /** What the New Game form remembers between visits. The seed is deliberately not part of it: it is random each time. */
 export interface NewGameSettings {
@@ -30,7 +31,8 @@ const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInt
 
 function validSeat(v: unknown): v is SeatConfig {
   return isObj(v) && typeof v.name === 'string' && v.name.length <= 40
-    && KINDS.includes(v.kind as SeatConfig['kind']) && typeof v.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.color);
+    && KINDS.includes(v.kind as SeatConfig['kind']) && typeof v.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.color)
+    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty));
 }
 
 /**

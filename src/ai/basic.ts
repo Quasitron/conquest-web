@@ -6,6 +6,7 @@ import type { SessionCommand } from '../app/session';
 import { cityIsCoastal } from '../ui/labels';
 import { landingPlan } from '../ui/plans';
 import { dirTo } from '../ui/targets';
+import { leftIdle, tuningFor, type AiTuning, type Difficulty } from './difficulty';
 
 /**
  * The basic computer opponent (stage 1). It sees only its own PlayerView and answers one command at a time:
@@ -20,16 +21,15 @@ import { dirTo } from '../ui/targets';
 export interface AiMemo {
   /** Commands issued this turn per unit ('u<id>') or city ('c<id>'); a cap stops any loop. */
   tries: Map<string, number>;
+  /** How this player plays (see difficulty.ts). */
+  tuning: AiTuning;
 }
 
-export const newMemo = (): AiMemo => ({ tries: new Map() });
+export const newMemo = (difficulty?: Difficulty): AiMemo => ({ tries: new Map(), tuning: tuningFor(difficulty) });
 
 const MAX_TRIES = 4;
-/** Armies that must be waiting in a port before its transport sails. */
-const ARMIES_TO_SAIL = 3;
-/** After this turn a transport settles for fewer armies, so a stalled game still moves. */
+/** After this turn the AI settles for smaller forces, so a stalled game still moves. */
 const LATE_TURN = 60;
-const LATE_ARMIES_TO_SAIL = 2;
 
 const geo = (v: PlayerView): MapLike => v as unknown as MapLike;
 
@@ -63,8 +63,6 @@ function idleArmies(view: PlayerView): number {
 
 const WARSHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'battleship'];
 const isWarship = (t: UnitType | null): boolean => t !== null && WARSHIPS.includes(t);
-/** The fleet is not built before this turn. */
-const FLEET_FROM_TURN = 12;
 /** An enemy ship seen within this many turns means the sea matters. */
 const SEA_MEMORY = 10;
 
@@ -83,10 +81,10 @@ function seaMatters(view: PlayerView): boolean {
     || view.enemies.some((e) => UNIT_STATS[e.type].domain === 'sea' && e.turnSeen >= view.turn - SEA_MEMORY);
 }
 
-/** How many warships the fleet should hold: one more per two cities, up to eight (none while the sea is quiet). */
-function wantedWarships(view: PlayerView): number {
-  if (view.turn < FLEET_FROM_TURN || !seaMatters(view)) return 0;
-  return Math.min(8, 1 + Math.floor(view.myCities.length / 2));
+/** How many warships the fleet should hold: one more per couple of cities, up to a cap (none while the sea is quiet). */
+function wantedWarships(view: PlayerView, t: AiTuning): number {
+  if (view.turn < t.fleetFromTurn || !seaMatters(view)) return 0;
+  return Math.min(t.maxWarships, 1 + Math.floor(view.myCities.length / t.citiesPerWarship));
 }
 
 /** Heavier ships as the empire grows. */
@@ -100,7 +98,7 @@ function warshipFor(view: PlayerView): UnitType {
  * land to conquer (some are idle in a city) and no transport exists or is on the way, and coastal cities build
  * warships until the fleet is as big as it should be (the port only once it has a transport).
  */
-export function wantedProduction(view: PlayerView, city: City, port: City | null): UnitType {
+export function wantedProduction(view: PlayerView, city: City, port: City | null, t: AiTuning = tuningFor('normal')): UnitType {
   const wanted = 1 + Math.floor(view.myCities.length / 8);
   if (port && city.id === port.id && idleArmies(view) >= 1) {
     const others = transportsOwnedOrBuilding(view) - (city.production === 'transport' ? 1 : 0);
@@ -109,7 +107,7 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
   if (cityIsCoastal(view, city)) {
     const ships = warshipsOwnedOrBuilding(view) - (isWarship(city.production) ? 1 : 0);
     const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
-    if (portReady && ships < wantedWarships(view)) return warshipFor(view);
+    if (portReady && ships < wantedWarships(view, t)) return warshipFor(view);
   }
   return 'army';
 }
@@ -185,13 +183,10 @@ function goTo(view: PlayerView, u: Unit, target: Pos): SessionCommand | null {
   return path !== null && path.length > 0 ? setOrders(u, { kind: 'goto', target }) : null;
 }
 
-/** Armies that gather before an assault on a held city. */
-const ASSAULT_ARMIES = 3;
 /** Armies within this many squares of a city count as part of an assault on it. */
 const RALLY_RADIUS = 3;
 /** Cities with a visible enemy land unit this close keep their garrison at home. */
 const THREAT_RANGE = 4;
-const GARRISON = 2;
 /** An enemy-held city this close to one of our cities is a threat (or a loss) and is dealt with first. */
 const HOME_RANGE = 6;
 
@@ -211,8 +206,8 @@ function threatened(view: PlayerView, city: Pos): boolean {
 }
 
 /** Armies needed beside a held city before the assault: fewer when we have fewer, and later in a stalled game. */
-function assaultSize(view: PlayerView): number {
-  const cap = view.turn >= LATE_TURN ? ASSAULT_ARMIES - 1 : ASSAULT_ARMIES;
+function assaultSize(view: PlayerView, t: AiTuning): number {
+  const cap = view.turn >= LATE_TURN ? t.lateAssaultArmies : t.assaultArmies;
   return Math.max(1, Math.min(cap, landArmies(view).length));
 }
 
@@ -240,7 +235,7 @@ function armyTarget(view: PlayerView, u: Unit): { city: { id: number; x: number;
   return best;
 }
 
-function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionCommand | null {
+function decideArmy(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
   // Just put ashore from a transport: step onto land beside it.
   if (u.carriedBy !== null) {
     const ship = view.myUnits.find((s) => s.id === u.carriedBy);
@@ -251,12 +246,12 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionComman
   const here = view.myCities.find((c) => at(c, u));
   if (here && threatened(view, here)) {
     const inside = landArmies(view).filter((a) => at(a, here)).map((a) => a.id).sort((a, b) => a - b);
-    if (inside.indexOf(u.id) < GARRISON) return null;
+    if (inside.indexOf(u.id) < t.garrison) return null;
   }
   // A foreign city next door: attack it, a held one only once enough armies stand ready (a lone army has poor odds).
   const next = view.knownCities.find((c) => c.owner !== view.me && chebyshev(geo(view), u, c) === 1);
   if (next) {
-    if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view)) return null;
+    if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view, t)) return null;
     const dir = dirTo(view, u, next);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
@@ -282,12 +277,12 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null): SessionComman
   return setOrders(u, { kind: 'sentry' });
 }
 
-function decideTransport(view: PlayerView, u: Unit): SessionCommand | null {
+function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null {
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id);
   const inCity = view.myCities.some((c) => at(c, u));
   if (inCity) {
     const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, u)).length;
-    const need = view.turn >= LATE_TURN ? LATE_ARMIES_TO_SAIL : ARMIES_TO_SAIL;
+    const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
     const ready = cargo.length === 0 && waiting >= need;
     return ready ? setOrders(u, { kind: 'explore' }) : null;
   }
@@ -348,13 +343,13 @@ function patrolEnd(view: PlayerView, u: Unit): Pos | null {
   return best ? best.sq : null;
 }
 
-function decideWarship(view: PlayerView, u: Unit): SessionCommand | null {
+function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null {
   const inCity = view.myCities.some((c) => at(c, u));
   const ships = enemyShips(view);
 
   // An enemy ship right beside us that we are likely to beat (or that is alone and easy): attack it.
   const adjacent = ships.find((e) => e.visibleNow && chebyshev(geo(view), u, e) === 1);
-  if (adjacent && winChance(u, adjacent.type) >= 0.45) {
+  if (adjacent && winChance(u, adjacent.type) >= t.minShipWinChance) {
     const dir = dirTo(view, u, adjacent);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
@@ -384,13 +379,13 @@ function decideWarship(view: PlayerView, u: Unit): SessionCommand | null {
   return null;
 }
 
-function decide(view: PlayerView, u: Unit, port: City | null): SessionCommand | null {
+function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
   switch (u.type) {
-    case 'army': return decideArmy(view, u, port);
-    case 'transport': return decideTransport(view, u);
+    case 'army': return decideArmy(view, u, port, t);
+    case 'transport': return decideTransport(view, u, t);
     case 'destroyer':
     case 'cruiser':
-    case 'battleship': return decideWarship(view, u);
+    case 'battleship': return decideWarship(view, u, t);
     default: return null; // fighters, submarines and carriers are not built yet
   }
 }
@@ -401,7 +396,7 @@ export function nextAction(view: PlayerView, memo: AiMemo): SessionCommand | nul
   const port = portCity(view);
 
   for (const city of view.myCities) {
-    const want = wantedProduction(view, city, port);
+    const want = wantedProduction(view, city, port, memo.tuning);
     // Never abandon a build that is well along; switch only early in one.
     const switchable = city.production === null || (city.production !== want && city.progress <= 2);
     if (switchable && city.production !== want && bump(memo, `c${city.id}`)) {
@@ -414,7 +409,8 @@ export function nextAction(view: PlayerView, memo: AiMemo): SessionCommand | nul
     .sort((a, b) => a.id - b.id);
   for (const u of ready) {
     if ((memo.tries.get(`u${u.id}`) ?? 0) >= MAX_TRIES) continue;
-    const cmd = decide(view, u, port);
+    if (leftIdle(u.id, view.turn, memo.tuning.idlePercent)) continue; // not this turn (Easy)
+    const cmd = decide(view, u, port, memo.tuning);
     if (cmd && bump(memo, `u${u.id}`)) return cmd;
   }
   return null;

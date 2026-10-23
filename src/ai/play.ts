@@ -1,6 +1,7 @@
 import type { PlayerView } from '../engine';
 import type { SessionCommand } from '../app/session';
 import { newMemo, nextAction } from './basic';
+import type { Difficulty } from './difficulty';
 
 /** What the AI needs from the game: its own view, and a way to issue a command as that player. */
 export interface AiHost {
@@ -12,8 +13,8 @@ export interface AiHost {
 const MAX_STEPS = 4000;
 
 /** Plays one turn's worth of commands (everything except the final End Turn, which the caller sends). */
-export function playAiTurn(host: AiHost): void {
-  const memo = newMemo();
+export function playAiTurn(host: AiHost, difficulty?: Difficulty): void {
+  const memo = newMemo(difficulty);
   for (let i = 0; i < MAX_STEPS; i++) {
     const cmd = nextAction(host.view(), memo);
     if (cmd === null) return;

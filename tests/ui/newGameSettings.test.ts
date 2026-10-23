@@ -56,6 +56,24 @@ describe('parseNewGameSettings', () => {
   });
 });
 
+describe('computer difficulty in the remembered settings', () => {
+  it('keeps each computer seat\'s difficulty, and falls back for a seat with an invalid one', () => {
+    const s = custom();
+    s.seats = [
+      { name: 'Rob', kind: 'human', color: '#d7263d' },
+      { name: 'Bot', kind: 'ai', color: '#1b98e0', difficulty: 'hard' },
+      { name: 'Bot 2', kind: 'ai', color: '#2ca58d', difficulty: 'easy' },
+    ];
+    expect(parseNewGameSettings(JSON.parse(JSON.stringify(s)), fallback())).toEqual(s);
+    const bad = JSON.parse(JSON.stringify(s));
+    bad.seats[1].difficulty = 'impossible';
+    const r = parseNewGameSettings(bad, fallback());
+    // The seat with the impossible level is dropped and the form fills up with a default one; nothing invalid survives.
+    expect(r.seats).toHaveLength(3);
+    expect(r.seats.map((x) => x.difficulty)).not.toContain('impossible');
+    expect(r.seats.some((x) => x.difficulty === 'easy')).toBe(true);
+  });
+});
 describe('load and save', () => {
   function stubStorage() {
     const m = new Map<string, string>();
