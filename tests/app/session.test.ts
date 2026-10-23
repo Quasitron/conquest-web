@@ -71,6 +71,25 @@ describe('GameSession', () => {
     expect(GameSession.fromSave(parsed.save, store).phase).toBe('handoff');
   });
 
+  it('a computer seat plays at its own difficulty, and the difficulty is kept in a save', () => {
+    const ai = (difficulty: 'easy' | 'hard'): SeatConfig => ({ name: 'Bot', kind: 'ai', color: '#1b98e0', difficulty });
+    const play = (difficulty: 'easy' | 'hard') => {
+      const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), ai(difficulty)] }, null);
+      for (let i = 0; i < 40; i++) s.act({ type: 'endTurn' });
+      return s;
+    };
+    const easy = play('easy');
+    const hard = play('hard');
+    expect(hashState(easy.state)).not.toBe(hashState(hard.state)); // the same world, played differently
+    const parsed = parseSave(serializeSave(hard.toSave('slot')));
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.save.seats[1].difficulty).toBe('hard');
+    // A save whose seat has a difficulty that does not exist is refused.
+    const bad = JSON.parse(serializeSave(hard.toSave('slot')));
+    bad.seats[1].difficulty = 'impossible';
+    expect(parseSave(JSON.stringify(bad)).ok).toBe(false);
+  });
+
   it('keeps each player log private', () => {
     const s = GameSession.create({ world, seed: 5, seats: [human('Ann'), idle('Bot')] }, null);
     for (let i = 0; i < 9; i++) expect(s.act({ type: 'endTurn' })).toBeNull();

@@ -1,3 +1,5 @@
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '../ai/difficulty';
+import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { SettingsDialog } from './SettingsDialog';
 import { GameSession } from '../app/session';
@@ -174,6 +176,7 @@ export function TitleScreen({ store, onStart }: Props) {
         <table class="seats">
           <tbody>
           {seats.map((s, i) => (
+            <Fragment key={i}>
             <tr>
               <td><span class="swatch" style={{ background: s.color }} /></td>
               <td><input value={s.name} onInput={(e) => updateSeat(i, { name: (e.target as HTMLInputElement).value })} /></td>
@@ -185,6 +188,20 @@ export function TitleScreen({ store, onStart }: Props) {
                 </select>
               </td>
             </tr>
+            {s.kind === 'ai' && (
+              <tr>
+                <td />
+                <td colSpan={2}>
+                  <label>Difficulty{' '}
+                    <select aria-label={`Difficulty of ${s.name}`} value={s.difficulty ?? DEFAULT_DIFFICULTY}
+                      onChange={(e) => updateSeat(i, { difficulty: (e.target as HTMLSelectElement).value as Difficulty })}>
+                      {DIFFICULTIES.map((d) => <option value={d}>{DIFFICULTY_LABELS[d]}</option>)}
+                    </select>
+                  </label>
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
           </tbody>
         </table>

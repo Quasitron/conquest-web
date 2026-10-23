@@ -213,7 +213,7 @@ export class GameSession {
           const r = this.applyCommand({ ...cmd, player: pid } as Command);
           return typeof r === 'string' ? r : null;
         },
-      });
+      }, this.seats[pid]?.difficulty);
     } catch {
       // A bug in the AI must never freeze the game: it simply ends its turn with what it has done.
     }

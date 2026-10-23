@@ -3,6 +3,7 @@ import { getPlayerView } from '../../src/engine';
 import type { GameState } from '../../src/engine';
 import { GameSession } from '../../src/app/session';
 import { newMemo, nextAction, portCity, wantedProduction } from '../../src/ai/basic';
+import { tuningFor, type Difficulty } from '../../src/ai/difficulty';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
 import type { SeatConfig } from '../../src/storage';
 import { addUnit, makeGame } from '../helpers';
@@ -114,6 +115,47 @@ describe('AI land tactics', () => {
     expect(next(prod(s))).toMatchObject({ type: 'move', unitId: a.id, dir: 2 });
   });
 
+  it('Easy masses more armies before assaulting a held city, Hard needs fewer than Normal', () => {
+    const run = (d: Difficulty, near: number) => {
+      const s = front();
+      const a = addUnit(s, 'army', 1, 5, 0);
+      addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+      addUnit(s, 'army', 1, 1, 0, { orders: { kind: 'sentry' } });
+      for (let i = 1; i < near; i++) addUnit(s, 'army', 1, 4, i - 1, { orders: { kind: 'sentry' } });
+      // Easy leaves a unit idle on some turns, so look over several turns for one on which it attacks.
+      for (let turn = 1; turn <= 20; turn++) {
+        s.turn = turn;
+        const cmd = nextAction(view(prod(s)), newMemo(d));
+        if (cmd !== null && cmd.type === 'move' && cmd.unitId === a.id) return true;
+      }
+      return false;
+    };
+    // Three armies beside the city: Normal and Hard attack, Easy (needs five) waits.
+    expect([run('easy', 3), run('normal', 3), run('hard', 3)]).toEqual([false, true, true]);
+    // Two beside it: only Hard (needs two) attacks.
+    expect([run('easy', 2), run('normal', 2), run('hard', 2)]).toEqual([false, false, true]);
+    // Five: everyone attacks.
+    expect([run('easy', 5), run('normal', 5), run('hard', 5)]).toEqual([true, true, true]);
+  });
+
+  it('Easy leaves a unit alone on a quarter of the turns, Normal and Hard never do', () => {
+    const acts = (d: Difficulty) => {
+      let n = 0;
+      for (let turn = 1; turn <= 200; turn++) {
+        const s = front();
+        s.cities[1].owner = null;
+        s.fog[1].knownCityOwner[s.cities[1].id] = null;
+        addUnit(s, 'army', 1, 5, 0);
+        s.turn = turn;
+        if (nextAction(view(prod(s)), newMemo(d)) !== null) n++;
+      }
+      return n;
+    };
+    expect(acts('normal')).toBe(200);
+    expect(acts('hard')).toBe(200);
+    expect(acts('easy')).toBeGreaterThan(110);
+    expect(acts('easy')).toBeLessThan(180);
+  });
   it('attacks a neutral city alone', () => {
     const s = front();
     s.cities[1].owner = null;
@@ -232,6 +274,35 @@ describe('AI warships', () => {
     expect(wantedProduction(view(s), other, port)).toBe('army');
   });
 
+  it('Hard builds its fleet earlier than Normal, Easy later', () => {
+    const want = (d: Difficulty, turn: number) => {
+      const s = sea();
+      s.turn = turn;
+      enemyAt(s, 'transport', 9);
+      const v = view(s);
+      const port = portCity(v)!;
+      const other = v.myCities.find((c) => c.id !== port.id)!;
+      return wantedProduction(v, other, port, tuningFor(d));
+    };
+    expect([want('easy', 10), want('normal', 10), want('hard', 10)]).toEqual(['army', 'army', 'destroyer']);
+    expect([want('easy', 20), want('normal', 20), want('hard', 20)]).toEqual(['army', 'destroyer', 'destroyer']);
+    expect([want('easy', 30), want('normal', 30), want('hard', 30)]).toEqual(['destroyer', 'destroyer', 'destroyer']);
+  });
+
+  it('Easy only attacks a ship it is sure to beat', () => {
+    const s = sea();
+    const d = addUnit(s, 'destroyer', 1, 5, 0);
+    enemyAt(s, 'destroyer', 6); // an even fight
+    const attack = (diff: Difficulty) => {
+      for (let turn = 1; turn <= 20; turn++) {
+        s.turn = turn;
+        const cmd = nextAction(view(s), newMemo(diff));
+        if (cmd !== null && cmd.type === 'move' && cmd.unitId === d.id) return true;
+      }
+      return false;
+    };
+    expect([attack('easy'), attack('normal'), attack('hard')]).toEqual([false, true, true]);
+  });
   it('attacks an enemy ship right beside it', () => {
     const s = sea();
     const d = addUnit(s, 'destroyer', 1, 5, 0);
