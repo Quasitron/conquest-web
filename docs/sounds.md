@@ -36,7 +36,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `produce-destroyer` | The production screen for a new destroyer opens (recorded, 2.8 s, ends with 1 gun shot; the synth glissando is the fallback) |
 | `produce-submarine` | The production screen for a new submarine opens (recorded, 2.5 s; the synth sonar ping is the fallback) |
 | `produce-cruiser` | The production screen for a new cruiser opens (recorded, 3.35 s, ends with 2 gun shots; the synth double horn is the fallback) |
-| `produce-battleship` | The production screen for a new battleship opens (recorded, 3.4 s, ends with 3 gun shots; the synth horn and rumble is the fallback) |
+| `produce-battleship` | The production screen for a new battleship opens (recorded, 5.6 s of real battleship gunfire; the synth horn and rumble is the fallback) |
 | `produce-carrier` | The production screen for a new carrier opens (recorded, 5 s; the synth klaxon is the fallback) |
 | `shot` | A battle you can see |
 | `explosion` | A unit was destroyed in a battle (yours or one you watch), after the shot; recorded, 1 s, the synth boom is the fallback |
@@ -79,13 +79,13 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-destroyer.mp3` | https://freesound.org/people/craigsmith/sounds/675788/ (craigsmith) | CC0 (checked by the game's owner) | seconds 13.2 to 15, then 1 gun shot (see `warship-gunfire`) |
 | `produce-submarine.mp3` | https://freesound.org/people/Timbre/sounds/203562/ (Timbre) | CC0 (checked by the game's owner) | first 2.5 seconds |
 | `produce-cruiser.mp3` | https://freesound.org/people/Grotelue/sounds/64601/ (Grotelue) | CC0 (checked by the game's owner) | seconds 2.5 to 4.5, then 2 gun shots (see `warship-gunfire`) |
-| `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | first 1.7 seconds, then 3 gun shots (see `warship-gunfire`) |
+| `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | seconds 0 to 5.6, uncut |
 | `produce-carrier.mp3` | https://www.dvidshub.net/video/999721/f-18f-super-hornets-launch-uss-abraham-lincoln (U.S. Navy video, U.S. Central Command Public Affairs, taken 2026-03-14) | Public domain (as stated on the DVIDS page, checked by the game's owner); no endorsement by the Navy is implied | audio from 13 s to 18 s |
 | `produce-army.mp3` | https://www.dvidshub.net/video/606948/usna-midshipmen-shoot-50-cal-machine-gun-aboard-ghwb (U.S. Navy video by MC3 Roland John, 2018) | Public domain (as stated on the DVIDS page, checked by the game's owner); no endorsement by the Navy is implied | audio from 5.95 s to 7.05 s |
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 | `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
 | `explosion.mp3` | https://freesound.org/people/Anomaex/sounds/490266/ (Anomaex) | CC0 (checked by the game's owner) | seconds 1.5 to 2.5 |
-| `warship-gunfire` (added to the end of the destroyer, cruiser and battleship sounds) | https://freesound.org/people/morganpurkis/sounds/399853/ (morganpurkis, "Warship Main Battery Opening Fire") | CC0 (checked by the game's owner and on the page) | first second; 1, 2 or 3 shots 0.35 s apart, a little quieter each time; the gunfire peaks at about -6.5 dB, louder than the rest of the sound |
+| `warship-gunfire` (added to the end of the destroyer and cruiser sounds) | https://freesound.org/people/morganpurkis/sounds/399853/ (morganpurkis, "Warship Main Battery Opening Fire") | CC0 (checked by the game's owner and on the page) | first second; 1 or 2 shots 0.35 s apart, a little quieter each time; the gunfire peaks at about -6.5 dB, louder than the rest of the sound |
 
 The untrimmed originals are kept outside the project in `Documents\Claude\sound-originals`.
 
