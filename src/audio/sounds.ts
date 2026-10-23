@@ -31,7 +31,7 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-battleship': '/sounds/produce-battleship.mp3',
   // Carrier: 13 s to 18 s of a US Navy video of F/A-18 launches (public domain, see docs/sounds.md).
   'produce-carrier': '/sounds/produce-carrier.mp3',
-  // Army: a .50 cal machine gun burst, 5.95 s to 7.05 s of a US Navy video (public domain, see docs/sounds.md).
+  // Army: a .50 cal machine gun burst, 5.95 s to 7.05 s of a US Navy video (public domain, see docs/sounds.md), softened (less treble, more bass).
   'produce-army': '/sounds/produce-army.mp3',
   // Armor (not in the game yet), the first 4 seconds of the original recording.
   'produce-armor': '/sounds/produce-armor.mp3',
