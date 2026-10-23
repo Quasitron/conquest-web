@@ -29,7 +29,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `click` | You press End Turn |
 | `turn` | Your turn starts |
 | `chime` | Fallback for a produced unit of an unknown type (not normally heard) |
-| `produce-army` | The production screen for a new army opens (synth: snare-like drum roll) |
+| `produce-army` | The production screen for a new army opens (recorded, 1.1 s of .50 cal machine gun fire; the synth snare-like drum roll is the fallback) |
 | `produce-armor` | The production screen for a new armor opens (not in the game yet; recorded, 4 s, synth rumble is the fallback) |
 | `produce-fighter` | The production screen for a new fighter opens (jet whoosh) |
 | `produce-transport` | The production screen for a new transport opens (short low ship horn) |
@@ -81,6 +81,7 @@ Keep this list up to date: one line per recorded file, with the page it came fro
 | `produce-cruiser.mp3` | https://freesound.org/people/Grotelue/sounds/64601/ (Grotelue) | CC0 (checked by the game's owner) | seconds 2.5 to 4.5, then 2 gun shots (see `warship-gunfire`) |
 | `produce-battleship.mp3` | https://freesound.org/people/qubodup/sounds/162365/ (qubodup) | CC0 (checked by the game's owner) | first 1.7 seconds, then 3 gun shots (see `warship-gunfire`) |
 | `produce-carrier.mp3` | https://www.dvidshub.net/video/999721/f-18f-super-hornets-launch-uss-abraham-lincoln (U.S. Navy video, U.S. Central Command Public Affairs, taken 2026-03-14) | Public domain (as stated on the DVIDS page, checked by the game's owner); no endorsement by the Navy is implied | audio from 13 s to 18 s |
+| `produce-army.mp3` | https://www.dvidshub.net/video/606948/usna-midshipmen-shoot-50-cal-machine-gun-aboard-ghwb (U.S. Navy video by MC3 Roland John, 2018) | Public domain (as stated on the DVIDS page, checked by the game's owner); no endorsement by the Navy is implied | audio from 5.95 s to 7.05 s |
 | `produce-armor.mp3` | https://freesound.org/people/greatmganga/sounds/329800/ (greatmganga) | CC0 (checked by the game's owner) | first 4 seconds |
 | `battleThemeA.mp3` (title music) | https://opengameart.org/content/battle-theme-a | CC0 (checked by the game's owner) | whole track, about 1:36, loops |
 | `explosion.mp3` | https://freesound.org/people/Anomaex/sounds/490266/ (Anomaex) | CC0 (checked by the game's owner) | seconds 1.5 to 2.5 |
