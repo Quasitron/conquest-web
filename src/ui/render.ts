@@ -5,7 +5,7 @@ import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
 import { fightActors, fightFrame, type Fight } from './fights';
-import { ICON_MIN_TILE, iconFlipped, iconImage, iconSize } from './unitIcons';
+import { ICON_MIN_TILE, cityImage, iconFlipped, iconImage, iconSize } from './unitIcons';
 import { drawFightFx } from './fightFx';
 
 export interface DrawOptions {
@@ -137,6 +137,27 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const line = Math.max(1, t * 0.03);
     ctx.lineWidth = line;
     ctx.strokeStyle = '#10151c';
+    const art = t >= ICON_MIN_TILE ? cityImage() : null;
+    if (art) {
+      // The artwork: the skyline picture standing on the owner's band, the flag on its tower.
+      const h = t * 0.84;
+      const w = Math.min(t * 0.92, h * (art.naturalWidth / art.naturalHeight));
+      const hh = w * (art.naturalHeight / art.naturalWidth);
+      ctx.drawImage(art, sx + (t - w) / 2, base + t * 0.03 - hh, w, hh);
+      ctx.fillStyle = tint;
+      ctx.fillRect(sx + t * 0.06, base, t * 0.88, t * 0.13);
+      ctx.strokeRect(sx + t * 0.06, base, t * 0.88, t * 0.13);
+      if (owner !== null) {
+        const px = sx + t * 0.5;
+        const top = base + t * 0.03 - hh + hh * 0.05; // the tip of the aerial
+        ctx.fillStyle = '#10151c';
+        ctx.fillRect(px - line / 2, top - t * 0.12, line, t * 0.12);
+        ctx.fillStyle = owner;
+        ctx.fillRect(px, top - t * 0.12, t * 0.14, t * 0.07);
+        ctx.strokeRect(px, top - t * 0.12, t * 0.14, t * 0.07);
+      }
+      return;
+    }
     for (const [bx, bw, bh] of SKYLINE) {
       ctx.fillStyle = '#cfd6df';
       ctx.fillRect(sx + t * bx, base - t * bh, t * bw, t * bh);

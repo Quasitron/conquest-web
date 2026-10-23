@@ -330,7 +330,7 @@ describe('unit pictures on the map', () => {
     expect(far.pictures).toBe(0);
     // Zoomed in (40 px squares): the picture instead of the letter.
     const near = paint(s, 40);
-    expect(near.pictures).toBe(1);
+    expect(near.pictures).toBe(1 + 1); // the unit's picture and the city's
     expect(near.fillText).not.toContain(UNIT_GLYPH.destroyer);
   });
 
@@ -352,7 +352,7 @@ describe('unit pictures on the map', () => {
     const s = makeGame(M);
     addUnit(s, 'carrier', 0, 1, 1);
     const calls = paint(s, 60);
-    expect(calls.pictures).toBe(0);
+    expect(calls.pictures).toBe(1); // only the city's: the carrier has no picture
     expect(calls.fillText).toContain(UNIT_GLYPH.carrier);
   });
 });
@@ -367,5 +367,33 @@ describe('cities', () => {
     expect(neutral.rects.some((r) => r.style === TERRAIN_COLORS.neutralCity)).toBe(true);
     // Windows are only drawn on squares big enough for them to be seen.
     expect(paint(s, 40).fillRect).toBeGreaterThan(paint(s, 20).fillRect - 20);
+  });
+});
+describe('city artwork', () => {
+  class LoadedImage {
+    complete = true;
+    naturalWidth = 286;
+    naturalHeight = 320;
+    onload: (() => void) | null = null;
+    src = '';
+  }
+  const g = globalThis as unknown as Record<string, unknown>;
+  afterAll(() => { delete g.Image; });
+
+  it('draws the picture once the squares are big enough, the code skyline when they are small', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    expect(paint(s, 40).pictures).toBe(1);
+    expect(paint(s, 20).pictures).toBe(0);
+    // The owner's colour still marks the city: the wash behind, the ground band and the flag.
+    expect(paint(s, 40).rects.filter((r) => r.style === PLAYER_COLORS[0]).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('falls back to the code skyline while the picture has not loaded', () => {
+    delete g.Image;
+    const s = makeGame(M);
+    const calls = paint(s, 40);
+    expect(calls.pictures).toBe(0);
+    expect(calls.fillRect).toBeGreaterThan(15); // buildings and windows
   });
 });

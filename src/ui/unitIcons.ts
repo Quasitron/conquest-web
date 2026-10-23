@@ -44,19 +44,27 @@ export function onIconsLoaded(listener: () => void): () => void {
   return () => { listeners.delete(listener); };
 }
 
-/** The unit's picture once it has loaded (loading starts the first time it is asked for), else null. */
-export function iconImage(type: UnitType): HTMLImageElement | null {
-  const icon = UNIT_ICONS[type];
-  if (!icon || typeof Image === 'undefined') return null;
-  let img = images.get(icon.src);
+/** A picture once it has loaded (loading starts the first time it is asked for), else null. */
+function loaded(src: string): HTMLImageElement | null {
+  if (typeof Image === 'undefined') return null;
+  let img = images.get(src);
   if (!img) {
     img = new Image();
     img.onload = () => { for (const l of listeners) l(); };
-    img.src = icon.src;
-    images.set(icon.src, img);
+    img.src = src;
+    images.set(src, img);
   }
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
+
+/** The unit's picture once it has loaded, else null. */
+export function iconImage(type: UnitType): HTMLImageElement | null {
+  const icon = UNIT_ICONS[type];
+  return icon ? loaded(icon.src) : null;
+}
+
+/** The city skyline picture (public/art/units/city.webp) once it has loaded, else null. */
+export const cityImage = (): HTMLImageElement | null => loaded('/art/units/city.webp');
 
 /**
  * The ids of the player's units whose last move was to the left (the shorter way round on a wrapping map). Units that
