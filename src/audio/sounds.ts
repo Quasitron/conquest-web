@@ -158,11 +158,12 @@ function horn(ctx: AudioContext, out: AudioNode, t: number, freq: number, dur: n
 }
 
 /** A short brass fanfare: three rising notes ending on a held chord, with a soft cymbal-like tail (~1.3 s). */
+const FANFARE_LEVEL = 0.85; // a touch under full: it stood out a little against the other sounds (about 1.4 dB down)
 const fanfare: SynthFn = (c, o, t) => {
-  brass(c, o, t, [392], 0.16, 0.2);
-  brass(c, o, t + 0.17, [523], 0.16, 0.2);
-  brass(c, o, t + 0.34, [392, 494, 587, 784], 0.95, 0.2);
-  noise(c, o, t + 0.34, 1.0, { gain: 0.07, from: 9000, to: 5000, filter: 'highpass' });
+  brass(c, o, t, [392], 0.16, 0.2 * FANFARE_LEVEL);
+  brass(c, o, t + 0.17, [523], 0.16, 0.2 * FANFARE_LEVEL);
+  brass(c, o, t + 0.34, [392, 494, 587, 784], 0.95, 0.2 * FANFARE_LEVEL);
+  noise(c, o, t + 0.34, 1.0, { gain: 0.07 * FANFARE_LEVEL, from: 9000, to: 5000, filter: 'highpass' });
 };
 
 export const SYNTH: Record<SoundName, SynthFn> = {
