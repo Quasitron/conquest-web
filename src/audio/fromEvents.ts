@@ -50,6 +50,8 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): Sou
   const newTurn = events.some((e) => e.type === 'turnStarted' && e.player === me);
   for (const e of events) {
     if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
+    // A city that falls to an assault goes up with a boom before the fanfare (the replay at turn start adds its own).
+    if (e.type === 'cityCaptured' && !newTurn && (e.by === me || e.from === me) && !out.includes('explosion')) out.push('explosion');
     for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
   }
   while (out.length > MAX_SOUNDS) {

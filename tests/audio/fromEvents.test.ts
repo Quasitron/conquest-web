@@ -40,9 +40,11 @@ describe('soundsForEvents', () => {
     const defended: GameEvent = { ...(combat as object), attackerWon: false } as GameEvent;
     expect(soundsForEvents([defended], 0)).toEqual(['shot']);
     expect(soundsForEvents([defended], 1)).toEqual(['shot']);
-    // Taking a city does not play the fanfare twice.
+    // Taking a city: the shot, a boom as it falls, then the fanfare (once).
     const taken: GameEvent = { type: 'cityCaptured', cityId: 1, by: 1, from: 0 };
-    expect(soundsForEvents([combat, taken], 1)).toEqual(['shot', 'capture']);
+    expect(soundsForEvents([combat, taken], 1)).toEqual(['shot', 'explosion', 'capture']);
+    // If a unit already blew up in the same batch, that boom is the one.
+    expect(soundsForEvents([combat, destroyed('combat'), taken], 1)).toEqual(['shot', 'explosion', 'capture']);
   });
 
   it('a crash is its own sound; disbanding is silent', () => {
@@ -52,10 +54,10 @@ describe('soundsForEvents', () => {
 
   it('city capture is seen from each side', () => {
     const e: GameEvent = { type: 'cityCaptured', cityId: 1, by: 0, from: 1 };
-    expect(soundsForEvents([e], 0)).toEqual(['capture']);
-    expect(soundsForEvents([e], 1)).toEqual(['lost']);
-    expect(soundsForEvents([e], 2)).toEqual([]);
-    expect(soundsForEvents([{ type: 'cityCaptured', cityId: 1, by: 0, from: null }], 0)).toEqual(['capture']);
+    expect(soundsForEvents([e], 0)).toEqual(['explosion', 'capture']);
+    expect(soundsForEvents([e], 1)).toEqual(['explosion', 'lost']);
+    expect(soundsForEvents([e], 2)).toEqual([]); // a capture between two other players is not heard
+    expect(soundsForEvents([{ type: 'cityCaptured', cityId: 1, by: 0, from: null }], 0)).toEqual(['explosion', 'capture']);
   });
 
   it('only my turn start, my unloads and my sightings count', () => {

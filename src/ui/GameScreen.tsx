@@ -481,7 +481,7 @@ export function GameScreen({ session, onQuit }: Props) {
       setPlayedStep(replay.index);
       play('shot');
     }, wideMs);
-    const boom = window.setTimeout(() => { if (step.destroyed) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
+    const boom = window.setTimeout(() => { if (step.destroyed || step.captured) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
     return () => { window.clearTimeout(zoom); window.clearTimeout(boom); };
   }, [replay?.index, replay !== null]);
   useEffect(() => {
@@ -1012,7 +1012,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (fight) {
       runFx([fight], REPLAY_FX_MS);
       play('shot');
-      window.setTimeout(() => { if (fight.destroyed) play('explosion'); }, REPLAY_FX_MS * SHOT_SHARE);
+      window.setTimeout(() => { if (fight.destroyed || fight.captured) play('explosion'); }, REPLAY_FX_MS * SHOT_SHARE);
     }
     setFlash(p);
     window.clearTimeout(flashTimer.current);
