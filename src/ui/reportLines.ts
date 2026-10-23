@@ -65,3 +65,20 @@ export function recentSightings(view: PlayerView, names: string[]): Sighting[] {
     .sort((a, b) => Number(b.visibleNow) - Number(a.visibleNow) || b.turnSeen - a.turnSeen
       || UNIT_STATS[a.type].name.localeCompare(UNIT_STATS[b.type].name));
 }
+
+/**
+ * The other players knocked out since the start of your previous turn (the same span the Combat report covers), in the
+ * order it happened. Empty when the log does not reach back that far, as after a reload.
+ */
+export function newEliminations(entries: readonly LogEntry[], me: PlayerId): PlayerId[] {
+  const starts: number[] = [];
+  entries.forEach((e, i) => {
+    if (e.event.type === 'turnStarted' && e.event.player === me) starts.push(i);
+  });
+  const from = starts.length >= 2 ? starts[starts.length - 2] : 0;
+  const out: PlayerId[] = [];
+  for (const { event: e } of entries.slice(from)) {
+    if (e.type === 'playerEliminated' && e.player !== me && !out.includes(e.player)) out.push(e.player);
+  }
+  return out;
+}

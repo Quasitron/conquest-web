@@ -18,7 +18,8 @@ import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
 import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
 import { Reports, type ReportTab } from './Reports';
-import { battlesAgainstMe, recentSightings } from './reportLines';
+import { battlesAgainstMe, newEliminations, recentSightings } from './reportLines';
+import { EliminationNotice } from './EliminationNotice';
 import { unitsHeadingLeft } from './unitIcons';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
@@ -130,6 +131,8 @@ export function GameScreen({ session, onQuit }: Props) {
   // The last replay step whose fight has started playing (-1 before any); later steps' units still stand as they were.
   const [playedStep, setPlayedStep] = useState(-1);
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
+  // Players knocked out since your last turn, announced once at the start of the turn.
+  const [eliminated, setEliminated] = useState<number[]>([]);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
   const flashTimer = useRef<number | undefined>(undefined);
@@ -404,6 +407,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setCityOpen(null);
     setUnitsOpen(false);
     setReportTab(null);
+    setEliminated([]);
     setReports([]);
     setReportIdx(0);
     if (session.phase !== 'playing') return;
@@ -508,6 +512,9 @@ export function GameScreen({ session, onQuit }: Props) {
     const wantCombat = getCombatMode() === 'reports' || openCombatAfter.current;
     openCombatAfter.current = false;
     if (wantCombat && battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
+    // Anyone knocked out while the others played is announced, so nobody has to find it in the Status report.
+    const out = newEliminations(session.log(view.me), view.me);
+    if (out.length > 0 && !view.over) setEliminated(out);
     // A player's very first turn (one city, no units): its production screen opens so the default can be changed,
     // as in the original. Last, so the city screen's focus wins over the camera moves above.
     if (view.turn === 1 && view.myUnits.length === 0 && view.myCities.length === 1) openCity(view.myCities[0].id);
@@ -1206,6 +1213,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onClose={() => setReportTab(null)}
         />
       )}
+      {eliminated.length > 0 && <EliminationNotice view={view} ids={eliminated} onOk={() => setEliminated([])} />}
       {soundOpen && <SettingsDialog onClose={() => setSoundOpen(false)} />}
       {unitsOpen && (
         <UnitList

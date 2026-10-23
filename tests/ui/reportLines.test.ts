@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView, type GameEvent } from '../../src/engine';
 import type { LogEntry } from '../../src/app/session';
-import { battlesAgainstMe, recentSightings } from '../../src/ui/reportLines';
+import { battlesAgainstMe, newEliminations, recentSightings } from '../../src/ui/reportLines';
 import { addUnit, makeGame } from '../helpers';
 
 const names = ['You', 'Computer'];
@@ -69,5 +69,24 @@ describe('recentSightings', () => {
     const list = recentSightings(getPlayerView(s, 0), names);
     expect(list.map((x) => x.type)).toEqual(['destroyer', 'transport']);
     expect(list[0]).toMatchObject({ owner: 'Computer', at: { x: 1, y: 0 }, turnSeen: 10 });
+  });
+});
+
+describe('newEliminations', () => {
+  const out = (turn: number, player: number): LogEntry => ({ turn, event: { type: 'playerEliminated', player } });
+
+  it('lists the other players knocked out since the start of your previous turn, once each, in order', () => {
+    const log: LogEntry[] = [
+      started(1, 0), started(1, 1), out(1, 2), // before the span: already announced
+      started(2, 0), started(2, 1), out(2, 1), started(2, 2), out(2, 3), out(2, 3), // since my turn 2 began
+      started(3, 0),
+    ];
+    expect(newEliminations(log, 0)).toEqual([1, 3]);
+  });
+
+  it('never lists yourself, and is empty when nothing happened or the log is empty (as after a reload)', () => {
+    expect(newEliminations([started(1, 0), out(1, 0), started(2, 0)], 0)).toEqual([]);
+    expect(newEliminations([started(1, 0), started(1, 1), started(2, 0)], 0)).toEqual([]);
+    expect(newEliminations([], 0)).toEqual([]);
   });
 });
