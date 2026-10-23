@@ -121,6 +121,51 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const onScreenX = (x: number) => x >= 0 && x <= width;
   const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
 
+  // A city: a skyline of grey buildings (until there is artwork) standing on a band in the owner's colour, with a flag
+  // on the tallest tower and a faint wash of the colour behind, so it reads as a city and as whose, at any zoom.
+  // A city nobody owns has a plain grey band and no flag.
+  const SKYLINE: readonly (readonly [number, number, number])[] = [
+    [0.10, 0.14, 0.34], [0.26, 0.12, 0.50], [0.40, 0.16, 0.74], [0.58, 0.12, 0.46], [0.72, 0.18, 0.30],
+  ];
+  const drawCity = (sx: number, sy: number, owner: string | null) => {
+    const tint = owner ?? TERRAIN_COLORS.neutralCity;
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = tint;
+    ctx.fillRect(sx, sy, t, t);
+    ctx.globalAlpha = 1;
+    const base = sy + t * 0.8;
+    const line = Math.max(1, t * 0.03);
+    ctx.lineWidth = line;
+    ctx.strokeStyle = '#10151c';
+    for (const [bx, bw, bh] of SKYLINE) {
+      ctx.fillStyle = '#cfd6df';
+      ctx.fillRect(sx + t * bx, base - t * bh, t * bw, t * bh);
+      ctx.strokeRect(sx + t * bx, base - t * bh, t * bw, t * bh);
+      if (t >= 28) {
+        // dark windows in two columns, from the top down
+        ctx.fillStyle = '#3a4656';
+        const w = t * bw * 0.22;
+        for (let wy = base - t * bh + t * 0.05; wy < base - t * 0.08; wy += t * 0.1) {
+          ctx.fillRect(sx + t * bx + t * bw * 0.2, wy, w, t * 0.045);
+          ctx.fillRect(sx + t * bx + t * bw * 0.58, wy, w, t * 0.045);
+        }
+      }
+    }
+    // The ground band in the owner's colour.
+    ctx.fillStyle = tint;
+    ctx.fillRect(sx + t * 0.06, base, t * 0.88, t * (t < 20 ? 0.2 : 0.13));
+    ctx.strokeRect(sx + t * 0.06, base, t * 0.88, t * (t < 20 ? 0.2 : 0.13));
+    // The flag on the tallest tower.
+    if (owner !== null) {
+      const px = sx + t * 0.48;
+      const top = base - t * 0.74;
+      ctx.fillStyle = '#10151c';
+      ctx.fillRect(px - line / 2, top - t * 0.14, line, t * 0.14); // the pole
+      ctx.fillStyle = owner;
+      ctx.fillRect(px, top - t * 0.14, t * 0.14, t * 0.08);
+      ctx.strokeRect(px, top - t * 0.14, t * 0.14, t * 0.08);
+    }
+  };
   // Terrain, cities and fog.
   each((mx, my, sx, sy) => {
     const i = my * view.width + mx;
@@ -130,11 +175,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     ctx.fillRect(sx, sy, t, t);
     if (terrain === 'city') {
       const city = view.knownCities.find((c) => c.x === mx && c.y === my);
-      ctx.fillStyle = city && city.owner !== null ? colors[city.owner] : TERRAIN_COLORS.neutralCity;
-      ctx.fillRect(sx + t * 0.15, sy + t * 0.15, t * 0.7, t * 0.7);
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(sx + t * 0.15, sy + t * 0.15, t * 0.7, t * 0.7);
+      drawCity(sx, sy, city && city.owner !== null ? colors[city.owner] : null);
     }
     if (!visible.has(i)) {
       ctx.fillStyle = TERRAIN_COLORS.fog;
