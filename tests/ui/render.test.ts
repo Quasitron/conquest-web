@@ -111,19 +111,29 @@ describe('render', () => {
     expect(on.arcs).toEqual([{ r: 14 * 0.1, alpha: 1 }]);
   });
 
-  it('a non-top active unit in a city is the stack glyph shown, and the whole marker blinks', () => {
+  it('the active unit in a city takes the whole square and alternates with the city under it', () => {
     const s = makeGame(M);
     // The transport is created first, so the army is the stack top; the transport is the active unit.
     const transport = addUnit(s, 'transport', 0, 0, 0);
     addUnit(s, 'army', 0, 0, 0);
+    // Off beat: nothing of the stack is drawn, only the city.
     const off = paint(s, 20, { activeId: transport.id, blinkOn: false });
-    expect(off.fillText).toContain(UNIT_GLYPH.transport);
+    expect(off.fillText).not.toContain(UNIT_GLYPH.transport);
     expect(off.fillText).not.toContain(UNIT_GLYPH.army);
-    // City glyph and the count badge (2 units), both at 0.25.
-    expect(off.arcs.map((a) => a.alpha)).toEqual([0.25, 0.25]);
+    expect(off.arcs).toEqual([]);
+    // On beat: the active unit (not the stack top) at full size, with the count badge for the 2 units.
     const on = paint(s, 20, { activeId: transport.id, blinkOn: true });
     expect(on.fillText).toContain(UNIT_GLYPH.transport);
-    expect(on.arcs.map((a) => a.alpha)).toEqual([1, 1]);
+    expect(on.fillText).not.toContain(UNIT_GLYPH.army);
+    expect(on.arcs.map((a) => a.r)).toEqual([20 * 0.38, 20 * 0.2]);
+  });
+
+  it('a city unit that is not the active one stays small in the corner', () => {
+    const s = makeGame(M);
+    addUnit(s, 'army', 0, 0, 0);
+    const calls = paint(s, 20, { activeId: null, blinkOn: false });
+    expect(calls.fillText).toContain(UNIT_GLYPH.army);
+    expect(calls.arcs.map((a) => a.r)).toEqual([20 * 0.38 * 0.6]);
   });
 
   it('an active unit aboard a carrier shows its own glyph on the carrier square, blinking, with the cargo badge', () => {

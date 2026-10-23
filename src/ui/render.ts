@@ -275,10 +275,19 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     // The active unit represents its stack when it is in one, so the blink shows there too.
     const shown = stack.find(blinking) ?? top;
     const alpha = ownAlpha(shown);
+    const activeHere = blinking(shown);
     each((mx, my, sx, sy) => {
       if (mx !== city.x || my !== city.y || hidden(mx, my)) return;
       if (badgeMode(t) === 'dot') {
         badge(sx, sy, stack.length, alpha);
+        return;
+      }
+      if (activeHere) {
+        // The unit that needs orders takes the whole square and alternates with the city under it.
+        if (o.blinkOn) {
+          unitMark(sx, sy, colors[view.me], face(shown).type, face(shown).movesLeft > 0 ? 1 : 0.6, 1, 0.5, 0.5, left(face(shown)));
+          if (stack.length >= 2) badge(sx, sy, stack.length, 1);
+        }
         return;
       }
       unitMark(sx, sy, colors[view.me], face(shown).type, alpha, 0.6, 0.3, 0.3, left(face(shown)));
