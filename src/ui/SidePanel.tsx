@@ -8,8 +8,19 @@ import { UNIT_GLYPH } from './colors';
 import { cargoAndPatrols, cargoLoad, cargoSummary, cityIsCoastal, patrolsFrom } from './labels';
 import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
+import { UNIT_ICONS } from './unitIcons';
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | null;
+
+/** The unit's (or city's) picture in your colour, at the top right of the panel; nothing if it has no picture. */
+function Picture({ src, color }: { src: string | undefined; color: string }) {
+  if (!src) return null;
+  return (
+    <div class="unit-pic" style={{ borderColor: color }}>
+      <img src={src} alt="" />
+    </div>
+  );
+}
 
 interface Props {
   view: PlayerView;
@@ -20,10 +31,12 @@ interface Props {
   onOpenCity: (cityId: number) => void;
   /** Number of units the cycle would visit; End Turn is offered in the empty panel when it is 0. */
   readyCount: number;
+  /** Your colour, for the frame round the picture. */
+  myColor: string;
 }
 
-function UnitDetails({ u, view, onAction, onSelectUnit }: {
-  u: Unit; view: PlayerView; onAction: (id: ActionId) => void; onSelectUnit: (id: number) => void;
+function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
+  u: Unit; view: PlayerView; onAction: (id: ActionId) => void; onSelectUnit: (id: number) => void; myColor: string;
 }) {
   const st = UNIT_STATS[u.type];
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).sort((a, b) => a.id - b.id);
@@ -32,6 +45,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
   const away = st.carries !== null ? patrolsFrom(view.myUnits, u) : [];
   return (
     <div>
+      <Picture src={UNIT_ICONS[u.type]?.src} color={myColor} />
       <h3><span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
       <p>Orders: {describeOrders(u.orders)}</p>
       <p>Moves {u.movesLeft}/{st.move}</p>
@@ -60,13 +74,14 @@ function UnitDetails({ u, view, onAction, onSelectUnit }: {
   );
 }
 
-function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity }: {
-  city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit']; onOpenCity: Props['onOpenCity'];
+function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myColor }: {
+  city: City; view: PlayerView; onProduction: Props['onProduction']; onSelectUnit: Props['onSelectUnit']; onOpenCity: Props['onOpenCity']; myColor: string;
 }) {
   const coastal = cityIsCoastal(view, city);
   const here = view.myUnits.filter((u) => u.x === city.x && u.y === city.y && u.carriedBy === null);
   return (
     <div>
+      <Picture src="/art/units/city.webp" color={myColor} />
       <h3>{city.name}</h3>
       <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
       <label>Building{' '}
@@ -108,14 +123,14 @@ function EmptyPanel({ text, readyCount, onAction }: { text: string; readyCount: 
   );
 }
 
-function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, onOpenCity, readyCount }: Props) {
+function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, onOpenCity, readyCount, myColor }: Props) {
   if (!selection) return <EmptyPanel text="Select a unit or city." readyCount={readyCount} onAction={onAction} />;
   if (selection.kind === 'unit') {
     const u = view.myUnits.find((x) => x.id === selection.id);
     if (!u) return <EmptyPanel text="That unit is gone." readyCount={readyCount} onAction={onAction} />;
     return (
       <aside class="panel">
-        <UnitDetails key={u.id} u={u} view={view} onAction={onAction} onSelectUnit={onSelectUnit} />
+        <UnitDetails key={u.id} u={u} view={view} onAction={onAction} onSelectUnit={onSelectUnit} myColor={myColor} />
       </aside>
     );
   }
@@ -123,7 +138,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
   if (own) {
     return (
       <aside class="panel">
-        <CityDetails city={own} view={view} onProduction={onProduction} onSelectUnit={onSelectUnit} onOpenCity={onOpenCity} />
+        <CityDetails city={own} view={view} onProduction={onProduction} onSelectUnit={onSelectUnit} onOpenCity={onOpenCity} myColor={myColor} />
       </aside>
     );
   }
