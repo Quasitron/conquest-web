@@ -242,13 +242,11 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const cx = sx + t * ox;
     const cy = sy + t * oy;
     const frame = size * 0.94;
-    // A dark underlay, then the owner's colour over it, then a dark outline round a thick coloured border: the owner
-    // reads on any terrain, even a blue player's ship on blue water.
-    ctx.globalAlpha = alpha * 0.45;
+    // A light dark underlay (so the picture stands out from the terrain), then a dark outline round a thick border in
+    // the owner's colour: the owner reads on any terrain, even a blue player's ship on blue water. There is no colour
+    // wash inside the frame (red over grass just looked brown).
+    ctx.globalAlpha = alpha * 0.3;
     ctx.fillStyle = '#000';
-    ctx.fillRect(cx - frame / 2, cy - frame / 2, frame, frame);
-    ctx.globalAlpha = alpha * 0.42;
-    ctx.fillStyle = color;
     ctx.fillRect(cx - frame / 2, cy - frame / 2, frame, frame);
     const band = Math.max(3, size * 0.08);
     ctx.globalAlpha = alpha;
