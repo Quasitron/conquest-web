@@ -23,6 +23,18 @@ export interface StatusSummary {
   rows: StatusRow[];
 }
 
+export interface OpponentStatus {
+  id: number;
+  name: string;
+  /** Still in the game (not eliminated). Nothing else about them is shown. */
+  active: boolean;
+}
+
+/** Each other player, and whether they are still in the game. */
+export function opponentStatus(view: PlayerView): OpponentStatus[] {
+  return view.players.filter((p) => p.id !== view.me).map((p) => ({ id: p.id, name: p.name, active: !p.eliminated }));
+}
+
 /** The numbers on the status report, from the viewer's own information only. */
 export function statusSummary(view: PlayerView): StatusSummary {
   const explored = view.terrain.filter((t) => t !== null).length;

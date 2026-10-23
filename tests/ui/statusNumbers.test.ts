@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine';
 import { buildTime } from '../../src/engine/production';
-import { statusSummary } from '../../src/ui/statusNumbers';
+import { opponentStatus, statusSummary } from '../../src/ui/statusNumbers';
 import { addUnit, makeGame } from '../helpers';
 
 describe('statusSummary', () => {
@@ -31,5 +31,22 @@ describe('statusSummary', () => {
     expect(sum.rows.find((r) => r.type === 'fighter')).toMatchObject({ underConstruction: 0, soonest: null, inService: 1 });
     expect(sum.rows.find((r) => r.type === 'destroyer')).toMatchObject({ killed: 3, lost: 0, inService: 0 });
     expect(sum.rows).toHaveLength(8);
+  });
+});
+
+describe('opponentStatus', () => {
+  it('lists the other players and whether they are still in the game, and nothing else', () => {
+    const s = makeGame(['*#*#*.'], { players: 3, starts: [0, 1, 2] });
+    expect(opponentStatus(getPlayerView(s, 0))).toEqual([
+      { id: 1, name: 'P1', active: true },
+      { id: 2, name: 'P2', active: true },
+    ]);
+    s.players[1].eliminated = true;
+    expect(opponentStatus(getPlayerView(s, 0))).toEqual([
+      { id: 1, name: 'P1', active: false },
+      { id: 2, name: 'P2', active: true },
+    ]);
+    // Each player sees the others, never themselves.
+    expect(opponentStatus(getPlayerView(s, 2)).map((o) => o.id)).toEqual([0, 1]);
   });
 });

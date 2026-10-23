@@ -1,10 +1,11 @@
 import { UNIT_STATS, type PlayerView } from '../engine';
 import { UNIT_GLYPH } from './colors';
-import { statusSummary } from './statusNumbers';
+import { opponentStatus, statusSummary } from './statusNumbers';
 
 /** The status report: your cities, how much you have explored, and each unit type's production, strength and toll. */
-export function StatusTab({ view }: { view: PlayerView }) {
+export function StatusTab({ view, colors }: { view: PlayerView; colors: string[] }) {
   const s = statusSummary(view);
+  const opponents = opponentStatus(view);
   return (
     <>
       <dl class="status-facts">
@@ -13,6 +14,13 @@ export function StatusTab({ view }: { view: PlayerView }) {
         <dt>World explored</dt><dd>{s.worldExplored}%</dd>
         <dt>Map edges</dt><dd>{view.wrap ? 'Wraps east-west' : 'No wrap'}</dd>
       </dl>
+      <ul class="status-players" aria-label="Opponents">
+        {opponents.map((p) => (
+          <li key={p.id} class={p.active ? '' : 'out'}>
+            <span class="swatch" style={{ background: colors[p.id] }} /> {p.name}: {p.active ? 'in the game' : 'eliminated'}
+          </li>
+        ))}
+      </ul>
       {view.cityless.map((p) => (
         <p key={p.id} class="status-note">
           {p.name} has no cities left but still has {p.units} {p.units === 1 ? 'unit' : 'units'} somewhere.

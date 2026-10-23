@@ -11,6 +11,8 @@ export type ReportTab = 'status' | 'combat' | 'recon';
 
 interface Props {
   view: PlayerView;
+  /** Each player's colour, by id. */
+  colors: string[];
   tab: ReportTab;
   battles: BattleLine[];
   sightings: Sighting[];
@@ -26,7 +28,7 @@ const TABS: { id: ReportTab; label: string }[] = [
 ];
 
 /** The Reports dialog, like the original's Reports menu: status, battles against you, and enemy sightings. */
-export function Reports({ view, tab: first, battles, sightings, onShow, onClose }: Props) {
+export function Reports({ view, colors, tab: first, battles, sightings, onShow, onClose }: Props) {
   const [tab, setTab] = useState<ReportTab>(first);
   const count = (id: ReportTab) => (id === 'combat' ? battles.length : id === 'recon' ? sightings.length : 0);
   return (
@@ -43,7 +45,7 @@ export function Reports({ view, tab: first, battles, sightings, onShow, onClose 
         ))}
       </div>
 
-      {tab === 'status' && <StatusTab view={view} />}
+      {tab === 'status' && <StatusTab view={view} colors={colors} />}
 
       {tab === 'combat' && (
         battles.length === 0

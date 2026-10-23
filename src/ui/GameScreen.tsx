@@ -1202,7 +1202,7 @@ export function GameScreen({ session, onQuit }: Props) {
       )}
       {reportTab !== null && (
         <Reports
-          view={view} tab={reportTab} battles={battles} sightings={sightings} onShow={showAt}
+          view={view} colors={colors} tab={reportTab} battles={battles} sightings={sightings} onShow={showAt}
           onClose={() => setReportTab(null)}
         />
       )}

@@ -183,3 +183,5 @@ svg.leader circle { fill: #ffd24a; }
 @media (max-width: 760px) { .prod-layout .unit-card { display: none; } }
 .dialog-wide { width: 680px; }
 @media (max-width: 760px) { .dialog-wide { width: 380px; } }
+.status-players { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 0.9rem; }
+.status-players .out { color: var(--muted); text-decoration: line-through; }
