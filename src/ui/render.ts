@@ -121,18 +121,14 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const onScreenX = (x: number) => x >= 0 && x <= width;
   const cy = (p: Pos) => (p.y - cam.y + 0.5) * t;
 
-  // A city: a skyline of grey buildings (until there is artwork) standing on a band in the owner's colour, with a flag
-  // on the tallest tower and a faint wash of the colour behind, so it reads as a city and as whose, at any zoom.
-  // A city nobody owns has a plain grey band and no flag.
+  // A city: its skyline (the artwork once loaded, else grey buildings drawn here) standing on a band in the owner's
+  // colour, with a flag on the tallest tower, so it reads as a city and as whose, at any zoom. A city nobody owns has a
+  // plain grey band and no flag. (There is no colour wash behind it: red over grass just looked brown.)
   const SKYLINE: readonly (readonly [number, number, number])[] = [
     [0.10, 0.14, 0.34], [0.26, 0.12, 0.50], [0.40, 0.16, 0.74], [0.58, 0.12, 0.46], [0.72, 0.18, 0.30],
   ];
   const drawCity = (sx: number, sy: number, owner: string | null) => {
     const tint = owner ?? TERRAIN_COLORS.neutralCity;
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = tint;
-    ctx.fillRect(sx, sy, t, t);
-    ctx.globalAlpha = 1;
     const base = sy + t * 0.8;
     const line = Math.max(1, t * 0.03);
     ctx.lineWidth = line;

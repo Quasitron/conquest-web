@@ -66,9 +66,9 @@ describe('render', () => {
     const view = getPlayerView(s, 0);
     const { ctx, calls } = fakeCtx();
     drawMap(ctx, { view, cam: { x: 0, y: 0, tile: 20 }, width: 140, height: 60, selected: { x: 1, y: 1 }, targets: [], colors: PLAYER_COLORS, ...NO_OVERLAY });
-    // background + 4 explored squares (the start city sits in the corner, sight 1, no wrap) + the city's skyline: a tint,
-    // 5 buildings, the ground band, the flag pole and the flag (9 rectangles)
-    expect(calls.fillRect).toBe(6 + 9);
+    // background + 4 explored squares (the start city sits in the corner, sight 1, no wrap) + the city's skyline: 5
+    // buildings, the ground band, the flag pole and the flag (8 rectangles)
+    expect(calls.fillRect).toBe(6 + 8);
     expect(calls.fillText).toContain('A');
   });
 
@@ -367,8 +367,8 @@ describe('cities', () => {
   it('are a skyline on a band in the owner\'s colour with a flag, and a plain grey band and no flag when nobody owns them', () => {
     const s = makeGame(M);
     const own = paint(s, 40).rects.filter((r) => r.style === PLAYER_COLORS[0]);
-    // The owner's colour shows as the wash behind, the ground band and the flag.
-    expect(own.length).toBeGreaterThanOrEqual(3);
+    // The owner's colour shows as the ground band and the flag, and nothing else (no wash behind the city).
+    expect(own).toHaveLength(2);
     s.fog[0].explored.fill(1); // the whole map is known, so the unowned city at 2,2 is drawn too
     const neutral = paint(s, 40, {}, { x: 0, y: 0, tile: 40 });
     expect(neutral.rects.some((r) => r.style === TERRAIN_COLORS.neutralCity)).toBe(true);
@@ -392,8 +392,8 @@ describe('city artwork', () => {
     const s = makeGame(M);
     expect(paint(s, 40).pictures).toBe(1);
     expect(paint(s, 20).pictures).toBe(0);
-    // The owner's colour still marks the city: the wash behind, the ground band and the flag.
-    expect(paint(s, 40).rects.filter((r) => r.style === PLAYER_COLORS[0]).length).toBeGreaterThanOrEqual(3);
+    // The owner's colour still marks the city: the ground band and the flag.
+    expect(paint(s, 40).rects.filter((r) => r.style === PLAYER_COLORS[0])).toHaveLength(2);
   });
 
   it('falls back to the code skyline while the picture has not loaded', () => {
