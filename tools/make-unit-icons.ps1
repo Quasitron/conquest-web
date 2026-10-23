@@ -46,7 +46,7 @@ $out = Join-Path (Get-Location) 'public\art\units'
 $tmp = Join-Path $env:TEMP 'unit-icons'
 New-Item -ItemType Directory -Force $out, $tmp | Out-Null
 # unit name = source file (without extension)
-$units = [ordered]@{ army = 'Army'; destroyer = 'destroyer'; fighter = 'fighter'; bomber = 'Bomber-v2' }
+$units = [ordered]@{ army = 'Army'; destroyer = 'destroyer'; fighter = 'fighter'; bomber = 'Bomber-v2'; transport = 'transport'; cruiser = 'Cruiser'; battleship = 'Battleship'; carrier = 'Carrier'; submarine = 'Submarine'; armor = 'Armor'; spy = 'Spy' }
 # pixels along the right edge to ignore (a stray line the picture generator left there)
 $ignoreRight = @{ bomber = 40 }
 foreach ($name in $units.Keys) {

@@ -11,6 +11,7 @@ describe('unit icons', () => {
     expect(UNIT_ICONS.destroyer?.faces).toBe('right');
     expect(UNIT_ICONS.fighter?.faces).toBe('left');
     expect(UNIT_ICONS.army?.faces).toBeNull();
+    expect(UNIT_ICONS.transport?.faces).toBe('right');
     expect([iconFlipped('destroyer', false), iconFlipped('destroyer', true)]).toEqual([false, true]);
     expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([true, false]);
     expect([iconFlipped('army', false), iconFlipped('army', true)]).toEqual([false, false]);

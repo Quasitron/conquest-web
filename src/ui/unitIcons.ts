@@ -14,6 +14,7 @@ export interface UnitIcon {
 export const UNIT_ICONS: Partial<Record<UnitType, UnitIcon>> = {
   army: { src: '/art/units/army.webp', faces: null },
   destroyer: { src: '/art/units/destroyer.webp', faces: 'right' },
+  transport: { src: '/art/units/transport.webp', faces: 'right' },
   fighter: { src: '/art/units/fighter.webp', faces: 'left' },
 };
 
