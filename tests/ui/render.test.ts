@@ -350,10 +350,10 @@ describe('unit pictures on the map', () => {
   it('a unit with no picture keeps its letter at any zoom', () => {
     g.Image = LoadedImage;
     const s = makeGame(M);
-    addUnit(s, 'carrier', 0, 1, 1);
+    addUnit(s, 'submarine', 0, 1, 1);
     const calls = paint(s, 60);
-    expect(calls.pictures).toBe(1); // only the city's: the carrier has no picture
-    expect(calls.fillText).toContain(UNIT_GLYPH.carrier);
+    expect(calls.pictures).toBe(1); // only the city's: the submarine has no picture yet
+    expect(calls.fillText).toContain(UNIT_GLYPH.submarine);
   });
 });
 describe('cities', () => {
