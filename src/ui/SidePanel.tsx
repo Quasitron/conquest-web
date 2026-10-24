@@ -164,7 +164,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
     <aside class="panel">
       <h3>{known?.name ?? `City #${selection.id}`}</h3>
       <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
-      {view.rules.cityStrength && known && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
+      {view.rules.cityStrength && known && known.owner !== null && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
     </aside>
   );
 }

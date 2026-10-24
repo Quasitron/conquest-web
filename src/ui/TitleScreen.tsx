@@ -34,7 +34,7 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
   {
     key: 'cityStrength',
     label: 'City strength',
-    hint: 'A city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so ships and groups can wear it down.',
+    hint: "A player's city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so ships and groups can wear it down. Neutral cities stay easy.",
   },
 ];
 

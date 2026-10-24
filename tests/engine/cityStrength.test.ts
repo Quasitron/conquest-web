@@ -40,6 +40,20 @@ describe('city strength (house rule)', () => {
     expect(CITY_STRENGTH_HITS).toBe(3);
   });
 
+  it('leaves neutral cities as easy as before: one hit takes them, and they keep no damage', () => {
+    const s = makeGame(M, { rules: { cityStrength: true } });
+    const city = s.cities[1];
+    city.owner = null;
+    const a = addUnit(s, 'army', 0, 1, 0);
+    attackCity(s, attackerAlwaysHits(), a, city, []);
+    expect(city.owner).toBe(0);
+    const b = addUnit(s, 'army', 0, 1, 0);
+    city.owner = null;
+    attackCity(s, defenderAlwaysHits(), b, city, []);
+    expect(city.damage ?? 0).toBe(0);
+    expect(cityAttackChance(getPlayerView(s, 0), b, null, 0)).toBeCloseTo(0.5, 5);
+  });
+
   it('heals one hit a turn for its owner', () => {
     const s = makeGame(M, { rules: { cityStrength: true } });
     const city = s.cities[0];
@@ -55,6 +69,6 @@ describe('city strength (house rule)', () => {
     const s = makeGame(M, { rules: { cityStrength: true } });
     const u = addUnit(s, 'army', 0, 1, 0);
     const v = getPlayerView(s, 0);
-    expect(cityAttackChance(v, u, null, 2)).toBeGreaterThan(cityAttackChance(v, u, null, 0));
+    expect(cityAttackChance(v, u, 1, 2)).toBeGreaterThan(cityAttackChance(v, u, 1, 0));
   });
 });
