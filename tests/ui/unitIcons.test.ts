@@ -9,11 +9,18 @@ const moved = (unitId: number, fromX: number, toX: number): LogEntry => ({
 describe('unit icons', () => {
   it('knows which way each picture faces, and mirrors it only when the unit heads the other way', () => {
     expect(UNIT_ICONS.destroyer?.faces).toBe('right');
-    expect(UNIT_ICONS.fighter?.faces).toBe('left');
+    expect(UNIT_ICONS.fighter?.faces).toBe('right');
     expect(UNIT_ICONS.army?.faces).toBe('right');
     expect(UNIT_ICONS.transport?.faces).toBe('right');
     expect([iconFlipped('destroyer', false), iconFlipped('destroyer', true)]).toEqual([false, true]);
-    expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([true, false]);
+    expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([false, true]);
+    const fighter = UNIT_ICONS.fighter!; // no picture faces left now, so try one that does
+    UNIT_ICONS.fighter = { ...fighter, faces: 'left' };
+    try {
+      expect([iconFlipped('fighter', false), iconFlipped('fighter', true)]).toEqual([true, false]);
+    } finally {
+      UNIT_ICONS.fighter = fighter;
+    }
     expect([iconFlipped('army', false), iconFlipped('army', true)]).toEqual([false, true]);
     expect([iconFlipped('submarine', false), iconFlipped('submarine', true)]).toEqual([false, true]);
     expect([iconFlipped('carrier', false), iconFlipped('carrier', true)]).toEqual([false, true]);
