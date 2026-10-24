@@ -1,4 +1,4 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { CITY_STRENGTH_HITS, UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
@@ -85,6 +85,7 @@ function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myCol
     <div>
       <Picture src="/art/units/city.webp" color={myColor} />
       <h3>{city.name}</h3>
+      {view.rules.cityStrength && <p>Strength {CITY_STRENGTH_HITS - (city.damage ?? 0)}/{CITY_STRENGTH_HITS}</p>}
       <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
       <label>Building{' '}
         <select value={city.production ?? ''} onChange={(e) => {
@@ -163,6 +164,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
     <aside class="panel">
       <h3>{known?.name ?? `City #${selection.id}`}</h3>
       <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
+      {view.rules.cityStrength && known && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
     </aside>
   );
 }

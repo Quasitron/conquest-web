@@ -1,5 +1,5 @@
 import {
-  CITY_COMBAT, DIRS, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
+  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
   type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 
@@ -60,12 +60,13 @@ export function approachSquare(view: PlayerView, u: Unit, city: Pos): Pos | null
 }
 
 /** Chance that `u` takes a city in one assault, from the unit's own current damage. */
-export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId | null): number {
+export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId | null, cityDamage = 0): number {
   const st = UNIT_STATS[u.type];
   const defense = view.rules.easierNeutralCities && cityOwner === null ? 1 : CITY_COMBAT.defense;
+  const strength = view.rules.cityStrength;
   return combatWinChance(
     { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
-    { defense, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
+    { defense, shot: CITY_COMBAT.shot, hits: strength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits, damage: strength ? cityDamage : 0 },
   );
 }
 

@@ -85,6 +85,8 @@ export interface City {
   production: UnitType | null;
   progress: number;
   lastBuilt: UnitType | null;
+  /** Hits taken in attacks (only with the city strength rule); heals one a turn. */
+  damage?: number;
   route?: CityRoute;
 }
 

@@ -275,7 +275,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (!selectedUnit || !hover || !playing) return null;
     if (!targets.some((t) => t.attack && t.x === hover.x && t.y === hover.y)) return null;
     const city = view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== view.me);
-    if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner)) };
+    if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner, city.damage)) };
     // A unit: odds against the first enemy seen on the square (the one that defends), its damage assumed none.
     const foe = view.enemies.find((e) => e.visibleNow && e.x === hover.x && e.y === hover.y);
     return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type) : null, true) };

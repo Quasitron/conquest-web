@@ -38,6 +38,9 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
 /** Cities defend like an army and never attack. */
 export const CITY_COMBAT = { defense: 2, shot: 1, hits: 1 } as const;
 
+/** With the city strength house rule a city takes this many hits to fall, and wins back one hit per turn. */
+export const CITY_STRENGTH_HITS = 3;
+
 export function isCrippled(u: Unit): boolean {
   return u.damage > 0 && u.damage * 2 >= UNIT_STATS[u.type].hits;
 }

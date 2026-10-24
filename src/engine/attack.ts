@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, UNIT_STATS, isCrippled } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, isCrippled } from './units';
 import { terrainAt } from './map';
 import { destroyUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -80,10 +80,14 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
     { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
     {
       defense: s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense,
-      shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0,
+      shot: CITY_COMBAT.shot,
+      hits: s.rules.cityStrength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits,
+      damage: s.rules.cityStrength ? city.damage ?? 0 : 0,
     },
     rng,
   );
+  // The city keeps the damage it took, even from an attacker it beat (so a siege wears it down).
+  if (s.rules.cityStrength) city.damage = r.attackerWon ? 0 : r.defenderDamage;
   events.push({
     type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'city', cityId: city.id, owner: city.owner },

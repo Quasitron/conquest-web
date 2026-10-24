@@ -32,7 +32,8 @@ export interface PlayerView {
   players: { id: PlayerId; name: string; eliminated: boolean }[];
   myUnits: Unit[];
   myCities: City[];
-  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null }[];
+  /** `damage` is the city's hits taken (city strength rule only; 0 otherwise). */
+  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null; damage: number }[];
   enemies: EnemyMarker[];
   /** This player's own kill and loss totals. */
   stats: PlayerStats;
@@ -59,7 +60,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     myCities: structuredClone(s.cities.filter((c) => c.owner === me)),
     knownCities: s.cities
       .filter((c) => fog.explored[index(s, c.x, c.y)])
-      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null) })),
+      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null), damage: c.damage ?? 0 })),
     enemies: Object.values(fog.lastSeen)
       .sort((a, b) => a.y - b.y || a.x - b.x || a.turnSeen - b.turnSeen || a.type.localeCompare(b.type))
       .map((e, markerId) => {
