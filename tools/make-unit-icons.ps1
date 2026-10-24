@@ -62,7 +62,7 @@ $src = Join-Path $env:USERPROFILE 'OneDrive\Documents\Claude\art-originals\units
 $out = Join-Path (Get-Location) 'public\art\units'
 $tmp = Join-Path $env:TEMP 'unit-icons'
 New-Item -ItemType Directory -Force $out, $tmp | Out-Null
-# unit name = source file (without extension; a -v3 or -v2 file wins when there is one)
+# unit name = source file (without extension; the highest -v5 .. -v2 file wins when there is one)
 $units = [ordered]@{ army = 'Army'; destroyer = 'destroyer'; fighter = 'fighter'; bomber = 'Bomber'; transport = 'transport'; cruiser = 'Cruiser'; battleship = 'Battleship'; carrier = 'Carrier'; submarine = 'Submarine'; armor = 'Armor'; spy = 'Spy'; city = 'City' }
 # pixels along the right edge to ignore (a stray line the picture generator left there)
 $ignoreRight = @{}
@@ -71,7 +71,7 @@ $rotate = @{}
 foreach ($name in $units.Keys) {
   # a picture named <name>-v3 or <name>-v2 (a redo) is used in preference to the first one, the newest first
   $file = $null
-  foreach ($v in 'v4', 'v3', 'v2') {
+  foreach ($v in 'v5', 'v4', 'v3', 'v2') {
     if (-not $file) { $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq ($units[$name] + '-' + $v) } | Select-Object -First 1 }
   }
   if (-not $file) { $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq $units[$name] } | Select-Object -First 1 }
