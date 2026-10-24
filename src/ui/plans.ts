@@ -63,7 +63,7 @@ export function approachSquare(view: PlayerView, u: Unit, city: Pos): Pos | null
 export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId | null, cityDamage = 0): number {
   const st = UNIT_STATS[u.type];
   const defense = view.rules.easierNeutralCities && cityOwner === null ? 1 : CITY_COMBAT.defense;
-  const strength = view.rules.cityStrength;
+  const strength = view.rules.cityStrength && cityOwner !== null;
   return combatWinChance(
     { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: strength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits, damage: strength ? cityDamage : 0 },

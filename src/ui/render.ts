@@ -1,4 +1,4 @@
-import { UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
+import { CITY_STRENGTH_HITS, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
@@ -193,6 +193,15 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (terrain === 'city') {
       const city = view.knownCities.find((c) => c.x === mx && c.y === my);
       drawCity(sx, sy, city && city.owner !== null ? colors[city.owner] : null);
+      // With the city strength rule the band doubles as the strength bar: each hit taken darkens a third from the right.
+      if (city && city.owner !== null && city.damage > 0 && view.rules.cityStrength) {
+        const bandH = t >= ICON_MIN_TILE ? t * 0.13 : t * (t < 20 ? 0.2 : 0.13);
+        const full = t * 0.88;
+        const lost = full * Math.min(1, city.damage / CITY_STRENGTH_HITS);
+        ctx.fillStyle = '#10151c';
+        ctx.fillRect(sx + t * 0.06 + full - lost, sy + t * 0.8, lost, bandH);
+        ctx.strokeRect(sx + t * 0.06, sy + t * 0.8, full, bandH);
+      }
     }
     if (!visible.has(i)) {
       ctx.fillStyle = TERRAIN_COLORS.fog;

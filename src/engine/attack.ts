@@ -75,19 +75,20 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
 
 export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: City, events: GameEvent[]): string | null {
   const a = UNIT_STATS[att.type];
+  const strong = s.rules.cityStrength && city.owner !== null; // neutral cities stay easy: one hit
   spendMove(att);
   const r = resolveCombat(
     { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
     {
       defense: s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense,
       shot: CITY_COMBAT.shot,
-      hits: s.rules.cityStrength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits,
-      damage: s.rules.cityStrength ? city.damage ?? 0 : 0,
+      hits: strong ? CITY_STRENGTH_HITS : CITY_COMBAT.hits,
+      damage: strong ? city.damage ?? 0 : 0,
     },
     rng,
   );
   // The city keeps the damage it took, even from an attacker it beat (so a siege wears it down).
-  if (s.rules.cityStrength) city.damage = r.attackerWon ? 0 : r.defenderDamage;
+  if (strong) city.damage = r.attackerWon ? 0 : r.defenderDamage;
   events.push({
     type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'city', cityId: city.id, owner: city.owner },
