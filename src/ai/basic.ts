@@ -1,5 +1,5 @@
 import {
-  UNIT_STATS, chebyshev, combatWinChance, findFrontier, findPath, neighbors, pathMapFromView,
+  CITY_STRENGTH_HITS, UNIT_STATS, chebyshev, combatWinChance, garrisonBonus, findFrontier, findPath, neighbors, pathMapFromView,
   type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -212,6 +212,22 @@ function assaultSize(view: PlayerView, t: AiTuning): number {
 }
 
 /**
+ * Extra armies to mass before assaulting a held city when the city defence house rules are on: one for each hit it
+ * still has to take beyond the first, and one for each land unit we can see inside (up to the +2 they can add). Never
+ * more than the armies we have, so the wait ends.
+ */
+function extraForCityRules(view: PlayerView, city: { x: number; y: number; owner: PlayerId | null; damage: number }): number {
+  let extra = 0;
+  if (view.rules.cityStrength) extra += Math.max(0, CITY_STRENGTH_HITS - city.damage - 1);
+  if (view.rules.garrisonsDefend) {
+    const inside = view.enemies.filter((e) => e.visibleNow && e.owner === city.owner && e.x === city.x && e.y === city.y
+      && UNIT_STATS[e.type].domain === 'land').length;
+    extra += garrisonBonus(inside);
+  }
+  return Math.min(extra, Math.max(0, landArmies(view).length - 1));
+}
+
+/**
  * The foreign city this army marches on and the square beside it to head for: the nearest by walking distance,
  * but a city where our armies are already massing is preferred, and so is an enemy-held city near our own
  * (a city we lost, or one that threatens us).
@@ -251,7 +267,7 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null, t: AiTuning): 
   // A foreign city next door: attack it, a held one only once enough armies stand ready (a lone army has poor odds).
   const next = view.knownCities.find((c) => c.owner !== view.me && chebyshev(geo(view), u, c) === 1);
   if (next) {
-    if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view, t)) return null;
+    if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view, t) + extraForCityRules(view, next)) return null;
     const dir = dirTo(view, u, next);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
