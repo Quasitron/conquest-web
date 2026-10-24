@@ -14,6 +14,8 @@ interface Props {
   view: PlayerView;
   city: City;
   anchor: Pt | null;
+  /** Your colour, for the frame round the city picture. */
+  color?: string;
   /** The latest command error, if any (the top bar is hidden behind the dialog). */
   error?: string | null;
   onPick: (t: UnitType | null) => void;
@@ -33,7 +35,7 @@ function routeSummary(view: PlayerView, route: CityRoute): string {
   return `${types} → ${dest ? dest.name : 'a lost city'}`;
 }
 
-export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetRoute, onSelectUnit, onClose }: Props) {
+export function CityScreen({ view, city, anchor, color, error, onPick, onRename, onSetRoute, onSelectUnit, onClose }: Props) {
   const coastal = cityIsCoastal(view, city);
   const usable = (t: UnitType | null) => t === null || coastal || UNIT_STATS[t].domain !== 'sea';
   // The highlight is a pending choice: OK and Enter apply it, Esc drops it.
@@ -145,6 +147,7 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
         </>
       ) : mode === 'city' ? (
         <>
+          <div class="unit-pic" style={{ borderColor: color ?? '#888' }}><img src="/art/units/city.webp" alt="" /></div>
           <h2>{city.name}</h2>
           <form class="rename" onSubmit={(e) => { e.preventDefault(); onRename(name); }}>
             <input value={name} maxLength={24} aria-label="City name" onInput={(e) => setName((e.target as HTMLInputElement).value)} />

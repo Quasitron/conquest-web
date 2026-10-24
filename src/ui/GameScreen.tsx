@@ -1209,7 +1209,7 @@ export function GameScreen({ session, onQuit }: Props) {
       )}
       {openCityObj && (
         <CityScreen
-          key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} error={dialogError}
+          key={openCityObj.id} view={view} city={openCityObj} anchor={anchorFor(openCityObj)} color={colors[view.me]} error={dialogError}
           onPick={(unitType) => { act({ type: 'setProduction', cityId: openCityObj.id, unitType }, true); }}
           onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }, true); }}
           onSetRoute={(route) => act({ type: 'setRoute', cityId: openCityObj.id, route }, true)}
