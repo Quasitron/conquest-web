@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CITY_STRENGTH_HITS, getPlayerView } from '../../src/engine';
-import { attackCity, bombardCity } from '../../src/engine/attack';
-import { advanceProduction } from '../../src/engine/production';
+import { CITY_STRENGTH_HITS, UNIT_STATS, getPlayerView, hitsOf, rankOf, type GameEvent } from '../../src/engine';
+import { attackCity, attackUnit, bombardCity } from '../../src/engine/attack';
+import { advanceProduction, buildTime } from '../../src/engine/production';
 import { addUnit, attackerAlwaysHits, defenderAlwaysHits, makeGame } from '../helpers';
 import { cityAttackChance, visibleGarrison } from '../../src/ui/plans';
 
@@ -124,5 +124,77 @@ describe('city bombardment (city strength rule)', () => {
     expect(bombardCity(s, defenderAlwaysHits(), ship, city, [])).toBeNull();
     expect(s.units).not.toContain(ship);
     expect(city.damage ?? 0).toBe(0);
+  });
+});
+describe('war-torn cities (house rule)', () => {
+  it('each capture from another player slows building by 25%, up to 4, and a neutral city is not affected', () => {
+    const s = makeGame(M, { rules: { warTornCities: true } });
+    const city = s.cities[1];
+    const base = buildTime(city, 'army');
+    attackCity(s, attackerAlwaysHits(), addUnit(s, 'army', 0, 1, 0), city, []);
+    expect(city.warTorn).toBe(1);
+    expect(buildTime(city, 'army')).toBe(Math.ceil(base * 1.25));
+    city.owner = 1;
+    for (let i = 0; i < 6; i++) {
+      attackCity(s, attackerAlwaysHits(), addUnit(s, 'army', 0, 1, 0), city, []);
+      city.owner = 1;
+    }
+    expect(city.warTorn).toBe(4);
+    expect(buildTime(city, 'army')).toBe(base * 2);
+    const neutral = { ...city, owner: null, warTorn: undefined };
+    s.cities[1] = neutral as typeof city;
+    attackCity(s, attackerAlwaysHits(), addUnit(s, 'army', 0, 1, 0), neutral as typeof city, []);
+    expect(neutral.warTorn).toBeUndefined();
+  });
+
+  it('recovers one step every 10 turns of the owner', () => {
+    const s = makeGame(M, { rules: { warTornCities: true } });
+    const city = s.cities[0];
+    city.warTorn = 2;
+    for (let i = 0; i < 10; i++) advanceProduction(s, city.owner as number, []);
+    expect(city.warTorn).toBe(1);
+    for (let i = 0; i < 10; i++) advanceProduction(s, city.owner as number, []);
+    expect(city.warTorn).toBe(0);
+  });
+
+  it('does nothing when the rule is off', () => {
+    const s = makeGame(M);
+    const city = s.cities[1];
+    attackCity(s, attackerAlwaysHits(), addUnit(s, 'army', 0, 1, 0), city, []);
+    expect(city.warTorn).toBeUndefined();
+  });
+});
+describe('promotions (house rule)', () => {
+  const SEA2 = ['*...', '...*'];
+  const winnerFights = (s: ReturnType<typeof makeGame>, ship: ReturnType<typeof addUnit>, victim: ReturnType<typeof addUnit>) =>
+    attackUnit(s, attackerAlwaysHits(), ship, victim, []);
+
+  it('a sea unit is promoted at 1, 3 and 5 wins; a promotion heals one hit and is announced', () => {
+    const s = makeGame(SEA2, { rules: { promotions: true } });
+    const ship = addUnit(s, 'battleship', 0, 0, 0, { damage: 3 });
+    const events: GameEvent[] = [];
+    attackUnit(s, attackerAlwaysHits(), ship, addUnit(s, 'destroyer', 1, 1, 0), events);
+    expect(ship.wins).toBe(1);
+    expect(ship.damage).toBe(2);
+    expect(events).toContainEqual({ type: 'unitPromoted', unitId: ship.id, owner: 0, unitType: 'battleship', rank: 1 });
+    for (let i = 0; i < 4; i++) { ship.x = 0; ship.y = 0; ship.movesLeft = 2; winnerFights(s, ship, addUnit(s, 'destroyer', 1, 1, 0)); }
+    expect(ship.wins).toBe(5);
+    expect(rankOf(ship.wins)).toBe(3);
+    expect(hitsOf(ship)).toBe(UNIT_STATS.battleship.hits + 1);
+  });
+
+  it('a defender that wins also counts, and armies, fighters and a rule that is off do not promote', () => {
+    const s = makeGame(SEA2, { rules: { promotions: true } });
+    const att = addUnit(s, 'destroyer', 0, 0, 0);
+    const def = addUnit(s, 'cruiser', 1, 1, 0);
+    attackUnit(s, defenderAlwaysHits(), att, def, []);
+    expect(def.wins).toBe(1);
+    const army = addUnit(makeGame(SEA2, { rules: { promotions: true } }), 'fighter', 0, 0, 0);
+    expect(UNIT_STATS.fighter.promotes).toBe(false);
+    expect(army.wins).toBeUndefined();
+    const off = makeGame(SEA2);
+    const ship = addUnit(off, 'cruiser', 0, 0, 0);
+    attackUnit(off, attackerAlwaysHits(), ship, addUnit(off, 'destroyer', 1, 1, 0), []);
+    expect(ship.wins).toBeUndefined();
   });
 });

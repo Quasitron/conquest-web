@@ -1,4 +1,4 @@
-import { UNIT_STATS, unitDisplayName, type DestroyReason, type GameEvent, type OrdersEndReason, type PlayerId, type UnitType } from '../engine';
+import { RANK_NAMES, UNIT_STATS, unitDisplayName, type DestroyReason, type GameEvent, type OrdersEndReason, type PlayerId, type UnitType } from '../engine';
 import { cargoSummary } from './labels';
 
 const REASON: Record<DestroyReason, string | null> = {
@@ -57,6 +57,8 @@ export function describeEvent(
       const city = lookup?.city(e.cityId);
       return `${city ?? 'A city'} produced ${unit}.`;
     }
+    case 'unitPromoted':
+      return `${unitName(e.unitId)} was promoted to ${RANK_NAMES[e.rank]}.`;
     case 'cargoUnloaded': {
       const cargo = e.unitIds.flatMap((id) => {
         const info = lookup?.unit(id);

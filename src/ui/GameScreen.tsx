@@ -27,7 +27,7 @@ import { downloadSave } from './exportFile';
 import { keyToAction, type ActionId } from './keys';
 import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
-import { approachSquare, attackLabel, cityAttackChance, unitAttackChance, visibleGarrison } from './plans';
+import { approachSquare, attackLabel, bombardLabel, cityAttackChance, cityBombardChance, unitAttackChance, visibleGarrison } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
 import { getCombatMode, getReplayPace, getReportAfter, type ReplayPace } from './combatMode';
@@ -275,6 +275,9 @@ export function GameScreen({ session, onQuit }: Props) {
     if (!selectedUnit || !hover || !playing) return null;
     if (!targets.some((t) => t.attack && t.x === hover.x && t.y === hover.y)) return null;
     const city = view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== view.me);
+    if (city && UNIT_STATS[selectedUnit.type].domain === 'sea') {
+      return { at: hover, label: bombardLabel(cityBombardChance(view, selectedUnit, city.damage, visibleGarrison(view, city, city.owner))) };
+    }
     if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner, city.damage, visibleGarrison(view, city, city.owner))) };
     // A unit: odds against the first enemy seen on the square (the one that defends), its damage assumed none.
     const foe = view.enemies.find((e) => e.visibleNow && e.x === hover.x && e.y === hover.y);

@@ -10,6 +10,10 @@ export interface HouseRules {
   cityStrength: boolean;
   /** Each land unit of the owner in a city adds 1 to its defence (at most +2); ships and aircraft add nothing. */
   garrisonsDefend: boolean;
+  /** A city taken from another player builds 25% slower for each such capture (up to 4), recovering a step every 10 turns. */
+  warTornCities: boolean;
+  /** Sea units that win fights are promoted (Experienced 1 win, Veteran 3, Elite 5): a promotion heals one hit, Elite takes one more. */
+  promotions: boolean;
 }
 
 export const CLASSIC_RULES: HouseRules = {
@@ -18,6 +22,8 @@ export const CLASSIC_RULES: HouseRules = {
   sentriedStayAsGarrison: false,
   cityStrength: false,
   garrisonsDefend: false,
+  warTornCities: false,
+  promotions: false,
 };
 
 /** Bumped whenever a change alters how an old command log replays. 4: units arriving in a route city take the route. 5: a carrier leaving a city takes the fighters there. 6: a patrol tied to a carrier moves with it. 7: aircraft wait a turn when blocked. 8: equal-length paths prefer the straight line. 9: fighters aboard a carrier await orders instead of sleeping. 10: a player with no city and no unit able to take one is knocked out. 11: kills and losses are counted for the status report. */
