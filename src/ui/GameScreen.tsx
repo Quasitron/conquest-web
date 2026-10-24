@@ -136,6 +136,10 @@ export function GameScreen({ session, onQuit }: Props) {
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
   const flashTimer = useRef<number | undefined>(undefined);
+  // Enemy units discovered at the start of the turn, flashing for a moment, and the ones in sight at the end of the last turn.
+  const [newSightings, setNewSightings] = useState<Pos[]>([]);
+  const sightingTimer = useRef<number | undefined>(undefined);
+  const lastSeenEnemies = useRef<{ owner: number; type: string; x: number; y: number }[]>([]);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [picker, setPicker] = useState<null | 'load' | 'unload'>(null);
@@ -378,10 +382,22 @@ export function GameScreen({ session, onQuit }: Props) {
         battlesAgainstMe(log, view.me, names, lookup).length > 0
         || reportQueue(log, view.turn, view.me, view.myCities).some((r) => view.myUnits.some((u) => u.id === r.unitId))
       )) sounds = sounds.filter((x) => x !== 'turn');
+      // Enemy units that came into sight since the end of my last turn flash with the alert sound.
+      if (log.slice(seen.count).some((l) => l.event.type === 'turnStarted' && l.event.player === view.me)) {
+        const fresh = view.enemies.filter((e) => e.visibleNow && !lastSeenEnemies.current.some(
+          (p) => p.owner === e.owner && p.type === e.type && chebyshev(view as unknown as MapLike, p, e) <= 4));
+        if (fresh.length > 0) {
+          if (!sounds.includes('alert')) sounds = [...sounds, 'alert'];
+          setNewSightings(fresh.map((e) => ({ x: e.x, y: e.y })));
+          window.clearTimeout(sightingTimer.current);
+          sightingTimer.current = window.setTimeout(() => setNewSightings([]), 2200);
+        }
+      }
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
     }
     soundSeen.current = { me: view.me, count: log.length };
+    lastSeenEnemies.current = view.enemies.filter((e) => e.visibleNow);
   }, [view]);
 
   // Each unit's production report opens with that unit type's sound.
@@ -1106,7 +1122,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onSquare={onSquare} onDouble={onDouble} onHover={onHover} onContext={onContext}
           activeId={playing ? selectedUnit?.id ?? null : null} blinkActive={playing}
           path={preview?.path ?? null} pathOk={preview?.ok ?? true} pathLabel={preview?.label ?? null} pathTarget={preview ? hover : null}
-          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} fx={fx} pending={pendingFights} headingLeft={headingLeft} cityRoutes={cityRoutes} attack={attack}
+          route={route?.path ?? null} routeLabel={route?.label ?? null} patrols={patrols} productionMap={prodMap} flash={flash} sightings={newSightings} fx={fx} pending={pendingFights} headingLeft={headingLeft} cityRoutes={cityRoutes} attack={attack}
           onZoom={() => { fitOf(view.me).auto = false; }}
           boxMode={playing && group?.step === 'box'} groupBox={groupBox} onBox={setGroupBox} onBoxDone={onBoxDone}
         />
