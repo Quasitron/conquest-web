@@ -193,3 +193,5 @@ svg.leader circle { fill: #ffd24a; }
 .overlay.victory img { height: calc(100dvh - 76px); max-width: calc(100vw - 16px); aspect-ratio: 1; object-fit: contain; border-radius: 14px; box-shadow: 0 0 40px rgba(0, 0, 0, 0.7); }
 .victory-bar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }
 .victory-bar h2 { margin: 0; font-size: 1.2rem; }
+.city-defence { margin: 4px 0; }
+.city-defence p { margin: 0; font-size: 0.9rem; }

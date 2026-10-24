@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import {
-  UNIT_STATS, UNIT_TYPES, buildTime, pathMapFromView, routeUnitTypes, unitDisplayName,
+  CITY_STRENGTH_HITS, UNIT_STATS, UNIT_TYPES, buildTime, garrisonBonus, pathMapFromView, routeUnitTypes, unitDisplayName,
   type City, type CityRoute, type PlayerView, type UnitType,
 } from '../engine';
 import { UNIT_GLYPH } from './colors';
@@ -93,6 +93,15 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
   const progress = city.production
     ? { type: city.production, done: city.progress, total: buildTime(city, city.production) }
     : null;
+  // How well the city would stand up to an attack (only the rules that are on).
+  const landHere = here.filter((u) => UNIT_STATS[u.type].domain === 'land').length;
+  const defence: string[] = [];
+  if (view.rules.cityStrength) defence.push(`Strength ${CITY_STRENGTH_HITS - (city.damage ?? 0)}/${CITY_STRENGTH_HITS}`);
+  if (view.rules.garrisonsDefend) {
+    defence.push(`Garrison defence +${garrisonBonus(landHere)} (${landHere} land unit${landHere === 1 ? '' : 's'} inside)`);
+  }
+  if (city.warTorn) defence.push(`War-torn: builds ${city.warTorn * 25}% slower`);
+  const defenceBlock = defence.length > 0 && <div class="city-defence">{defence.map((d) => <p key={d}>{d}</p>)}</div>;
   const bar = progress && (
     <div class="progress" title={`${progress.done}/${progress.total}`}>
       <div class="progress-bar"><div class="progress-fill" style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }} /></div>
@@ -132,6 +141,7 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
           </div>
           <p class="muted stats-line">{shown ? `${UNIT_STATS[shown].name}: ${statsText(shown)}` : 'Nothing will be built.'}</p>
           {bar}
+          {defenceBlock}
         </>
       ) : mode === 'city' ? (
         <>
@@ -140,6 +150,7 @@ export function CityScreen({ view, city, anchor, error, onPick, onRename, onSetR
             <input value={name} maxLength={24} aria-label="City name" onInput={(e) => setName((e.target as HTMLInputElement).value)} />
             <button type="submit" onClick={blur}>Rename</button>
           </form>
+          {defenceBlock}
           <h3>Units inside</h3>
           {here.length === 0
             ? <p class="muted">None.</p>
