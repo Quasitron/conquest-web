@@ -51,6 +51,11 @@ export const MUSIC: Partial<Record<MusicName, string>> = {
   title: '/music/battleThemeA.mp3',
 };
 
+/** Themes that take turns: each time the title music starts, the next one in the list plays (when MUSIC's track is in the list). */
+export const MUSIC_ROTATION: Partial<Record<MusicName, string[]>> = {
+  title: ['/music/battleThemeA.mp3', '/music/siegeOfTheHighCommand.mp3'],
+};
+
 /** The synth effects write into `out` (the master gain), starting at time `t`. Each is under 1.2 seconds. */
 export type SynthFn = (ctx: AudioContext, out: AudioNode, t: number) => void;
 

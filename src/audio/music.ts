@@ -1,5 +1,5 @@
 import { context, getSettings, onSettingsChange } from './engine';
-import { MUSIC, type MusicName } from './sounds';
+import { MUSIC, MUSIC_ROTATION, type MusicName } from './sounds';
 
 let audio: HTMLAudioElement | null = null;
 let gain: GainNode | null = null;
@@ -46,9 +46,24 @@ async function begin(): Promise<void> {
   }
 }
 
+const ROTATION_KEY = 'toc.musicTurn';
+
+/** The track to play: MUSIC's own, or the next of the rotation it belongs to (remembered between visits, so themes alternate). */
+function chooseTrack(name: MusicName): string | undefined {
+  const url = MUSIC[name];
+  const list = MUSIC_ROTATION[name];
+  if (!url || !list || list.length < 2 || !list.includes(url)) return url;
+  let turn = 0;
+  try {
+    turn = Number(localStorage.getItem(ROTATION_KEY)) || 0;
+    localStorage.setItem(ROTATION_KEY, String(turn + 1));
+  } catch { /* no storage: always the first theme */ }
+  return list[turn % list.length];
+}
+
 /** Starts looping the named track, if one is set in MUSIC and music is on; otherwise does nothing. */
 export function startMusic(name: MusicName): void {
-  const url = MUSIC[name];
+  const url = chooseTrack(name);
   if (!url || typeof Audio === 'undefined') return;
   clearInterval(fade);
   clearTimeout(hold);

@@ -41,6 +41,18 @@ describe('music', () => {
     expect(FakeAudio.made).toHaveLength(0);
   });
 
+  it('takes turns between the themes of the rotation each time the title music starts', () => {
+    const played: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      startMusic('title');
+      played.push(FakeAudio.made[i].src);
+      stopMusic(0);
+    }
+    expect(played[0]).toBe(MUSIC.title);
+    expect(played[1]).not.toBe(played[0]);
+    expect(played[2]).toBe(played[0]);
+  });
+
   it('plays a configured track on a loop at the music volume, and stops it', () => {
     MUSIC.title = '/music/title.mp3';
     setSettings({ musicVolume: 0.4 });
