@@ -3,7 +3,7 @@ import { CITY_STRENGTH_HITS, getPlayerView } from '../../src/engine';
 import { attackCity } from '../../src/engine/attack';
 import { advanceProduction } from '../../src/engine/production';
 import { addUnit, attackerAlwaysHits, defenderAlwaysHits, makeGame } from '../helpers';
-import { cityAttackChance } from '../../src/ui/plans';
+import { cityAttackChance, visibleGarrison } from '../../src/ui/plans';
 
 const M = ['*.*'];
 
@@ -70,5 +70,34 @@ describe('city strength (house rule)', () => {
     const u = addUnit(s, 'army', 0, 1, 0);
     const v = getPlayerView(s, 0);
     expect(cityAttackChance(v, u, 1, 2)).toBeGreaterThan(cityAttackChance(v, u, 1, 0));
+  });
+});
+
+describe('garrisons defend (house rule)', () => {
+  it('land units of the owner in a city add 1 defence each, up to +2; ships do not', () => {
+    const s = makeGame(M, { rules: { garrisonsDefend: true } });
+    const city = s.cities[1];
+    const v = () => getPlayerView(s, 0);
+    const a = addUnit(s, 'army', 0, 1, 0);
+    const base = cityAttackChance(v(), a, city.owner, 0, 0);
+    addUnit(s, 'destroyer', city.owner as number, city.x, city.y);
+    expect(visibleGarrison(getPlayerView(s, city.owner as number), city, city.owner)).toBe(0);
+    addUnit(s, 'army', city.owner as number, city.x, city.y);
+    expect(visibleGarrison(getPlayerView(s, city.owner as number), city, city.owner)).toBe(1);
+    const one = cityAttackChance(v(), a, city.owner, 0, 1);
+    const two = cityAttackChance(v(), a, city.owner, 0, 2);
+    const five = cityAttackChance(v(), a, city.owner, 0, 5);
+    expect(one).toBeLessThan(base);
+    expect(two).toBeLessThan(one);
+    expect(five).toBeCloseTo(two, 10);
+  });
+
+  it('does nothing when the rule is off, and for neutral cities', () => {
+    const s = makeGame(M);
+    const a = addUnit(s, 'army', 0, 1, 0);
+    expect(cityAttackChance(getPlayerView(s, 0), a, 1, 0, 2)).toBeCloseTo(0.5, 10);
+    const on = makeGame(M, { rules: { garrisonsDefend: true } });
+    const b = addUnit(on, 'army', 0, 1, 0);
+    expect(cityAttackChance(getPlayerView(on, 0), b, null, 0, 2)).toBeCloseTo(0.5, 10);
   });
 });

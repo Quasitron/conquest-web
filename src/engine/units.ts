@@ -41,6 +41,14 @@ export const CITY_COMBAT = { defense: 2, shot: 1, hits: 1 } as const;
 /** With the city strength house rule a city takes this many hits to fall, and wins back one hit per turn. */
 export const CITY_STRENGTH_HITS = 3;
 
+/** With the garrisons defend house rule each land unit in a city adds 1 defence, up to this much. */
+export const GARRISON_MAX_BONUS = 2;
+
+/** The defence a garrison of `landUnits` land units adds to its city. */
+export function garrisonBonus(landUnits: number): number {
+  return Math.min(GARRISON_MAX_BONUS, landUnits);
+}
+
 export function isCrippled(u: Unit): boolean {
   return u.damage > 0 && u.damage * 2 >= UNIT_STATS[u.type].hits;
 }

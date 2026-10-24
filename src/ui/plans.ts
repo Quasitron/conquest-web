@@ -1,5 +1,5 @@
 import {
-  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
+  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, garrisonBonus, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
   type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 
@@ -59,10 +59,19 @@ export function approachSquare(view: PlayerView, u: Unit, city: Pos): Pos | null
   return best;
 }
 
+/** Land units of `owner` that you can see in the city square at `at` (the garrison that would add to its defence). */
+export function visibleGarrison(view: PlayerView, at: Pos, owner: PlayerId | null): number {
+  if (owner === null) return 0;
+  const land = (t: UnitType) => UNIT_STATS[t].domain === 'land';
+  if (owner === view.me) return view.myUnits.filter((m) => m.x === at.x && m.y === at.y && land(m.type)).length;
+  return view.enemies.filter((e) => e.visibleNow && e.owner === owner && e.x === at.x && e.y === at.y && land(e.type)).length;
+}
+
 /** Chance that `u` takes a city in one assault, from the unit's own current damage. */
-export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId | null, cityDamage = 0): number {
+export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId | null, cityDamage = 0, garrison = 0): number {
   const st = UNIT_STATS[u.type];
-  const defense = view.rules.easierNeutralCities && cityOwner === null ? 1 : CITY_COMBAT.defense;
+  const defense = (view.rules.easierNeutralCities && cityOwner === null ? 1 : CITY_COMBAT.defense)
+    + (view.rules.garrisonsDefend && cityOwner !== null ? garrisonBonus(garrison) : 0);
   const strength = view.rules.cityStrength && cityOwner !== null;
   return combatWinChance(
     { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
