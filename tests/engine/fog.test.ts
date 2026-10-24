@@ -104,7 +104,7 @@ describe('player view', () => {
     expect(v.terrain[index(s, 4, 0)]).toBeNull();
     v.myUnits[0].x = 99;
     expect(u.x).toBe(1);
-    expect(v.knownCities).toEqual([{ id: 0, name: s.cities[0].name, x: 0, y: 0, owner: 0 }]);
+    expect(v.knownCities).toEqual([{ id: 0, name: s.cities[0].name, x: 0, y: 0, owner: 0, damage: 0 }]);
   });
 
   it('lists squares in sight and hides real enemy unit ids', () => {

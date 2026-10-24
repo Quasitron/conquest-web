@@ -23,6 +23,7 @@ export function advanceProduction(s: GameState, pid: PlayerId, events: GameEvent
   for (const city of s.cities) {
     if (city.owner !== pid) continue;
     dropStaleRoute(s, city);
+    if (city.damage) city.damage -= 1;
     if (city.production === null) continue;
     city.progress += 1;
     if (city.progress >= buildTime(city, city.production)) {
