@@ -26,6 +26,11 @@ export interface DescribeLookup {
   city(id: number): string | undefined;
 }
 
+/** "Veteran " before a promoted unit's name (a rank above 0), nothing otherwise. */
+function rankPrefix(rank: number | undefined): string {
+  return rank ? `${RANK_NAMES[rank]} ` : '';
+}
+
 export function describeEvent(
   e: GameEvent, me: PlayerId, names: string[], lookup?: DescribeLookup,
 ): string | null {
@@ -39,8 +44,8 @@ export function describeEvent(
       const target =
         e.defender.kind === 'city'
           ? `${whose(e.defender.owner, false)} city`
-          : `${whose(e.defender.owner, false)} ${UNIT_STATS[e.defender.unitType].name}`;
-      return `${whose(e.attackerOwner, true)} ${UNIT_STATS[e.attackerType].name} attacked ${target} and ${e.attackerWon ? 'won' : 'lost'}.`;
+          : `${whose(e.defender.owner, false)} ${rankPrefix(e.defenderRank)}${UNIT_STATS[e.defender.unitType].name}`;
+      return `${whose(e.attackerOwner, true)} ${rankPrefix(e.attackerRank)}${UNIT_STATS[e.attackerType].name} attacked ${target} and ${e.attackerWon ? 'won' : 'lost'}.`;
     }
     case 'unitDestroyed': {
       const reason = REASON[e.reason];

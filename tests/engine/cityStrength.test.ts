@@ -4,6 +4,7 @@ import { attackCity, attackUnit, bombardCity } from '../../src/engine/attack';
 import { advanceProduction, buildTime } from '../../src/engine/production';
 import { addUnit, attackerAlwaysHits, defenderAlwaysHits, makeGame } from '../helpers';
 import { cityAttackChance, visibleGarrison } from '../../src/ui/plans';
+import { describeEvent } from '../../src/ui/describe';
 
 const M = ['*.*'];
 
@@ -196,5 +197,25 @@ describe('promotions (house rule)', () => {
     const ship = addUnit(off, 'cruiser', 0, 0, 0);
     attackUnit(off, attackerAlwaysHits(), ship, addUnit(off, 'destroyer', 1, 1, 0), []);
     expect(ship.wins).toBeUndefined();
+  });
+});
+describe('rank in reports and sightings', () => {
+  const SEA3 = ['*...', '...*'];
+  it('a combat event carries the ranks of promoted fighters, and the report names them', () => {
+    const s = makeGame(SEA3, { rules: { promotions: true } });
+    const ship = addUnit(s, 'battleship', 0, 0, 0, { wins: 3 });
+    const events: GameEvent[] = [];
+    attackUnit(s, attackerAlwaysHits(), ship, addUnit(s, 'destroyer', 1, 1, 0), events);
+    const fight = events.find((e) => e.type === 'combat');
+    expect(fight).toMatchObject({ attackerRank: 2 });
+    expect(fight && 'defenderRank' in fight).toBe(false);
+    expect(describeEvent(fight!, 1, ['You', 'Computer'])).toContain('Veteran Battleship');
+  });
+
+  it('an enemy marker carries the rank the unit had when you saw it', () => {
+    const s = makeGame(SEA3);
+    const other = addUnit(s, 'cruiser', 1, 1, 0, { wins: 5 });
+    s.fog[0].lastSeen[other.id] = { unitId: other.id, type: 'cruiser', owner: 1, x: 1, y: 0, turnSeen: s.turn, rank: 3 };
+    expect(getPlayerView(s, 0).enemies[0].rank).toBe(3);
   });
 });

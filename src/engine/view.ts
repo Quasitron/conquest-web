@@ -13,6 +13,8 @@ export interface EnemyMarker {
   y: number;
   turnSeen: number;
   visibleNow: boolean;
+  /** Its promotion rank when last seen (only set when above 0). */
+  rank?: number;
 }
 
 export interface PlayerView {
@@ -66,7 +68,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
       .map((e, markerId) => {
         const u = s.units.find((x) => x.id === e.unitId);
         const visibleNow = !!u && u.x === e.x && u.y === e.y && canPlayerSeeUnit(s, me, u);
-        return { markerId, type: e.type, owner: e.owner, x: e.x, y: e.y, turnSeen: e.turnSeen, visibleNow };
+        return { markerId, type: e.type, owner: e.owner, x: e.x, y: e.y, turnSeen: e.turnSeen, visibleNow, ...(e.rank ? { rank: e.rank } : {}) };
       }),
     stats: structuredClone(s.stats?.[me] ?? emptyStats()),
     cityless: s.players

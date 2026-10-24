@@ -277,18 +277,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (iconFlipped(type, headingLeft)) ctx.scale(-1, 1);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
-    // Promotion rank: one gold pip per step, along the top-left of the frame.
+    // Promotion rank: one gold chevron per step, stacked at the top-left of the frame.
     for (let i = 0; i < rank; i++) {
-      const r = Math.max(2, size * 0.055);
-      ctx.fillStyle = '#f2c230';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
+      const w = Math.max(3, size * 0.07);
+      const x0 = cx - frame / 2 + band + w + 1;
+      const y0 = cy - frame / 2 + band + w + i * w * 1.1;
       ctx.beginPath();
-      ctx.arc(cx - frame / 2 + band + r + i * r * 2.4, cy - frame / 2 + band + r, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(x0 - w, y0 + w * 0.6);
+      ctx.lineTo(x0, y0 - w * 0.4);
+      ctx.lineTo(x0 + w, y0 + w * 0.6);
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = Math.max(3, w * 0.9);
       ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#f2c230';
+      ctx.lineWidth = Math.max(1.5, w * 0.45);
+      ctx.stroke();
+    }    ctx.globalAlpha = 1;
   };
   /** Top-right badge: a white dot below 16px tiles, else a white circle with a dark count. */
   const badge = (sx: number, sy: number, count: number, alpha = 1) => {
@@ -349,7 +354,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const age = view.turn - e.turnSeen;
     const alpha = e.visibleNow ? 1 : age < 1 ? 0.7 : 0.4;
     each((mx, my, sx, sy) => {
-      if (mx === e.x && my === e.y && !hidden(mx, my)) unitMark(sx, sy, colors[e.owner], e.type, alpha);
+      if (mx === e.x && my === e.y && !hidden(mx, my)) unitMark(sx, sy, colors[e.owner], e.type, alpha, 1, 0.5, 0.5, false, e.rank ?? 0);
     });
   }
 
