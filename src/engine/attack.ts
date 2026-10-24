@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, garrisonBonus, isCrippled } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
 import { terrainAt } from './map';
 import { destroyUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -8,6 +8,18 @@ import { resolveCombat } from './combat';
 import { relocate, settleAircraft, spendMove } from './movement';
 import { reveal } from './fog';
 import { WAR_TORN_MAX } from './production';
+
+/** Promotions rule: a sea unit that wins a fight gains a win; a new rank heals one hit and is announced. */
+function recordWin(s: GameState, u: Unit, events: GameEvent[]): void {
+  if (!s.rules.promotions || !UNIT_STATS[u.type].promotes) return;
+  const before = rankOf(u.wins);
+  u.wins = (u.wins ?? 0) + 1;
+  const after = rankOf(u.wins);
+  if (after > before) {
+    u.damage = Math.max(0, u.damage - 1);
+    events.push({ type: 'unitPromoted', unitId: u.id, owner: u.owner, unitType: u.type, rank: after });
+  }
+}
 
 export function attackRestriction(s: GameState, att: Unit, def: Unit): string | null {
   const a = UNIT_STATS[att.type];
@@ -44,8 +56,8 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   reveal(s, att.owner, def);
   reveal(s, def.owner, att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
-    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits, damage: def.damage },
+    { attack: a.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
+    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
     rng,
   );
   att.damage = r.attackerDamage;
@@ -59,6 +71,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
 
   if (r.attackerWon) {
     destroyUnit(s, def, 'combat', events, att.owner);
+    recordWin(s, att, events);
     trimCargo(s, att, events);
     const targetClear = topLevelUnitsAt(s, target.x, target.y).every((u) => areFriendly(s, u.owner, att.owner));
     if (targetClear && canOccupy(att, terrainAt(s, target.x, target.y))) {
@@ -69,6 +82,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
     settleAircraft(s, att, events);
   } else {
     destroyUnit(s, att, 'combat', events, def.owner);
+    recordWin(s, def, events);
     trimCargo(s, def, events);
   }
   return null;
@@ -88,7 +102,7 @@ export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: Ci
     : 0;
   spendMove(att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
+    { attack: a.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
     { defense: (CITY_COMBAT.defense + garrison) / 2, shot: CITY_COMBAT.shot, hits: floor, damage: city.damage ?? 0 },
     rng,
   );
@@ -101,7 +115,10 @@ export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: Ci
     attackerDamage: r.attackerDamage, defenderDamage: city.damage,
   });
   if (!r.attackerWon) destroyUnit(s, att, 'combat', events, city.owner);
-  else if (isCrippled(att)) att.movesLeft = 0;
+  else {
+    recordWin(s, att, events);
+    if (isCrippled(att)) att.movesLeft = 0;
+  }
   return null;
 }
 

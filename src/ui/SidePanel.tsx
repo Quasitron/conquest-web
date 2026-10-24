@@ -1,4 +1,4 @@
-import { CITY_STRENGTH_HITS, garrisonBonus, UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { CITY_STRENGTH_HITS, RANK_NAMES, garrisonBonus, rankOf, UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
@@ -49,6 +49,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
     <div>
       <Picture src={UNIT_ICONS[u.type]?.src} color={myColor} />
       <h3><span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
+      {view.rules.promotions && st.promotes && <p>Rank: {RANK_NAMES[rankOf(u.wins)]}{u.wins ? ` (${u.wins} win${u.wins === 1 ? '' : 's'})` : ''}</p>}
       <p>Orders: {describeOrders(u.orders)}</p>
       <p>Moves {u.movesLeft}/{st.move}</p>
       <HealthBar u={u} />

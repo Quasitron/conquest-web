@@ -21,6 +21,8 @@ export interface Unit {
   x: number;
   y: number;
   damage: number;
+  /** Combat wins (promotions rule): rank is derived from it (see rankOf). */
+  wins?: number;
   movesLeft: number;
   /** Remaining range for aircraft; null for all other units. */
   fuel: number | null;
@@ -189,6 +191,7 @@ export type GameEvent =
   | { type: 'unitDestroyed'; unitId: number; owner: PlayerId; unitType: UnitType; reason: DestroyReason }
   | { type: 'cityCaptured'; cityId: number; by: PlayerId; from: PlayerId | null }
   | { type: 'unitProduced'; unitId: number; cityId: number; unitType: UnitType }
+  | { type: 'unitPromoted'; unitId: number; owner: PlayerId; unitType: UnitType; rank: number }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
   | { type: 'ordersEnded'; unitId: number; owner: PlayerId; reason: OrdersEndReason }
   | { type: 'turnStarted'; player: PlayerId; turn: number }

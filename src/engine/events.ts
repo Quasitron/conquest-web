@@ -47,6 +47,7 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
       case 'ordersEnded':
         if (mine(e.owner)) out.push(e);
         break;
+      case 'unitPromoted':
       case 'unitProduced':
         if (mine(owners.get(e.unitId))) out.push(e);
         break;

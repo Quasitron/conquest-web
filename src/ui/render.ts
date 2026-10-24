@@ -1,4 +1,4 @@
-import { CITY_STRENGTH_HITS, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
+import { CITY_STRENGTH_HITS, rankOf, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
@@ -240,7 +240,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
    * letter badge. The picture is mirrored when the unit heads the other way from the way the picture faces.
    */
   const unitMark = (
-    sx: number, sy: number, color: string, type: UnitType, alpha: number, scale = 1, ox = 0.5, oy = 0.5, headingLeft = false,
+    sx: number, sy: number, color: string, type: UnitType, alpha: number, scale = 1, ox = 0.5, oy = 0.5, headingLeft = false, rank = 0,
   ) => {
     const img = t * scale >= ICON_MIN_TILE ? iconImage(type) : null;
     if (!img) {
@@ -275,6 +275,17 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (iconFlipped(type, headingLeft)) ctx.scale(-1, 1);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
+    // Promotion rank: one gold pip per step, along the top-left of the frame.
+    for (let i = 0; i < rank; i++) {
+      const r = Math.max(2, size * 0.055);
+      ctx.fillStyle = '#f2c230';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx - frame / 2 + band + r + i * r * 2.4, cy - frame / 2 + band + r, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   };
   /** Top-right badge: a white dot below 16px tiles, else a white circle with a dark count. */
@@ -360,7 +371,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       if (activeHere) {
         // The unit that needs orders takes the whole square and alternates with the city under it.
         if (o.blinkOn) {
-          unitMark(sx, sy, colors[view.me], face(shown).type, face(shown).movesLeft > 0 ? 1 : 0.6, 1, 0.5, 0.5, left(face(shown)));
+          unitMark(sx, sy, colors[view.me], face(shown).type, face(shown).movesLeft > 0 ? 1 : 0.6, 1, 0.5, 0.5, left(face(shown)), rankOf(face(shown).wins));
           if (stack.length >= 2) badge(sx, sy, stack.length, 1);
         }
         return;
@@ -375,7 +386,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (u.carriedBy !== null || inOwnCity(u.x, u.y)) continue;
     each((mx, my, sx, sy) => {
       if (mx !== u.x || my !== u.y || hidden(mx, my)) return;
-      unitMark(sx, sy, colors[view.me], face(u).type, ownAlpha(u), 1, 0.5, 0.5, left(face(u)));
+      unitMark(sx, sy, colors[view.me], face(u).type, ownAlpha(u), 1, 0.5, 0.5, left(face(u)), rankOf(face(u).wins));
       const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).length;
       if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
       if (isCrippled(u)) {

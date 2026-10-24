@@ -1,11 +1,11 @@
 export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
-  | 'capture' | 'lost' | 'alert' | 'unload' | 'win' | 'lose'
+  | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'win' | 'lose'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
-  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'win', 'lose',
+  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'win', 'lose',
   'produce-army', 'produce-armor', 'produce-fighter', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
 ];
@@ -253,6 +253,11 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   alert: (c, o, t) => {
     tone(c, o, t, 1320, 0.09, { type: 'square', gain: 0.1 });
     tone(c, o, t + 0.14, 1320, 0.09, { type: 'square', gain: 0.1 });
+  },
+  // A promotion: two quick rising bell notes.
+  promote: (c, o, t) => {
+    tone(c, o, t, 784, 0.12, { type: 'triangle', gain: 0.18 });
+    tone(c, o, t + 0.11, 1175, 0.22, { type: 'triangle', gain: 0.18 });
   },
   // Troops off the boat: a short splash and a step.
   unload: (c, o, t) => {

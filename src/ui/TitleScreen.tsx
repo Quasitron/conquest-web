@@ -42,6 +42,11 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
     hint: "A city taken from another player builds 25% slower for each such capture (up to 4), recovering one step every 10 turns.",
   },
   {
+    key: 'promotions',
+    label: 'Promotions',
+    hint: 'Ships that win fights are promoted: Experienced (1 win), Veteran (3), Elite (5). Each promotion heals one hit, and Elite ships take one more. Shown as gold pips on the unit.',
+  },
+  {
     key: 'cityStrength',
     label: 'City strength',
     hint: "A player's city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so groups can wear it down. Cruisers and Battleships can also bombard a player's city, down to its last hit, but cannot take it. Neutral cities stay easy.",
