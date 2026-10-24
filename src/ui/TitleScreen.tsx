@@ -37,6 +37,11 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
     hint: 'Each army or armor in a city adds 1 to its defence (at most +2); ships and aircraft add nothing. The garrison still dies if the city falls.',
   },
   {
+    key: 'warTornCities',
+    label: 'War-torn cities',
+    hint: "A city taken from another player builds 25% slower for each such capture (up to 4), recovering one step every 10 turns.",
+  },
+  {
     key: 'cityStrength',
     label: 'City strength',
     hint: "A player's city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so groups can wear it down. Cruisers and Battleships can also bombard a player's city, down to its last hit, but cannot take it. Neutral cities stay easy.",

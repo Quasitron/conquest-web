@@ -86,6 +86,7 @@ function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myCol
       <Picture src="/art/units/city.webp" color={myColor} />
       <h3>{city.name}</h3>
       {view.rules.cityStrength && <p>Strength {CITY_STRENGTH_HITS - (city.damage ?? 0)}/{CITY_STRENGTH_HITS}</p>}
+      {city.warTorn ? <p>War-torn: builds {city.warTorn * 25}% slower</p> : null}
       {view.rules.garrisonsDefend && <p>Garrison defence +{garrisonBonus(here.filter((u) => UNIT_STATS[u.type].domain === 'land').length)}</p>}
       <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
       <label>Building{' '}

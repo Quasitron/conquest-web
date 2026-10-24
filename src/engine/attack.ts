@@ -7,6 +7,7 @@ import { areFriendly } from './relations';
 import { resolveCombat } from './combat';
 import { relocate, settleAircraft, spendMove } from './movement';
 import { reveal } from './fog';
+import { WAR_TORN_MAX } from './production';
 
 export function attackRestriction(s: GameState, att: Unit, def: Unit): string | null {
   const a = UNIT_STATS[att.type];
@@ -136,6 +137,10 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
   const from = city.owner;
   for (const u of unitsAt(s, city.x, city.y)) {
     if (!areFriendly(s, u.owner, att.owner)) destroyUnit(s, u, 'cityCaptured', events);
+  }
+  if (s.rules.warTornCities && from !== null) {
+    city.warTorn = Math.min(WAR_TORN_MAX, (city.warTorn ?? 0) + 1);
+    city.warTornClock = 0;
   }
   city.owner = att.owner;
   city.production = null;

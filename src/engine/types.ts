@@ -87,6 +87,10 @@ export interface City {
   lastBuilt: UnitType | null;
   /** Hits taken in attacks (only with the city strength rule); heals one a turn. */
   damage?: number;
+  /** Captures it has suffered lately (war-torn cities rule): each makes it build 25% slower; recovers over time. */
+  warTorn?: number;
+  /** Turns of its owner's time since it last recovered a step. */
+  warTornClock?: number;
   route?: CityRoute;
 }
 
