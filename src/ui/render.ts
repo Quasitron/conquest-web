@@ -37,6 +37,8 @@ export interface DrawOptions {
   patrols?: [Pos, Pos][];
   /** A square to flash with a ring (a report line was just shown), or null. */
   flash?: Pos | null;
+  /** Enemy units just discovered at the start of your turn: each gets a flashing red ring for a moment. */
+  sightings?: readonly Pos[];
   /** Fights playing out now: `age` ms into a run of `duration` ms. */
   fx?: { fight: Fight; age: number; duration: number }[];
   /** Ids of own units heading left (see unitsHeadingLeft), so their pictures are mirrored; others face right. */
@@ -429,6 +431,23 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.fillText(city.name, sx + t / 2, sy + t);
       });
     }
+  }
+
+  // Newly discovered enemy units flash a red ring (with the alert sound), so the eye is drawn to them.
+  if (o.sightings && o.sightings.length > 0 && o.blinkOn) {
+    each((mx, my, sx, sy) => {
+      if (!o.sightings!.some((f) => f.x === mx && f.y === my)) return;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#ff4d3d';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(sx + t / 2, sy + t / 2, t * 0.66, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx + t / 2, sy + t / 2, t * 0.82, 0, Math.PI * 2);
+      ctx.stroke();
+    });
   }
 
   // A flashing ring on a square picked out from a report.
