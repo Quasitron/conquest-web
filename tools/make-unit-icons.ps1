@@ -71,7 +71,7 @@ $rotate = @{}
 foreach ($name in $units.Keys) {
   # a picture named <name>-v3 or <name>-v2 (a redo) is used in preference to the first one, the newest first
   $file = $null
-  foreach ($v in 'v3', 'v2') {
+  foreach ($v in 'v4', 'v3', 'v2') {
     if (-not $file) { $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq ($units[$name] + '-' + $v) } | Select-Object -First 1 }
   }
   if (-not $file) { $file = Get-ChildItem $src -File | Where-Object { $_.BaseName -ieq $units[$name] } | Select-Object -First 1 }
