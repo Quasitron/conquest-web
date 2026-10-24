@@ -79,6 +79,16 @@ export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId 
   );
 }
 
+/** Chance that a bombarding ship `u` survives a volley on a city (and wears it down), the city at half defence. */
+export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, garrison = 0): number {
+  const st = UNIT_STATS[u.type];
+  const defense = (CITY_COMBAT.defense + (view.rules.garrisonsDefend ? garrisonBonus(garrison) : 0)) / 2;
+  return combatWinChance(
+    { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
+    { defense, shot: CITY_COMBAT.shot, hits: CITY_STRENGTH_HITS - 1, damage: cityDamage },
+  );
+}
+
 /**
  * Chance that `u` beats a unit of `type`. The enemy's damage is not known to the player, so it is assumed to have
  * none; ships bombarding land units fight at half the defence, as in the engine.
@@ -91,6 +101,11 @@ export function unitAttackChance(u: Unit, type: UnitType): number {
     { attack: a.attack, shot: a.shot, hits: a.hits, damage: u.damage },
     { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits, damage: 0 },
   );
+}
+
+/** "Bombard (95%)": a ship firing on a city. */
+export function bombardLabel(chance: number): string {
+  return `Bombard (${Math.round(chance * 100)}%)`;
 }
 
 /** "Attack (62%)", or "Attack (~62%)" when the odds are an estimate (the defender's damage is unknown). */
