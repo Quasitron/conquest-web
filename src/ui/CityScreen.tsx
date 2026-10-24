@@ -106,8 +106,8 @@ export function CityScreen({ view, city, anchor, color, error, onPick, onRename,
   const defenceBlock = defence.length > 0 && <div class="city-defence">{defence.map((d) => <p key={d}>{d}</p>)}</div>;
   const bar = progress && (
     <div class="progress" title={`${progress.done}/${progress.total}`}>
+      <span>Producing: {UNIT_STATS[progress.type].name} {progress.done}/{progress.total}</span>
       <div class="progress-bar"><div class="progress-fill" style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }} /></div>
-      <span>{UNIT_STATS[progress.type].name}: {progress.done}/{progress.total}</span>
     </div>
   );
 
