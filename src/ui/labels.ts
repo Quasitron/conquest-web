@@ -1,4 +1,4 @@
-import { UNIT_STATS, UNIT_TYPES, buildTime, effectiveMove, isCoastal, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { UNIT_STATS, UNIT_TYPES, buildTime, effectiveMove, hitsOf, isCoastal, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { describeOrders } from './actions';
 
 export function pathLabel(turn: number, arrival: number | null, fuelLeft: number | null): string {
@@ -9,7 +9,7 @@ export function pathLabel(turn: number, arrival: number | null, fuelLeft: number
 }
 
 export function healthText(u: Unit): string {
-  const hits = UNIT_STATS[u.type].hits;
+  const hits = hitsOf(u); // an Elite unit has one more
   return `Health ${hits - u.damage}/${hits}`;
 }
 
