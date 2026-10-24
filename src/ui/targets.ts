@@ -1,4 +1,4 @@
-import { UNIT_STATS, cargoCapacity, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
+import { CITY_STRENGTH_HITS, UNIT_STATS, cargoCapacity, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
 
 export interface StepTarget {
   x: number;
@@ -35,6 +35,10 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     const enemyHere = v.enemies.some((e) => e.visibleNow && e.x === p.x && e.y === p.y);
     if (city && !ownCity) {
       if (domain === 'land') out.push({ ...p, dir: d as Dir, attack: true });
+      // With city strength on, a bombarding ship can fire on a player's city (not a neutral one) until it is nearly spent.
+      else if (UNIT_STATS[u.type].bombard && v.rules.cityStrength && city.owner !== null && city.damage < CITY_STRENGTH_HITS - 1) {
+        out.push({ ...p, dir: d as Dir, attack: true });
+      }
       continue;
     }
     if (enemyHere) {

@@ -73,6 +73,37 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   return null;
 }
 
+/**
+ * Shore bombardment of a player's city (city strength rule): a Cruiser or Battleship fights it with the city at half
+ * defence, as a land unit does under bombardment. The ship never takes the city and never moves; the city can be
+ * worn down to its last hit but no further, and it fires back (the ship can be damaged or sunk).
+ */
+export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: City, events: GameEvent[]): string | null {
+  const a = UNIT_STATS[att.type];
+  const floor = CITY_STRENGTH_HITS - 1;
+  if ((city.damage ?? 0) >= floor) return 'the city is as weak as bombardment can make it';
+  const garrison = s.rules.garrisonsDefend
+    ? garrisonBonus(unitsAt(s, city.x, city.y).filter((u) => u.owner === city.owner && UNIT_STATS[u.type].domain === 'land').length)
+    : 0;
+  spendMove(att);
+  const r = resolveCombat(
+    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
+    { defense: (CITY_COMBAT.defense + garrison) / 2, shot: CITY_COMBAT.shot, hits: floor, damage: city.damage ?? 0 },
+    rng,
+  );
+  att.damage = r.attackerDamage;
+  city.damage = Math.min(floor, r.defenderDamage); // a big shell cannot take the last hit
+  events.push({
+    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
+    defender: { kind: 'city', cityId: city.id, owner: city.owner },
+    x: city.x, y: city.y, attackerWon: r.attackerWon,
+    attackerDamage: r.attackerDamage, defenderDamage: city.damage,
+  });
+  if (!r.attackerWon) destroyUnit(s, att, 'combat', events, city.owner);
+  else if (isCrippled(att)) att.movesLeft = 0;
+  return null;
+}
+
 export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: City, events: GameEvent[]): string | null {
   const a = UNIT_STATS[att.type];
   const strong = s.rules.cityStrength && city.owner !== null; // neutral cities stay easy: one hit

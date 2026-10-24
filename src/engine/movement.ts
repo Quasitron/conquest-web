@@ -4,7 +4,7 @@ import { UNIT_STATS, cargoCapacity } from './units';
 import { step, terrainAt } from './map';
 import { cargoOf, cityAt, destroyUnit, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
-import { attackCity, attackUnit } from './attack';
+import { attackCity, attackUnit, bombardCity } from './attack';
 
 export function spendMove(u: Unit): void {
   u.movesLeft -= 1;
@@ -70,6 +70,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
 
   const city = cityAt(s, to.x, to.y);
   if (city && !areFriendly(s, city.owner, u.owner)) {
+    if (st.domain === 'sea' && st.bombard && s.rules.cityStrength && city.owner !== null) return bombardCity(s, rng, u, city, events);
     if (st.domain !== 'land') return 'only land units can attack cities';
     return attackCity(s, rng, u, city, events);
   }
