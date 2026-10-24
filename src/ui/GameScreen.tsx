@@ -1249,7 +1249,17 @@ export function GameScreen({ session, onQuit }: Props) {
           </div>
         </div>
       )}
-      {session.phase === 'over' && !revealed && (
+      {session.phase === 'over' && !revealed && view.winner !== null && session.seats[view.winner].kind === 'human' && (
+        <div class="overlay victory">
+          <img src="/art/victory.webp" alt="Victory" />
+          <div class="victory-bar">
+            <h2>{names[view.winner]} wins!</h2>
+            <button class="primary" onClick={onQuit}>New game</button>
+            <button onClick={() => setRevealed(true)}>View map</button>
+          </div>
+        </div>
+      )}
+      {session.phase === 'over' && !revealed && !(view.winner !== null && session.seats[view.winner].kind === 'human') && (
         <div class="overlay">
           <div class="card">
             <h2>{view.winner === null ? 'Game over: no survivors' : `${names[view.winner]} wins!`}</h2>

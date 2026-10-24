@@ -187,3 +187,9 @@ svg.leader circle { fill: #ffd24a; }
 .status-players .out { color: var(--muted); text-decoration: line-through; }
 .unit-pic { float: right; width: 84px; height: 68px; margin: 2px 0 6px 8px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 3px solid; border-radius: 6px; background: rgba(0, 0, 0, 0.3); box-shadow: 0 0 0 2px #000; }
 .unit-pic img { max-width: 94%; max-height: 94%; object-fit: contain; }
+
+/* The victory card: as large as the screen allows, with the result and buttons under it. */
+.overlay.victory { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px; box-sizing: border-box; }
+.overlay.victory img { height: calc(100dvh - 76px); max-width: calc(100vw - 16px); aspect-ratio: 1; object-fit: contain; border-radius: 14px; box-shadow: 0 0 40px rgba(0, 0, 0, 0.7); }
+.victory-bar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.victory-bar h2 { margin: 0; font-size: 1.2rem; }
