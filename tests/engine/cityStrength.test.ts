@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CITY_STRENGTH_HITS, getPlayerView } from '../../src/engine';
-import { attackCity } from '../../src/engine/attack';
+import { attackCity, bombardCity } from '../../src/engine/attack';
 import { advanceProduction } from '../../src/engine/production';
 import { addUnit, attackerAlwaysHits, defenderAlwaysHits, makeGame } from '../helpers';
 import { cityAttackChance, visibleGarrison } from '../../src/ui/plans';
@@ -99,5 +99,30 @@ describe('garrisons defend (house rule)', () => {
     const on = makeGame(M, { rules: { garrisonsDefend: true } });
     const b = addUnit(on, 'army', 0, 1, 0);
     expect(cityAttackChance(getPlayerView(on, 0), b, null, 0, 2)).toBeCloseTo(0.5, 10);
+  });
+});
+describe('city bombardment (city strength rule)', () => {
+  const SEA = ['..*', '..*'];
+  it('a battleship wears a player city down to its last hit but never takes it', () => {
+    const s = makeGame(SEA, { rules: { cityStrength: true } });
+    const city = s.cities[1] ?? s.cities[0];
+    city.owner = 1;
+    const ship = addUnit(s, 'battleship', 0, 1, 0);
+    const ev: unknown[] = [];
+    expect(bombardCity(s, attackerAlwaysHits(), ship, city, ev as never[])).toBeNull();
+    expect(city.damage).toBe(CITY_STRENGTH_HITS - 1);
+    expect(city.owner).toBe(1);
+    expect(s.units).toContain(ship);
+    expect(bombardCity(s, attackerAlwaysHits(), ship, city, [])).toMatch(/as weak as/);
+  });
+
+  it('the city fires back: a ship that loses is sunk and the city keeps what it took', () => {
+    const s = makeGame(SEA, { rules: { cityStrength: true } });
+    const city = s.cities[1] ?? s.cities[0];
+    city.owner = 1;
+    const ship = addUnit(s, 'cruiser', 0, 1, 0, { damage: 7 });
+    expect(bombardCity(s, defenderAlwaysHits(), ship, city, [])).toBeNull();
+    expect(s.units).not.toContain(ship);
+    expect(city.damage ?? 0).toBe(0);
   });
 });
