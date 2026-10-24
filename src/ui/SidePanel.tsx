@@ -48,7 +48,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
   return (
     <div>
       <Picture src={UNIT_ICONS[u.type]?.src} color={myColor} />
-      <h3><span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
+      <h3><span class="glyph owned" style={{ background: myColor }}>{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}</h3>
       {view.rules.promotions && st.promotes && <p>Rank: {RANK_NAMES[rankOf(u.wins)]}{u.wins ? ` (${u.wins} win${u.wins === 1 ? '' : 's'})` : ''}</p>}
       <p>Orders: {describeOrders(u.orders)}</p>
       <p>Moves {u.movesLeft}/{st.move}</p>
@@ -138,7 +138,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
     return (
       <aside class="panel">
         <Picture src={UNIT_ICONS[e.type]?.src} color={enemyColor} />
-        <h3><span class="glyph">{UNIT_GLYPH[e.type]}</span> {UNIT_STATS[e.type].name}</h3>
+        <h3><span class="glyph owned" style={{ background: enemyColor }}>{UNIT_GLYPH[e.type]}</span> {UNIT_STATS[e.type].name}</h3>
         <p>{view.players[e.owner].name}</p>
         <p>{seen}</p>
       </aside>
