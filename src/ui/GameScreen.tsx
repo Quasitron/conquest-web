@@ -857,7 +857,11 @@ export function GameScreen({ session, onQuit }: Props) {
     }
     // Your own city opens its screen when nothing is selected, or when the selected unit stands in it.
     const own = view.myCities.find((c) => c.x === p.x && c.y === p.y);
-    if (own && (!selectedUnit || (selectedUnit.x === own.x && selectedUnit.y === own.y))) return openCity(own.id);
+    if (own && (!selectedUnit || (selectedUnit.x === own.x && selectedUnit.y === own.y))) {
+      // With nothing selected the city is selected too, so the side panel shows its picture, strength and garrison.
+      if (!selectedUnit) setSelection({ kind: 'city', id: own.id });
+      return openCity(own.id);
+    }
     const city = view.knownCities.find((c) => c.x === p.x && c.y === p.y);
     if (city && !selectedUnit) return setSelection({ kind: 'city', id: city.id });
     if (city && selectedUnit) {
