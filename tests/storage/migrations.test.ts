@@ -216,7 +216,7 @@ describe('GameSession and house rules', () => {
 
   it('GameSession.create passes house rules into the game', () => {
     const s = GameSession.create({ world, seed: 5, seats, rules: { easierNeutralCities: true } }, null);
-    expect(s.state.rules).toEqual({ easierNeutralCities: true, fairFirstTurn: false, sentriedStayAsGarrison: false, cityStrength: false });
+    expect(s.state.rules).toEqual({ easierNeutralCities: true, fairFirstTurn: false, sentriedStayAsGarrison: false, cityStrength: false, garrisonsDefend: false });
     expect(s.toSave().rulesVersion).toBe(RULES_VERSION);
     expect(s.toSave().format).toBe(3);
   });

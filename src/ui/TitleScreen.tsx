@@ -32,6 +32,11 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
     hint: "Transports leaving a city don't pick up armies on Sentry.",
   },
   {
+    key: 'garrisonsDefend',
+    label: 'Garrisons defend',
+    hint: 'Each army or armor in a city adds 1 to its defence (at most +2); ships and aircraft add nothing. The garrison still dies if the city falls.',
+  },
+  {
     key: 'cityStrength',
     label: 'City strength',
     hint: "A player's city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so ships and groups can wear it down. Neutral cities stay easy.",

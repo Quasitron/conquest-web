@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, isCrippled } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, garrisonBonus, isCrippled } from './units';
 import { terrainAt } from './map';
 import { destroyUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -76,11 +76,14 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
 export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: City, events: GameEvent[]): string | null {
   const a = UNIT_STATS[att.type];
   const strong = s.rules.cityStrength && city.owner !== null; // neutral cities stay easy: one hit
+  const garrison = s.rules.garrisonsDefend && city.owner !== null
+    ? garrisonBonus(unitsAt(s, city.x, city.y).filter((u) => u.owner === city.owner && UNIT_STATS[u.type].domain === 'land').length)
+    : 0;
   spendMove(att);
   const r = resolveCombat(
     { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
     {
-      defense: s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense,
+      defense: (s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense) + garrison,
       shot: CITY_COMBAT.shot,
       hits: strong ? CITY_STRENGTH_HITS : CITY_COMBAT.hits,
       damage: strong ? city.damage ?? 0 : 0,
