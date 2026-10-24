@@ -880,6 +880,11 @@ export function GameScreen({ session, onQuit }: Props) {
       return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
     }
     if (unit) return setSelection({ kind: 'unit', id: unit.id });
+    // An enemy unit seen here: say what it is (with nothing selected the panel shows it; otherwise the click is still an order).
+    const foe = view.enemies.filter((e) => e.x === p.x && e.y === p.y)
+      .sort((a, b) => Number(b.visibleNow) - Number(a.visibleNow) || b.turnSeen - a.turnSeen)[0];
+    if (foe && !selectedUnit) return setSelection({ kind: 'enemy', id: foe.markerId });
+    if (foe) setMessage(`${UNIT_STATS[foe.type].name} of ${view.players[foe.owner].name}${foe.visibleNow ? '' : ' (last seen)'}`);
     if (selectedUnit && explored) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
     setSelection(null);
   };
@@ -1127,6 +1132,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <SidePanel
           view={view}
           myColor={colors[view.me]}
+          enemyColor={selection?.kind === 'enemy' ? colors[view.enemies.find((e) => e.markerId === selection.id)?.owner ?? view.me] : colors[view.me]}
           selection={selection}
           onSelectUnit={stable.onSelectUnit}
           onProduction={stable.onProduction}
