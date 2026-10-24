@@ -373,6 +373,9 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       if (activeHere) {
         // The unit that needs orders takes the whole square and alternates with the city under it.
         if (o.blinkOn) {
+          // Plain ground under it, so the city's picture does not show through and blur the unit's.
+          ctx.fillStyle = TERRAIN_COLORS.land;
+          ctx.fillRect(sx, sy, t, t);
           unitMark(sx, sy, colors[view.me], face(shown).type, face(shown).movesLeft > 0 ? 1 : 0.6, 1, 0.5, 0.5, left(face(shown)), rankOf(face(shown).wins));
           if (stack.length >= 2) badge(sx, sy, stack.length, 1);
         }
