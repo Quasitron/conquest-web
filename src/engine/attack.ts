@@ -66,6 +66,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
     type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'unit', unitId: def.id, owner: def.owner, unitType: def.type },
     x: target.x, y: target.y, attackerWon: r.attackerWon,
+    ...(rankOf(att.wins) > 0 ? { attackerRank: rankOf(att.wins) } : {}), ...(rankOf(def.wins) > 0 ? { defenderRank: rankOf(def.wins) } : {}),
     attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,
   });
 

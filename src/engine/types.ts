@@ -110,6 +110,8 @@ export interface LastSeen {
   x: number;
   y: number;
   turnSeen: number;
+  /** Its promotion rank when seen (only set when above 0). */
+  rank?: number;
 }
 
 export interface PlayerFog {
@@ -185,6 +187,9 @@ export type GameEvent =
       x: number;
       y: number;
       attackerWon: boolean;
+      /** Promotion ranks of the two units before the fight (only set when above 0). */
+      attackerRank?: number;
+      defenderRank?: number;
       attackerDamage: number;
       defenderDamage: number;
     }
