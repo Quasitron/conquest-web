@@ -10,7 +10,7 @@ import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 import { UNIT_ICONS } from './unitIcons';
 
-export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | null;
+export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | { kind: 'enemy'; id: number } | null;
 
 /** The unit's (or city's) picture in your colour, at the top right of the panel; nothing if it has no picture. */
 function Picture({ src, color }: { src: string | undefined; color: string }) {
@@ -33,6 +33,8 @@ interface Props {
   readyCount: number;
   /** Your colour, for the frame round the picture. */
   myColor: string;
+  /** The colour of the enemy unit being looked at, for its picture's frame. */
+  enemyColor: string;
 }
 
 function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
@@ -123,8 +125,21 @@ function EmptyPanel({ text, readyCount, onAction }: { text: string; readyCount: 
   );
 }
 
-function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, onOpenCity, readyCount, myColor }: Props) {
+function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, onOpenCity, readyCount, myColor, enemyColor }: Props) {
   if (!selection) return <EmptyPanel text="Select a unit or city." readyCount={readyCount} onAction={onAction} />;
+  if (selection.kind === 'enemy') {
+    const e = view.enemies.find((x) => x.markerId === selection.id);
+    if (!e) return <EmptyPanel text="That unit is no longer in view." readyCount={readyCount} onAction={onAction} />;
+    const seen = e.visibleNow ? 'In sight now' : `Last seen turn ${e.turnSeen}`;
+    return (
+      <aside class="panel">
+        <Picture src={UNIT_ICONS[e.type]?.src} color={enemyColor} />
+        <h3><span class="glyph">{UNIT_GLYPH[e.type]}</span> {UNIT_STATS[e.type].name}</h3>
+        <p>{view.players[e.owner].name}</p>
+        <p>{seen}</p>
+      </aside>
+    );
+  }
   if (selection.kind === 'unit') {
     const u = view.myUnits.find((x) => x.id === selection.id);
     if (!u) return <EmptyPanel text="That unit is gone." readyCount={readyCount} onAction={onAction} />;
