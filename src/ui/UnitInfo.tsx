@@ -1,13 +1,13 @@
 import { useState } from 'preact/hooks';
-import { UNIT_STATS, cargoCapacity, isCrippled, unitDisplayName, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled, unitDisplayName, type PlayerView, type Unit } from '../engine';
 import { describeOrders } from './actions';
 import { UNIT_GLYPH } from './colors';
 import { cargoLoad, cargoSummary, healthText } from './labels';
 import { blur } from './blur';
 
 export function HealthBar({ u }: { u: Unit }) {
-  const st = UNIT_STATS[u.type];
-  const pct = ((st.hits - u.damage) / st.hits) * 100;
+  const hits = hitsOf(u);
+  const pct = ((hits - u.damage) / hits) * 100;
   return (
     <div class="health" title={healthText(u)}>
       <div class="health-bar"><div class={`health-fill${isCrippled(u) ? ' crippled' : ''}`} style={{ width: `${pct}%` }} /></div>

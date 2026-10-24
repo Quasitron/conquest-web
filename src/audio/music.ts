@@ -80,7 +80,16 @@ export function startMusic(name: MusicName): void {
   if (!audio) {
     try {
       audio = new Audio(url);
-      audio.loop = true;
+      // With two or more themes in the rotation, a finished theme is followed by the next one instead of repeating.
+      const rotating = (MUSIC_ROTATION[name]?.length ?? 0) > 1 && MUSIC_ROTATION[name]!.includes(url);
+      audio.loop = !rotating;
+      if (rotating && typeof audio.addEventListener === 'function') {
+        audio.addEventListener('ended', () => {
+          if (!audio || wanted !== name) return;
+          audio.src = chooseTrack(name) ?? url;
+          void begin();
+        });
+      }
       // Route through Web Audio so the volume works on iPad, where the element's own volume is ignored.
       const c = context();
       if (c) {

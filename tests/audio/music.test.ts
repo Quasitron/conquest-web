@@ -14,6 +14,8 @@ class FakeAudio {
   constructor(public src: string) { FakeAudio.made.push(this); }
   play() { this.paused = false; this.plays++; return Promise.resolve(); }
   pause() { this.paused = true; }
+  handlers: Record<string, () => void> = {};
+  addEventListener(name: string, fn: () => void) { this.handlers[name] = fn; }
 }
 
 const realTitle = MUSIC.title;
@@ -51,6 +53,16 @@ describe('music', () => {
     expect(played[0]).toBe(MUSIC.title);
     expect(played[1]).not.toBe(played[0]);
     expect(played[2]).toBe(played[0]);
+  });
+
+  it('moves on to the next theme of the rotation when one ends, instead of repeating it', () => {
+    startMusic('title');
+    const a = FakeAudio.made[0];
+    const first = a.src;
+    expect(a.loop).toBe(false);
+    a.handlers.ended();
+    expect(a.src).not.toBe(first);
+    expect(a.paused).toBe(false);
   });
 
   it('plays a configured track on a loop at the music volume, and stops it', () => {
