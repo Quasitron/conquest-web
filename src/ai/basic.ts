@@ -399,6 +399,19 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
   }
   if (target) return setOrders(u, { kind: 'goto', target: target.sq });
 
+  // City strength rule: a bombarding ship with nothing else to do sails to the square beside the nearest enemy city it can still wear down.
+  if (view.rules.cityStrength && UNIT_STATS[u.type].bombard) {
+    let goal: { sq: Pos; d: number } | null = null;
+    for (const c of view.knownCities) {
+      if (c.owner === null || c.owner === view.me || c.damage >= CITY_STRENGTH_HITS - 1) continue;
+      for (const n of neighbors(geo(view), c.x, c.y)) {
+        const d = dist.get(n.y * view.width + n.x);
+        if (d !== undefined && d > 0 && d <= HUNT_RANGE * 2 && (goal === null || d < goal.d)) goal = { sq: n, d };
+      }
+    }
+    if (goal) return setOrders(u, { kind: 'goto', target: goal.sq });
+  }
+
   // Otherwise keep watch: patrol out to sea toward the enemy and back.
   const end = patrolEnd(view, u);
   if (end) return setOrders(u, { kind: 'patrol', a: { x: u.x, y: u.y }, b: end, toB: true });
