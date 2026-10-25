@@ -144,6 +144,19 @@ describe('migrations', () => {
     expect(r.save.initial).toEqual(r.save.snapshot);
   });
 
+  it('a save from the previous rules version loads from its snapshot even when its history would now replay differently', () => {
+    const save = format2Save();
+    // The saved position no longer matches what the history replays to under today's rules (as when a rule changed).
+    const moved = { ...save, rulesVersion: RULES_VERSION - 1, snapshot: { ...save.snapshot, turn: save.snapshot.turn + 3 } };
+    const r = parseSave(JSON.stringify(moved));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.note).toBe(OLDER_VERSION_NOTE);
+    expect(r.save.commands).toEqual([]);
+    expect(r.save.rulesVersion).toBe(RULES_VERSION);
+    // The same mismatch under the current version is still reported as a damaged file.
+    expect(parseSave(JSON.stringify({ ...moved, rulesVersion: RULES_VERSION })).ok).toBe(false);
+  });
   it('a save from a newer rulesVersion is rejected', () => {
     const r = parseSave(JSON.stringify({ ...format2Save(), rulesVersion: RULES_VERSION + 1 }));
     expect(r).toEqual({ ok: false, error: 'save file is from a newer version of the game' });
