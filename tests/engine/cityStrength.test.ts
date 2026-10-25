@@ -219,3 +219,15 @@ describe('rank in reports and sightings', () => {
     expect(getPlayerView(s, 0).enemies[0].rank).toBe(3);
   });
 });
+describe('promotions and city bombardment', () => {
+  it('bombarding a city does not count as a win towards a promotion', () => {
+    const s = makeGame(['..*', '..*'], { rules: { cityStrength: true, promotions: true } });
+    const city = s.cities[1];
+    const ship = addUnit(s, 'battleship', 0, 1, 0);
+    const events: GameEvent[] = [];
+    bombardCity(s, attackerAlwaysHits(), ship, city, events);
+    expect(city.damage).toBe(CITY_STRENGTH_HITS - 1); // it did wear the city down
+    expect(ship.wins).toBeUndefined();
+    expect(events.some((e) => e.type === 'unitPromoted')).toBe(false);
+  });
+});

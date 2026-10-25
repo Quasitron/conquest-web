@@ -116,10 +116,7 @@ export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: Ci
     attackerDamage: r.attackerDamage, defenderDamage: city.damage,
   });
   if (!r.attackerWon) destroyUnit(s, att, 'combat', events, city.owner);
-  else {
-    recordWin(s, att, events);
-    if (isCrippled(att)) att.movesLeft = 0;
-  }
+  else if (isCrippled(att)) att.movesLeft = 0; // wearing a city down is no kill: no win towards a promotion
   return null;
 }
 
