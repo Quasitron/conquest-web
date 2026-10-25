@@ -1,9 +1,10 @@
 import { useState } from 'preact/hooks';
 import {
-  UNIT_STATS, UNIT_TYPES, cargoCapacity, unitDisplayName, type PlayerView, type Unit, type UnitType,
+  UNIT_STATS, UNIT_TYPES, cargoCapacity, rankOf, unitDisplayName, type PlayerView, type Unit, type UnitType,
 } from '../engine';
 import { describeOrders } from './actions';
 import { blur } from './blur';
+import { Chevrons } from './Chevrons';
 import { UNIT_GLYPH } from './colors';
 import { cargoAndPatrols, patrolsFrom } from './labels';
 import { PlacedDialog } from './LeaderLine';
@@ -52,7 +53,7 @@ export function UnitList({ view, onSelect, onClose }: Props) {
             {shown.map((u) => (
               <li key={u.id}>
                 <button class="linklike" onClick={(e) => { blur(e); onSelect(u.id); }}>
-                  <span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}
+                  <span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}<Chevrons rank={rankOf(u.wins)} />
                 </button>
                 <span class="muted">
                   {whereIs(view, u)} · {describeOrders(u.orders)}

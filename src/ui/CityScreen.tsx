@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, UNIT_TYPES, buildTime, garrisonBonus, pathMapFromView, routeUnitTypes, unitDisplayName,
+  CITY_STRENGTH_HITS, UNIT_STATS, UNIT_TYPES, buildTime, garrisonBonus, pathMapFromView, rankOf, routeUnitTypes, unitDisplayName,
   type City, type CityRoute, type PlayerView, type UnitType,
 } from '../engine';
 import { UNIT_GLYPH } from './colors';
@@ -8,6 +8,7 @@ import { cityIsCoastal, inProductionCount, statsText, turnsToComplete } from './
 import { PlacedDialog } from './LeaderLine';
 import type { Pt } from './placement';
 import { blur } from './blur';
+import { Chevrons } from './Chevrons';
 import { UnitCard } from './UnitCard';
 
 interface Props {
@@ -159,8 +160,8 @@ export function CityScreen({ view, city, anchor, color, error, onPick, onRename,
             ? <p class="muted">None.</p>
             : <ul class="plain-list">{here.map((u) => <li key={u.id}>
                 {onSelectUnit
-                  ? <button class="linklike" onClick={(e) => { blur(e); onSelectUnit(u.id); onClose(); }}>{unitDisplayName(u)}</button>
-                  : unitDisplayName(u)}
+                  ? <button class="linklike" onClick={(e) => { blur(e); onSelectUnit(u.id); onClose(); }}>{unitDisplayName(u)}<Chevrons rank={rankOf(u.wins)} /></button>
+                  : <>{unitDisplayName(u)}<Chevrons rank={rankOf(u.wins)} /></>}
               </li>)}</ul>}
           {bar ?? <p class="muted">Not building anything.</p>}
           {city.route && <p class="muted">Route: {routeSummary(view, city.route)}</p>}
