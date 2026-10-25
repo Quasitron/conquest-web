@@ -359,6 +359,37 @@ function patrolEnd(view: PlayerView, u: Unit): Pos | null {
   return best ? best.sq : null;
 }
 
+/** A warship counts as escorting a transport when it is within this many squares of it. */
+const ESCORT_NEAR = 2;
+/** A free warship will go to a loaded transport at most this far away. */
+const ESCORT_RANGE = 12;
+
+/** Our transports at sea (not in a city) that carry something. */
+function loadedTransportsAtSea(view: PlayerView): Unit[] {
+  return view.myUnits.filter((tr) => tr.type === 'transport' && tr.carriedBy === null
+    && !view.myCities.some((c) => at(c, tr)) && view.myUnits.some((c) => c.carriedBy === tr.id));
+}
+
+/**
+ * Hard: escort duty. A warship already beside a loaded transport stays with it (null: leave its orders alone); a free
+ * one sails to the square beside the nearest loaded transport that has no warship near it. 'none' means no duty.
+ */
+function escortOrders(view: PlayerView, u: Unit): SessionCommand | null | 'none' {
+  const loaded = loadedTransportsAtSea(view);
+  if (loaded.some((tr) => chebyshev(geo(view), u, tr) <= ESCORT_NEAR)) return null;
+  const others = view.myUnits.filter((w) => isWarship(w.type) && w.id !== u.id);
+  const dist = reach(view, u);
+  let goal: { sq: Pos; d: number } | null = null;
+  for (const tr of loaded) {
+    if (chebyshev(geo(view), u, tr) > ESCORT_RANGE || others.some((w) => chebyshev(geo(view), w, tr) <= ESCORT_NEAR)) continue;
+    for (const n of neighbors(geo(view), tr.x, tr.y)) {
+      const d = dist.get(n.y * view.width + n.x);
+      if (d !== undefined && d > 0 && (goal === null || d < goal.d)) goal = { sq: n, d };
+    }
+  }
+  return goal ? setOrders(u, { kind: 'goto', target: goal.sq }) : 'none';
+}
+
 function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null {
   const inCity = view.myCities.some((c) => at(c, u));
   const ships = enemyShips(view);
@@ -385,6 +416,12 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
     if (inCity) return setOrders(u, { kind: 'repair' });
     const home = nearestOwnCity(view, u, true);
     return home && goTo(view, u, home) ? { type: 'goHome', unitId: u.id, repair: true } : null;
+  }
+
+  // Hard: stay with (or go to) a loaded transport at sea.
+  if (t.escorts) {
+    const duty = escortOrders(view, u);
+    if (duty !== 'none') return duty;
   }
 
   // A ship was seen lately within reach: sail to the square beside it.

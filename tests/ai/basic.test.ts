@@ -385,3 +385,31 @@ describe('AI hunting cities (city strength rule)', () => {
     expect(run({})).not.toMatchObject({ orders: { kind: 'goto', target: { x: 1, y: 0 } } });
   });
 });
+describe('AI escorts (Hard)', () => {
+  const setup = (shipX: number) => {
+    const s = game(['*.......*']);
+    const tr = addUnit(s, 'transport', 1, 5, 0, { orders: { kind: 'sentry' } });
+    addUnit(s, 'army', 1, 5, 0, { carriedBy: tr.id, orders: { kind: 'sentry' } });
+    const ship = addUnit(s, 'destroyer', 1, shipX, 0);
+    return { s, ship };
+  };
+  const act = (s: GameState, d: Difficulty) => nextAction(view(s), newMemo(d));
+
+  it('on Hard a free warship sails beside a loaded transport at sea; Normal does not', () => {
+    const { s } = setup(1);
+    expect(act(s, 'hard')).toMatchObject({ type: 'setOrders', orders: { kind: 'goto', target: { x: 4, y: 0 } } });
+    expect(act(s, 'normal')).not.toMatchObject({ orders: { kind: 'goto', target: { x: 4, y: 0 } } });
+  });
+
+  it('a warship already beside the transport stays on escort duty instead of patrolling off', () => {
+    const { s } = setup(4);
+    expect(act(s, 'hard')).toBeNull();
+  });
+
+  it('a second warship goes to the transport only when it has no escort yet', () => {
+    const { s } = setup(4); // already escorted by this one
+    addUnit(s, 'cruiser', 1, 1, 0);
+    const cmd = act(s, 'hard');
+    expect(cmd === null || !(cmd as { orders?: { target?: { x: number } } }).orders?.target || (cmd as { orders: { target: { x: number } } }).orders.target.x !== 4).toBe(true);
+  });
+});
