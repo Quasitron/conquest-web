@@ -179,6 +179,13 @@ export function TitleScreen({ store, onStart }: Props) {
             <option value="continents">Few continents</option>
           </select>
         </label>
+        <label>Starting positions{' '}
+          <select value={world.starts} onChange={(e) => setWorld({ ...world, starts: (e.target as HTMLSelectElement).value as WorldOptions['starts'] })}>
+            <option value="auto">Automatic (apart when possible)</option>
+            <option value="separate">Each player on a separate landmass</option>
+            <option value="together">All players on the same landmass</option>
+          </select>
+        </label>
         <label>Cities{' '}
           <select value={world.cityDensity} onChange={(e) => setWorld({ ...world, cityDensity: (e.target as HTMLSelectElement).value as CityDensity })}>
             <option value="low">Few</option>
