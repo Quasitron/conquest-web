@@ -498,3 +498,45 @@ describe('AI transports avoid patrols (Hard)', () => {
     expect(first(s, 'hard', tr.id)).toBeNull();
   });
 });
+describe('AI scouting fighter (Hard)', () => {
+  const rows = ['*#........', '..........', '..........', '..........', '.........*'];
+  const withUnknown = () => {
+    const s = game(rows);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 0;
+    s.fog[1].explored.fill(0);
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]]) s.fog[1].explored[y * 10 + x] = 1;
+    s.turn = 10;
+    return s;
+  };
+
+  it('Hard builds one scouting fighter while there is unexplored map; Normal does not', () => {
+    const s = withUnknown();
+    const v = view(s);
+    const city = v.myCities[0];
+    expect(wantedProduction(v, city, portCity(v), tuningFor('hard'))).toBe('fighter');
+    expect(wantedProduction(v, city, portCity(v), tuningFor('normal'))).toBe('army');
+    addUnit(s, 'fighter', 1, city.x, city.y, { orders: { kind: 'sentry' } });
+    expect(wantedProduction(view(s), city, portCity(view(s)), tuningFor('hard'))).toBe('army'); // one is enough
+  });
+
+  it('a scouting fighter steps out toward the unexplored map; Normal leaves a fighter alone', () => {
+    const s = withUnknown();
+    const city = s.cities[0];
+    const f = addUnit(s, 'fighter', 1, city.x, city.y);
+    const cmd = nextAction(view(s), newMemo('hard'));
+    const act = (cmd !== null && cmd.type !== 'setProduction') ? cmd : null;
+    expect(act).toMatchObject({ type: 'move', unitId: f.id });
+    s.cities[0].production = 'army';
+    const normalCmd = nextAction(view(s), newMemo('normal'));
+    expect(normalCmd === null || !('unitId' in normalCmd) || normalCmd.unitId !== f.id).toBe(true);
+  });
+
+  it('a fighter low on fuel goes home', () => {
+    const s = withUnknown();
+    const f = addUnit(s, 'fighter', 1, 5, 2, { fuel: 6 });
+    s.cities[0].production = 'army';
+    const cmd = nextAction(view(s), newMemo('hard'));
+    expect(cmd).toMatchObject({ type: 'goHome', unitId: f.id });
+  });
+});

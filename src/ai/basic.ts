@@ -93,6 +93,18 @@ function warshipFor(view: PlayerView): UnitType {
   return n >= 8 ? 'battleship' : n >= 4 ? 'cruiser' : 'destroyer';
 }
 
+/** Hard builds one scouting fighter from this turn on, while there is unexplored map. */
+const SCOUT_FROM_TURN = 4;
+
+/** Whether `city` is the one that should build the scouting fighter: none exists or is being built, and this is the first non-port city. */
+function isScoutCity(view: PlayerView, city: City, port: City | null): boolean {
+  if (view.turn < SCOUT_FROM_TURN || !view.terrain.some((x) => x === null)) return false;
+  const fighters = view.myUnits.filter((u) => u.type === 'fighter').length
+    + view.myCities.filter((c) => c.id !== city.id && c.production === 'fighter').length;
+  if (fighters > 0) return false;
+  const first = [...view.myCities].sort((a, b) => a.id - b.id).find((c) => c.id !== port?.id) ?? view.myCities[0];
+  return first !== undefined && first.id === city.id;
+}
 /**
  * What a city should be building: armies, except that the port builds a transport once armies have run out of
  * land to conquer (some are idle in a city) and no transport exists or is on the way, and coastal cities build
@@ -104,6 +116,7 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
     const others = transportsOwnedOrBuilding(view) - (city.production === 'transport' ? 1 : 0);
     if (others < wanted) return 'transport';
   }
+  if (t.scouts && isScoutCity(view, city, port)) return 'fighter';
   if (cityIsCoastal(view, city)) {
     const ships = warshipsOwnedOrBuilding(view) - (isWarship(city.production) ? 1 : 0);
     const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
@@ -565,6 +578,42 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
   return null;
 }
 
+/**
+ * Hard: a scouting fighter flies out, one step at a time (a Go-to may only name explored squares), toward the
+ * unexplored square farthest from our cities that it still has the fuel to get home from, and goes home when there is
+ * none it can reach or its fuel is getting low.
+ */
+function decideScout(view: PlayerView, u: Unit): SessionCommand | null {
+  const fuel = u.fuel ?? 0;
+  const w = view.width;
+  const inCity = view.myCities.some((c) => at(c, u));
+  const homeDist = (p: Pos) => Math.min(999, ...view.myCities.map((c) => chebyshev(geo(view), p, c)));
+  if (!inCity && fuel <= homeDist(u) + 2) return view.myCities.length > 0 ? { type: 'goHome', unitId: u.id } : null;
+
+  let best: { sq: Pos; far: number; d: number } | null = null;
+  for (let i = 0; i < view.terrain.length; i++) {
+    if (view.terrain[i] !== null) continue;
+    const sq = { x: i % w, y: Math.floor(i / w) };
+    const d = chebyshev(geo(view), u, sq);
+    const far = homeDist(sq);
+    if (d < 2 || d + far + 2 > fuel) continue;
+    if (best === null || far > best.far || (far === best.far && d < best.d)) best = { sq, far, d };
+  }
+  if (best) {
+    // The neighbouring square nearest the target that holds no visible enemy and no foreign city.
+    const blocked = (n: Pos) => view.enemies.some((e) => e.visibleNow && at(e, n))
+      || view.knownCities.some((c) => c.owner !== view.me && at(c, n));
+    let step: Pos | null = null;
+    for (const n of neighbors(geo(view), u.x, u.y)) {
+      if (blocked(n)) continue;
+      if (step === null || chebyshev(geo(view), n, best.sq) < chebyshev(geo(view), step, best.sq)) step = n;
+    }
+    const dir = step ? dirTo(view, u, step) : null;
+    if (dir !== null) return { type: 'move', unitId: u.id, dir };
+  }
+  if (inCity) return null;
+  return view.myCities.length > 0 ? { type: 'goHome', unitId: u.id } : null;
+}
 function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
   switch (u.type) {
     case 'army': return decideArmy(view, u, port, t);
@@ -572,7 +621,8 @@ function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): Sess
     case 'destroyer':
     case 'cruiser':
     case 'battleship': return decideWarship(view, u, t);
-    default: return null; // fighters, submarines and carriers are not built yet
+    case 'fighter': return t.scouts ? decideScout(view, u) : null;
+    default: return null; // submarines and carriers are not built yet
   }
 }
 
