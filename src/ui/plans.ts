@@ -1,5 +1,5 @@
 import {
-  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, garrisonBonus, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
+  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
   type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 
@@ -74,7 +74,7 @@ export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId 
     + (view.rules.garrisonsDefend && cityOwner !== null ? garrisonBonus(garrison) : 0);
   const strength = view.rules.cityStrength && cityOwner !== null;
   return combatWinChance(
-    { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
+    { attack: st.attack, shot: st.shot, hits: hitsOf(u), damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: strength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits, damage: strength ? cityDamage : 0 },
   );
 }
@@ -84,7 +84,7 @@ export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, gar
   const st = UNIT_STATS[u.type];
   const defense = (CITY_COMBAT.defense + (view.rules.garrisonsDefend ? garrisonBonus(garrison) : 0)) / 2;
   return combatWinChance(
-    { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
+    { attack: st.attack, shot: st.shot, hits: hitsOf(u), damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: CITY_STRENGTH_HITS - 1, damage: cityDamage },
   );
 }
@@ -93,13 +93,13 @@ export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, gar
  * Chance that `u` beats a unit of `type`. The enemy's damage is not known to the player, so it is assumed to have
  * none; ships bombarding land units fight at half the defence, as in the engine.
  */
-export function unitAttackChance(u: Unit, type: UnitType): number {
+export function unitAttackChance(u: Unit, type: UnitType, foeRank = 0): number {
   const a = UNIT_STATS[u.type];
   const d = UNIT_STATS[type];
   const bombard = a.domain === 'sea' && d.domain === 'land';
   return combatWinChance(
-    { attack: a.attack, shot: a.shot, hits: a.hits, damage: u.damage },
-    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits, damage: 0 },
+    { attack: a.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },
   );
 }
 

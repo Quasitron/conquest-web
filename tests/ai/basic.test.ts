@@ -7,6 +7,7 @@ import { tuningFor, type Difficulty } from '../../src/ai/difficulty';
 import { DEFAULT_WORLD, SIZE_PRESETS } from '../../src/mapgen';
 import type { SeatConfig } from '../../src/storage';
 import { addUnit, makeGame } from '../helpers';
+import { unitAttackChance } from '../../src/ui/plans';
 
 /** Player 1 plays; the whole map is explored so it can plan freely. */
 function game(rows: string[], opts: Parameters<typeof makeGame>[1] = {}): GameState {
@@ -357,5 +358,15 @@ describe('AI bombardment (city strength rule)', () => {
     expect(on.cmd).toEqual({ type: 'move', unitId: on.ship.id, dir: 6 });
     expect(run({ cityStrength: true }, 2).cmd).not.toEqual({ type: 'move', unitId: expect.anything(), dir: 6 });
     expect(run({}).cmd).not.toEqual({ type: 'move', unitId: expect.anything(), dir: 6 });
+  });
+});
+describe('ranks in the odds', () => {
+  it('an Elite foe is harder to beat and an Elite ship fights better, in the AI and in your attack label', () => {
+    const s = game(['*..*']);
+    const ship = addUnit(s, 'destroyer', 1, 1, 0);
+    const base = unitAttackChance(ship, 'destroyer', 0);
+    expect(unitAttackChance(ship, 'destroyer', 3)).toBeLessThan(base);
+    ship.wins = 5;
+    expect(unitAttackChance(ship, 'destroyer', 0)).toBeGreaterThan(base);
   });
 });
