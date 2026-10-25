@@ -370,3 +370,18 @@ describe('ranks in the odds', () => {
     expect(unitAttackChance(ship, 'destroyer', 0)).toBeGreaterThan(base);
   });
 });
+describe('AI hunting cities (city strength rule)', () => {
+  it('a bombarding ship with nothing else to do sails to the square beside a worn-down-able enemy city', () => {
+    const run = (rules: object, damage = 0) => {
+      const s = game(['*.....*'], { rules });
+      const enemyCity = s.cities.find((c) => c.owner === 0)!;
+      enemyCity.damage = damage;
+      s.fog[1].knownCityOwner[enemyCity.id] = 0;
+      addUnit(s, 'cruiser', 1, 4, 0);
+      return next(s);
+    };
+    expect(run({ cityStrength: true })).toMatchObject({ orders: { kind: 'goto', target: { x: 1, y: 0 } } });
+    expect(run({ cityStrength: true }, 2)).not.toMatchObject({ orders: { kind: 'goto', target: { x: 1, y: 0 } } });
+    expect(run({})).not.toMatchObject({ orders: { kind: 'goto', target: { x: 1, y: 0 } } });
+  });
+});
