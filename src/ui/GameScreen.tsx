@@ -165,6 +165,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const [cityOpen, setCityOpen] = useState<number | null>(null);
   const [reports, setReports] = useState<ProductionReportItem[]>([]);
   const [reportIdx, setReportIdx] = useState(0);
+  // Set when Prod. was pressed on a production report: closing the production dialog then moves on to the next report.
+  const reportProd = useRef(false);
 
   // Show a one-off load notice (e.g. an older save) when the game opens.
   useEffect(() => {
@@ -424,6 +426,7 @@ export function GameScreen({ session, onQuit }: Props) {
     setFrozen(null);
     setNoPath(null);
     setCityOpen(null);
+    reportProd.current = false;
     setUnitsOpen(false);
     setReportTab(null);
     setEliminated([]);
@@ -1234,7 +1237,13 @@ export function GameScreen({ session, onQuit }: Props) {
           onRename={(name) => { act({ type: 'renameCity', cityId: openCityObj.id, name }, true); }}
           onSetRoute={(route) => act({ type: 'setRoute', cityId: openCityObj.id, route }, true)}
           onSelectUnit={(id) => { const u = view.myUnits.find((x) => x.id === id); if (u) selectUnit(u); }}
-          onClose={() => setCityOpen(null)}
+          onClose={() => {
+            setCityOpen(null);
+            if (reportProd.current) {
+              reportProd.current = false;
+              nextReport();
+            }
+          }}
         />
       )}
       {reportTab !== null && (
@@ -1260,7 +1269,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <ProductionReport
           key={report.unitId} view={view} report={report} anchor={anchorFor(reportCity)} error={dialogError}
           onRename={(name) => { act({ type: 'renameUnit', unitId: report.unitId, name: name.trim() === '' ? null : name.trim() }, true); }}
-          onProd={() => openCity(reportCity.id)}
+          onProd={() => { reportProd.current = true; openCity(reportCity.id); }}
           onOk={nextReport}
         />
       )}
