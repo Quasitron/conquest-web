@@ -1,9 +1,10 @@
 import { useState } from 'preact/hooks';
-import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled, unitDisplayName, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled, rankOf, unitDisplayName, type PlayerView, type Unit } from '../engine';
 import { describeOrders } from './actions';
 import { UNIT_GLYPH } from './colors';
 import { cargoLoad, cargoSummary, healthText } from './labels';
 import { blur } from './blur';
+import { Chevrons } from './Chevrons';
 
 export function HealthBar({ u }: { u: Unit }) {
   const hits = hitsOf(u);
@@ -52,7 +53,7 @@ export function UnitInfo({ view, unit, onRename, onOrders, onClose }: Props) {
         }
       }}
     >
-      <h2><span class="glyph">{UNIT_GLYPH[unit.type]}</span> {unitDisplayName(unit)}</h2>
+      <h2><span class="glyph">{UNIT_GLYPH[unit.type]}</span> {unitDisplayName(unit)}<Chevrons rank={rankOf(unit.wins)} /></h2>
       <form class="rename" onSubmit={(e) => { e.preventDefault(); onRename(name); }}>
         <input
           value={name} maxLength={24} placeholder={st.name} aria-label="Unit name"

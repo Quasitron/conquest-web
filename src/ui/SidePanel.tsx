@@ -9,6 +9,7 @@ import { cargoAndPatrols, cargoLoad, cargoSummary, cityIsCoastal, patrolsFrom } 
 import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 import { UNIT_ICONS } from './unitIcons';
+import { Chevrons } from './Chevrons';
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | { kind: 'enemy'; id: number } | null;
 
@@ -20,12 +21,6 @@ function Picture({ src, color }: { src: string | undefined; color: string }) {
       <img src={src} alt="" />
     </div>
   );
-}
-
-/** Gold promotion chevrons after a unit's name: one to three, nothing for an unpromoted unit. */
-function Chevrons({ rank }: { rank: number }) {
-  if (rank <= 0) return null;
-  return <span class="chevrons" title={RANK_NAMES[rank]}> {'^'.repeat(rank)}</span>;
 }
 
 interface Props {
