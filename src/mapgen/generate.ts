@@ -26,7 +26,7 @@ function attempt(o: WorldOptions, seed: number, minOthers: number): GeneratedWor
   const landCount = land.filter(Boolean).length;
   const target = Math.max(o.players * (minOthers + 1), Math.round(landCount / LAND_PER_CITY[o.cityDensity]));
   const cities = placeCities(land, width, height, wrap, target, new Rng(seed ^ 0x9e3779b9));
-  const starts = chooseStarts(cities, labels, width, wrap, o.players, minOthers);
+  const starts = chooseStarts(cities, labels, width, wrap, o.players, minOthers, o.starts ?? 'auto');
   if (!starts) return null;
   const terrain: Terrain[] = land.map((l) => (l ? 'land' : 'water'));
   for (const c of cities) terrain[c.y * width + c.x] = 'city';
@@ -51,5 +51,7 @@ export function generateWorld(o: WorldOptions, seed: number): GeneratedWorld {
     const w = attempt(o, (seed + k) | 0, 0);
     if (w) return w;
   }
+  if (o.starts === 'separate') throw new Error('could not give every player a landmass of their own; try more islands, a larger map, or fewer players');
+  if (o.starts === 'together') throw new Error('could not fit every player on one landmass; try fewer islands, a larger map, or fewer players');
   throw new Error('could not generate a playable world; try less water or a larger map');
 }

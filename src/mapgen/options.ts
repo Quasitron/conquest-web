@@ -3,6 +3,8 @@ import type { NameRegion } from '../data/cityNames';
 export type SizePreset = 'small' | 'medium' | 'large' | 'huge';
 export type Landmass = 'islands' | 'mixed' | 'continents';
 export type CityDensity = 'low' | 'normal' | 'high';
+/** Where the players start: Auto keeps them apart when the map allows, Separate puts each on its own landmass, Together puts them all on one. */
+export type StartMode = 'auto' | 'separate' | 'together';
 
 export const SIZE_PRESETS: Record<SizePreset, { width: number; height: number }> = {
   small: { width: 40, height: 30 },
@@ -21,6 +23,7 @@ export interface WorldOptions {
   cityDensity: CityDensity;
   /** 2..6 */
   players: number;
+  starts: StartMode;
   /** Which region's city names come first. */
   nameRegion: NameRegion | 'world';
 }
@@ -32,6 +35,7 @@ export const DEFAULT_WORLD: WorldOptions = {
   landmass: 'mixed',
   cityDensity: 'normal',
   players: 2,
+  starts: 'auto',
   nameRegion: 'world',
 };
 

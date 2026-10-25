@@ -18,6 +18,7 @@ const DENSITY: readonly CityDensity[] = ['low', 'normal', 'high'];
 const REGIONS: readonly WorldOptions['nameRegion'][] = [
   'world', 'europe', 'northAmerica', 'latinAmerica', 'asia', 'africaMiddleEast', 'oceania',
 ];
+const STARTS: readonly WorldOptions['starts'][] = ['auto', 'separate', 'together'];
 const KINDS: readonly SeatConfig['kind'][] = ['human', 'ai', 'idle'];
 
 /** The seats a fresh form starts with: `n` of them, reusing the ones in `prev`. */
@@ -52,6 +53,7 @@ export function parseNewGameSettings(raw: unknown, fallback: NewGameSettings): N
   if (LANDMASS.includes(w.landmass as Landmass)) world.landmass = w.landmass as Landmass;
   if (DENSITY.includes(w.cityDensity as CityDensity)) world.cityDensity = w.cityDensity as CityDensity;
   if (isInt(w.players) && w.players >= 2 && w.players <= 6) world.players = w.players;
+  if (STARTS.includes(w.starts as WorldOptions['starts'])) world.starts = w.starts as WorldOptions['starts'];
   if (REGIONS.includes(w.nameRegion as WorldOptions['nameRegion'])) world.nameRegion = w.nameRegion as WorldOptions['nameRegion'];
 
   const stored = Array.isArray(raw.seats) ? raw.seats.filter(validSeat) : [];
