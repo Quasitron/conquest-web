@@ -285,7 +285,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner, city.damage, visibleGarrison(view, city, city.owner))) };
     // A unit: odds against the first enemy seen on the square (the one that defends), its damage assumed none.
     const foe = view.enemies.find((e) => e.visibleNow && e.x === hover.x && e.y === hover.y);
-    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type) : null, true) };
+    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type, foe.rank ?? 0) : null, true) };
   }, [selectedUnit, hover, targets, view, playing]);
 
   // Path preview under the pointer; held back right after an order was given on that square.
