@@ -1,5 +1,5 @@
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, pathMapFromView,
+  CITY_STRENGTH_HITS, UNIT_STATS, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
   type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -293,6 +293,84 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null, t: AiTuning): 
   return setOrders(u, { kind: 'sentry' });
 }
 
+/** A transport keeps this far from an enemy warship seen within the last few turns (its move plus its reach to attack). */
+const DANGER_RADIUS = 3;
+const DANGER_MEMORY = 3;
+
+/** Sea squares near enemy warships (and submarines) seen lately: a Hard transport will not sail into them. */
+function dangerSquares(view: PlayerView): Set<number> {
+  const out = new Set<number>();
+  for (const e of view.enemies) {
+    if (UNIT_STATS[e.type].domain !== 'sea' || e.type === 'transport' || e.turnSeen < view.turn - DANGER_MEMORY) continue;
+    for (let dy = -DANGER_RADIUS; dy <= DANGER_RADIUS; dy++) {
+      for (let dx = -DANGER_RADIUS; dx <= DANGER_RADIUS; dx++) {
+        const p = normalize(geo(view), e.x + dx, e.y + dy);
+        if (p) out.add(p.y * view.width + p.x);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The square two steps along the shortest sea path from `u` to `target` that keeps out of `danger` (or the target
+ * itself when it is nearer), or null when there is no such path.
+ */
+function safeStep(view: PlayerView, u: Unit, target: Pos, danger: ReadonlySet<number>): Pos | null {
+  const w = view.width;
+  const own = new Set(view.myCities.map((c) => c.y * w + c.x));
+  const start = u.y * w + u.x;
+  const goal = target.y * w + target.x;
+  if (start === goal) return null;
+  const parent = new Map<number, number>([[start, -1]]);
+  let level = [start];
+  while (level.length > 0 && !parent.has(goal)) {
+    const next: number[] = [];
+    for (const i of level) {
+      const x = i % w;
+      const y = (i - x) / w;
+      for (const n of neighbors(geo(view), x, y)) {
+        const j = n.y * w + n.x;
+        const terrain = view.terrain[j];
+        if (parent.has(j) || terrain === null || danger.has(j)) continue;
+        if (terrain !== 'water' && !own.has(j)) continue;
+        parent.set(j, i);
+        next.push(j);
+      }
+    }
+    level = next;
+  }
+  if (!parent.has(goal)) return null;
+  const path: number[] = [];
+  for (let j = goal; j !== start; j = parent.get(j)!) path.push(j);
+  path.reverse();
+  const step = path[Math.min(path.length, 2) - 1];
+  return { x: step % w, y: Math.floor(step / w) };
+}
+
+/**
+ * Hard: the next leg toward the nearest foreign city that can be reached around the danger, as a Go-to command;
+ * 'hold' when every approach is blocked, 'none' when nothing is known to be dangerous (so the usual way applies).
+ */
+function safeApproach(view: PlayerView, u: Unit): SessionCommand | 'hold' | 'none' {
+  const danger = dangerSquares(view);
+  if (danger.size === 0 || danger.has(u.y * view.width + u.x)) return 'none';
+  const dist = reach(view, u);
+  const squares: { sq: Pos; d: number }[] = [];
+  for (const c of view.knownCities) {
+    if (c.owner === view.me) continue;
+    for (const n of neighbors(geo(view), c.x, c.y)) {
+      const d = dist.get(n.y * view.width + n.x);
+      if (d !== undefined && d > 0) squares.push({ sq: n, d });
+    }
+  }
+  squares.sort((a, b) => a.d - b.d);
+  for (const { sq } of squares.slice(0, 8)) {
+    const step = safeStep(view, u, sq, danger);
+    if (step) return setOrders(u, { kind: 'goto', target: step });
+  }
+  return squares.length > 0 ? 'hold' : 'none';
+}
 function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null {
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id);
   const inCity = view.myCities.some((c) => at(c, u));
@@ -300,13 +378,24 @@ function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand
     const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, u)).length;
     const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
     const ready = cargo.length === 0 && waiting >= need;
-    return ready && (!t.escorts || escortReady(view, u)) ? setOrders(u, { kind: 'explore' }) : null;
+    if (!ready || (t.escorts && !escortReady(view, u))) return null;
+    if (t.avoidPatrols) {
+      const safe = safeApproach(view, u);
+      if (safe === 'hold') return null;
+      if (safe !== 'none') return safe;
+    }
+    return setOrders(u, { kind: 'explore' });
   }
   if (cargo.length > 0) {
     const nextToCity = view.knownCities.some((c) => c.owner !== view.me && chebyshev(geo(view), u, c) <= 1);
     // Sleeping cargo next to a foreign city: wake it so the armies can step ashore.
     if (nextToCity && cargo.some((a) => a.orders !== null)) return { type: 'unload', transportId: u.id, unitIds: null };
     if (nextToCity) return null;
+    if (t.avoidPatrols) {
+      const safe = safeApproach(view, u);
+      if (safe === 'hold') return null;
+      if (safe !== 'none') return safe;
+    }
     const approach = nearestApproach(view, u);
     if (approach) return setOrders(u, { kind: 'goto', target: approach });
     if (findFrontier(pathMapFromView(view), u) !== null) return setOrders(u, { kind: 'explore' });

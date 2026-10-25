@@ -445,3 +445,56 @@ describe('AI transports wait for an escort (Hard)', () => {
     expect(sails(s, tr.id, 'hard')).toBe(true); // an escort is in port
   });
 });
+describe('AI transports avoid patrols (Hard)', () => {
+  const rows = [
+    '*...........',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '..........*.',
+  ];
+  const setup = () => {
+    const s = game(rows);
+    s.cities[0].owner = 1; // the city in the corner is ours, the far one is the enemy's
+    s.cities[1].owner = 0;
+    for (const c of s.cities) c.production = c.owner === null ? null : 'army';
+    const enemy = s.cities[1];
+    s.fog[1].knownCityOwner[enemy.id] = 0;
+    const tr = addUnit(s, 'transport', 1, 2, 3);
+    addUnit(s, 'army', 1, 2, 3, { carriedBy: tr.id, orders: { kind: 'sentry' } });
+    const cruiser = addUnit(s, 'cruiser', 0, 6, 1);
+    s.fog[1].lastSeen[cruiser.id] = { unitId: cruiser.id, type: 'cruiser', owner: 0, x: 6, y: 1, turnSeen: s.turn };
+    return { s, tr, cruiser };
+  };
+  const target = (cmd: unknown) => (cmd as { orders?: { target?: { x: number; y: number } } } | null)?.orders?.target ?? null;
+  const first = (s: GameState, d: Difficulty, id: number) => {
+    const memo = newMemo(d);
+    for (let i = 0; i < 20; i++) {
+      const cmd = nextAction(view(s), memo);
+      if (cmd === null) return null;
+      if (cmd.type === 'setOrders' && cmd.unitId === id) return cmd;
+    }
+    return null;
+  };
+
+  it('Hard takes the next leg around the danger; Normal heads for the city as before', () => {
+    const { s, tr } = setup();
+    const hard = target(first(s, 'hard', tr.id));
+    const normal = target(first(s, 'normal', tr.id));
+    expect(normal).not.toBeNull();
+    expect(Math.max(Math.abs(normal!.x - 2), Math.abs(normal!.y - 3))).toBeGreaterThan(2); // straight to the far approach
+    expect(hard).not.toBeNull();
+    expect(Math.max(Math.abs(hard!.x - 2), Math.abs(hard!.y - 3))).toBeLessThanOrEqual(2); // one short leg
+    expect(Math.max(Math.abs(hard!.x - 6), Math.abs(hard!.y - 1))).toBeGreaterThan(3); // outside the cruiser's reach
+  });
+
+  it('Hard holds when the enemy sits across every way in', () => {
+    const { s, tr, cruiser } = setup();
+    cruiser.x = 10; cruiser.y = 6; // right beside the only city
+    s.fog[1].lastSeen[cruiser.id] = { unitId: cruiser.id, type: 'cruiser', owner: 0, x: 10, y: 6, turnSeen: s.turn };
+    expect(first(s, 'hard', tr.id)).toBeNull();
+  });
+});
