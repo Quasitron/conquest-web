@@ -66,9 +66,12 @@ const isWarship = (t: UnitType | null): boolean => t !== null && WARSHIPS.includ
 /** An enemy ship seen within this many turns means the sea matters. */
 const SEA_MEMORY = 10;
 
+/** Warships and submarines: the whole fleet, for deciding how many more to build. */
+const isFleet = (t: UnitType | null): boolean => isWarship(t) || t === 'submarine';
+
 function warshipsOwnedOrBuilding(view: PlayerView): number {
-  return view.myUnits.filter((u) => isWarship(u.type)).length
-    + view.myCities.filter((c) => isWarship(c.production)).length;
+  return view.myUnits.filter((u) => isFleet(u.type)).length
+    + view.myCities.filter((c) => isFleet(c.production)).length;
 }
 
 /**
@@ -88,7 +91,11 @@ function wantedWarships(view: PlayerView, t: AiTuning): number {
 }
 
 /** Heavier ships as the empire grows. */
-function warshipFor(view: PlayerView): UnitType {
+function warshipFor(view: PlayerView, t: AiTuning, ships: number, city: City): UnitType {
+  // Hard: one ship in three hunts under water (counting the submarines owned or being built elsewhere).
+  const subs = view.myUnits.filter((u) => u.type === 'submarine').length
+    + view.myCities.filter((c) => c.id !== city.id && c.production === 'submarine').length;
+  if (t.subs && subs < Math.floor((ships + 1) / 3)) return 'submarine';
   const n = view.myCities.length;
   return n >= 8 ? 'battleship' : n >= 4 ? 'cruiser' : 'destroyer';
 }
@@ -118,9 +125,9 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
   }
   if (t.scouts && isScoutCity(view, city, port)) return 'fighter';
   if (cityIsCoastal(view, city)) {
-    const ships = warshipsOwnedOrBuilding(view) - (isWarship(city.production) ? 1 : 0);
+    const ships = warshipsOwnedOrBuilding(view) - (isFleet(city.production) ? 1 : 0);
     const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
-    if (portReady && ships < wantedWarships(view, t)) return warshipFor(view);
+    if (portReady && ships < wantedWarships(view, t)) return warshipFor(view, t, ships, city);
   }
   return 'army';
 }
@@ -542,7 +549,7 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
   }
 
   // Hard: stay with (or go to) a loaded transport at sea.
-  if (t.escorts) {
+  if (t.escorts && u.type !== 'submarine') {
     const duty = escortOrders(view, u, t);
     if (duty !== 'none') return duty;
   }
@@ -622,7 +629,8 @@ function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): Sess
     case 'cruiser':
     case 'battleship': return decideWarship(view, u, t);
     case 'fighter': return t.scouts ? decideScout(view, u) : null;
-    default: return null; // submarines and carriers are not built yet
+    case 'submarine': return decideWarship(view, u, t);
+    default: return null; // carriers are not built yet
   }
 }
 
