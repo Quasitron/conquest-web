@@ -300,7 +300,7 @@ function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand
     const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, u)).length;
     const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
     const ready = cargo.length === 0 && waiting >= need;
-    return ready ? setOrders(u, { kind: 'explore' }) : null;
+    return ready && (!t.escorts || escortReady(view, u)) ? setOrders(u, { kind: 'explore' }) : null;
   }
   if (cargo.length > 0) {
     const nextToCity = view.knownCities.some((c) => c.owner !== view.me && chebyshev(geo(view), u, c) <= 1);
@@ -364,32 +364,53 @@ const ESCORT_NEAR = 2;
 /** A free warship will go to a loaded transport at most this far away. */
 const ESCORT_RANGE = 12;
 
-/** Our transports at sea (not in a city) that carry something. */
-function loadedTransportsAtSea(view: PlayerView): Unit[] {
-  return view.myUnits.filter((tr) => tr.type === 'transport' && tr.carriedBy === null
-    && !view.myCities.some((c) => at(c, tr)) && view.myUnits.some((c) => c.carriedBy === tr.id));
+/** Armies waiting beside a transport in a city, and how many it wants before it sails. */
+function sailReady(view: PlayerView, tr: Unit, t: AiTuning): boolean {
+  const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, tr)).length;
+  const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
+  return !view.myUnits.some((c) => c.carriedBy === tr.id) && waiting >= need;
+}
+
+/** Transports that want an escort: loaded ones at sea, and ones in port whose armies are ready to sail. */
+function escortWards(view: PlayerView, t: AiTuning): Unit[] {
+  return view.myUnits.filter((tr) => {
+    if (tr.type !== 'transport' || tr.carriedBy !== null) return false;
+    if (view.myCities.some((c) => at(c, tr))) return sailReady(view, tr, t);
+    return view.myUnits.some((c) => c.carriedBy === tr.id);
+  });
 }
 
 /**
- * Hard: escort duty. A warship already beside a loaded transport stays with it (null: leave its orders alone); a free
- * one sails to the square beside the nearest loaded transport that has no warship near it. 'none' means no duty.
+ * Whether a transport in port may sail: a healthy warship is beside it, or none could ever join it (none owned, or
+ * none able to reach the port by sea), so it must not wait for ever.
  */
-function escortOrders(view: PlayerView, u: Unit): SessionCommand | null | 'none' {
-  const loaded = loadedTransportsAtSea(view);
-  if (loaded.some((tr) => chebyshev(geo(view), u, tr) <= ESCORT_NEAR)) return null;
+function escortReady(view: PlayerView, tr: Unit): boolean {
+  const ships = view.myUnits.filter((w) => isWarship(w.type) && w.damage === 0 && w.carriedBy === null);
+  if (ships.some((w) => chebyshev(geo(view), w, tr) <= ESCORT_NEAR)) return true;
+  // Wait for one that can come, or for one being built; sail alone only when none could ever join.
+  return !ships.some((w) => reach(view, w).has(tr.y * view.width + tr.x)) && !view.myCities.some((c) => isWarship(c.production));
+}
+
+/**
+ * Hard: escort duty. A warship already beside a ward stays with it (null: leave its orders alone); a free one goes to
+ * the nearest ward that has no warship near it: the square beside it at sea, or the port itself. 'none' means no duty.
+ */
+function escortOrders(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null | 'none' {
+  const wards = escortWards(view, t);
+  if (wards.some((tr) => chebyshev(geo(view), u, tr) <= ESCORT_NEAR)) return null;
   const others = view.myUnits.filter((w) => isWarship(w.type) && w.id !== u.id);
   const dist = reach(view, u);
   let goal: { sq: Pos; d: number } | null = null;
-  for (const tr of loaded) {
+  for (const tr of wards) {
     if (chebyshev(geo(view), u, tr) > ESCORT_RANGE || others.some((w) => chebyshev(geo(view), w, tr) <= ESCORT_NEAR)) continue;
-    for (const n of neighbors(geo(view), tr.x, tr.y)) {
+    const squares = view.myCities.some((c) => at(c, tr)) ? [{ x: tr.x, y: tr.y }] : neighbors(geo(view), tr.x, tr.y);
+    for (const n of squares) {
       const d = dist.get(n.y * view.width + n.x);
       if (d !== undefined && d > 0 && (goal === null || d < goal.d)) goal = { sq: n, d };
     }
   }
   return goal ? setOrders(u, { kind: 'goto', target: goal.sq }) : 'none';
 }
-
 function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand | null {
   const inCity = view.myCities.some((c) => at(c, u));
   const ships = enemyShips(view);
@@ -420,7 +441,7 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
 
   // Hard: stay with (or go to) a loaded transport at sea.
   if (t.escorts) {
-    const duty = escortOrders(view, u);
+    const duty = escortOrders(view, u, t);
     if (duty !== 'none') return duty;
   }
 
@@ -488,6 +509,20 @@ export function nextAction(view: PlayerView, memo: AiMemo): SessionCommand | nul
     if (leftIdle(u.id, view.turn, memo.tuning.idlePercent)) continue; // not this turn (Easy)
     const cmd = decide(view, u, port, memo.tuning);
     if (cmd && bump(memo, `u${u.id}`)) return cmd;
+  }
+
+  // Hard: warships on patrol (or idling on sentry) are pulled onto escort duty when a loaded transport is at sea.
+  if (memo.tuning.escorts) {
+    const busy = view.myUnits
+      .filter((u) => isWarship(u.type) && u.movesLeft > 0 && u.damage === 0 && u.carriedBy === null
+        && (u.orders?.kind === 'patrol' || u.orders?.kind === 'sentry'))
+      .sort((a, b) => a.id - b.id);
+    for (const u of busy) {
+      if ((memo.tries.get(`u${u.id}`) ?? 0) >= MAX_TRIES) continue;
+      const duty = escortOrders(view, u, memo.tuning);
+      if (duty === null && u.orders?.kind === 'patrol' && bump(memo, `u${u.id}`)) return setOrders(u, { kind: 'sentry' });
+      if (duty !== null && duty !== 'none' && bump(memo, `u${u.id}`)) return duty;
+    }
   }
   return null;
 }

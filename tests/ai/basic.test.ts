@@ -413,3 +413,35 @@ describe('AI escorts (Hard)', () => {
     expect(cmd === null || !(cmd as { orders?: { target?: { x: number } } }).orders?.target || (cmd as { orders: { target: { x: number } } }).orders.target.x !== 4).toBe(true);
   });
 });
+describe('AI transports wait for an escort (Hard)', () => {
+  const portGame = () => {
+    const s = game(['*..*..']);
+    const port = s.cities.find((c) => c.owner === 1)!;
+    const tr = addUnit(s, 'transport', 1, port.x, port.y);
+    for (let i = 0; i < 3; i++) addUnit(s, 'army', 1, port.x, port.y, { orders: { kind: 'sentry' } });
+    s.turn = 20;
+    return { s, port, tr };
+  };
+  /** Whether the transport is sent sailing; production commands that are not applied here are skipped over. */
+  const sails = (s: GameState, id: number, d: Difficulty) => {
+    const memo = newMemo(d);
+    for (let i = 0; i < 20; i++) {
+      const cmd = nextAction(view(s), memo);
+      if (cmd === null) return false;
+      if (cmd.type === 'setOrders' && cmd.unitId === id && cmd.orders?.kind === 'explore') return true;
+    }
+    return false;
+  };
+
+  it('Normal sails at once; Hard waits while a warship is being built, and sails when one is beside it', () => {
+    const { s, port, tr } = portGame();
+    const other = s.cities.find((c) => c.owner === 1 && c.id !== port.id) ?? port;
+    other.production = 'cruiser';
+    expect(sails(s, tr.id, 'normal')).toBe(true);
+    expect(sails(s, tr.id, 'hard')).toBe(false);
+    other.production = 'army';
+    expect(sails(s, tr.id, 'hard')).toBe(true); // nothing is coming: sail alone
+    addUnit(s, 'destroyer', 1, port.x, port.y);
+    expect(sails(s, tr.id, 'hard')).toBe(true); // an escort is in port
+  });
+});
