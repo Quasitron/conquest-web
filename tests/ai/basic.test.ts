@@ -540,3 +540,41 @@ describe('AI scouting fighter (Hard)', () => {
     expect(cmd).toMatchObject({ type: 'goHome', unitId: f.id });
   });
 });
+describe('AI submarines (Hard)', () => {
+  const fleetGame = () => {
+    const s = game(['*..............*..*']);
+    s.cities[0].owner = 1;
+    s.cities[1].owner = 1;
+    s.cities[2].owner = 0;
+    for (const c of s.cities) c.production = 'army';
+    s.turn = 30;
+    const e = addUnit(s, 'transport', 0, 9, 0);
+    s.fog[1].lastSeen[e.id] = { unitId: e.id, type: 'transport', owner: 0, x: 9, y: 0, turnSeen: s.turn };
+    return s;
+  };
+
+  it('Hard makes every third ship of its fleet a submarine; Normal never builds one', () => {
+    const s = fleetGame();
+    const v0 = view(s);
+    const port = portCity(v0)!;
+    const other = v0.myCities.find((c) => c.id !== port.id)!;
+    const want = (d: Difficulty) => wantedProduction(view(s), other, port, tuningFor(d));
+    expect(want('hard')).toBe('destroyer'); // the first ship
+    addUnit(s, 'destroyer', 1, 3, 0, { orders: { kind: 'sentry' } });
+    expect(want('hard')).toBe('destroyer'); // the second
+    addUnit(s, 'destroyer', 1, 4, 0, { orders: { kind: 'sentry' } });
+    expect(want('hard')).toBe('submarine'); // the third
+    expect(want('normal')).not.toBe('submarine');
+  });
+
+  it('a submarine fights an enemy transport beside it, as the other warships do', () => {
+    const s = game(['*..............*..*']);
+    s.cities[0].owner = 1;
+    s.cities[2].owner = 0;
+    for (const c of s.cities) c.production = 'army';
+    const sub = addUnit(s, 'submarine', 1, 5, 0);
+    const tr = addUnit(s, 'transport', 0, 6, 0);
+    s.fog[1].lastSeen[tr.id] = { unitId: tr.id, type: 'transport', owner: 0, x: 6, y: 0, turnSeen: s.turn };
+    expect(nextAction(view(s), newMemo('hard'))).toMatchObject({ type: 'move', unitId: sub.id, dir: 2 });
+  });
+});
