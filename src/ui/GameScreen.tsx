@@ -682,9 +682,12 @@ export function GameScreen({ session, onQuit }: Props) {
   advanceNow.current = () => {
     if (!playing || target || picker || cityOpen !== null || reports.length > 0 || infoId !== null) return;
     if (selection?.kind !== 'unit') return;
-    const next = nextReadyAfter(readyNow(), selection.id);
+    const now = readyNow();
+    // A unit that arrived with moves to spare is still ready: stay with it instead of skipping to the next one.
+    if (now.some((u) => u.id === selection.id)) return;
+    const next = nextReadyAfter(now, selection.id);
     if (next && next.id !== selection.id) selectUnit(next);
-    else if (readyNow().length === 0) setSelection(null);
+    else if (now.length === 0) setSelection(null);
   };
 
   const cancelGroup = () => {
