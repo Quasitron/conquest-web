@@ -342,3 +342,20 @@ describe('AI warships', () => {
 });
 
 
+
+describe('AI bombardment (city strength rule)', () => {
+  it('a healthy battleship beside an enemy city fires on it, but not once it is worn down, nor with the rule off', () => {
+    const run = (rules: object, damage = 0) => {
+      const s = game(['*..*'], { rules });
+      const enemyCity = s.cities.find((c) => c.owner === 0)!;
+      enemyCity.damage = damage;
+      s.fog[1].knownCityOwner[enemyCity.id] = 0; // the AI has seen whose city it is
+      const ship = addUnit(s, 'battleship', 1, enemyCity.x + 1, enemyCity.y);
+      return { cmd: next(s), ship };
+    };
+    const on = run({ cityStrength: true });
+    expect(on.cmd).toEqual({ type: 'move', unitId: on.ship.id, dir: 6 });
+    expect(run({ cityStrength: true }, 2).cmd).not.toEqual({ type: 'move', unitId: expect.anything(), dir: 6 });
+    expect(run({}).cmd).not.toEqual({ type: 'move', unitId: expect.anything(), dir: 6 });
+  });
+});

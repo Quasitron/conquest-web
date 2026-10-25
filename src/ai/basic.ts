@@ -4,7 +4,7 @@ import {
 } from '../engine';
 import type { SessionCommand } from '../app/session';
 import { cityIsCoastal } from '../ui/labels';
-import { landingPlan } from '../ui/plans';
+import { cityBombardChance, landingPlan } from '../ui/plans';
 import { dirTo } from '../ui/targets';
 import { leftIdle, tuningFor, type AiTuning, type Difficulty } from './difficulty';
 
@@ -368,6 +368,16 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
   if (adjacent && winChance(u, adjacent.type) >= t.minShipWinChance) {
     const dir = dirTo(view, u, adjacent);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
+  }
+
+  // City strength rule: a healthy bombarding ship beside an enemy player's city fires on it while that can still wear it down.
+  if (view.rules.cityStrength && UNIT_STATS[u.type].bombard && u.damage === 0 && u.movesLeft > 0) {
+    const city = view.knownCities.find((c) => c.owner !== null && c.owner !== view.me
+      && chebyshev(geo(view), u, c) === 1 && c.damage < CITY_STRENGTH_HITS - 1);
+    if (city && cityBombardChance(view, u, city.damage, 0) >= t.minShipWinChance) {
+      const dir = dirTo(view, u, city);
+      if (dir !== null) return { type: 'move', unitId: u.id, dir };
+    }
   }
 
   // Hurt: repair in port (sleeping until it is fit again), going there first when it is at sea.
