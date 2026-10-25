@@ -123,6 +123,16 @@ function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myCol
   );
 }
 
+/** Next unit (and End Turn when nothing is waiting), under a city or enemy panel, so it works without the N key (an iPad has none). */
+function NextBar({ readyCount, onAction }: { readyCount: number; onAction: Props['onAction'] }) {
+  return (
+    <div class="actions">
+      <button onClick={(e) => { blur(e); onAction('next'); }}>Next unit</button>
+      {readyCount === 0 && <button class="primary" onClick={(e) => { blur(e); onAction('endTurn'); }}>End Turn</button>}
+    </div>
+  );
+}
+
 function EmptyPanel({ text, readyCount, onAction }: { text: string; readyCount: number; onAction: Props['onAction'] }) {
   return (
     <aside class="panel">
@@ -147,6 +157,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
         <h3><span class="glyph owned" style={{ background: enemyColor }}>{UNIT_GLYPH[e.type]}</span> {UNIT_STATS[e.type].name}<Chevrons rank={e.rank ?? 0} /></h3>
         <p>{view.players[e.owner].name}</p>
         <p>{seen}</p>
+        <NextBar readyCount={readyCount} onAction={onAction} />
       </aside>
     );
   }
@@ -164,6 +175,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
     return (
       <aside class="panel">
         <CityDetails city={own} view={view} onProduction={onProduction} onSelectUnit={onSelectUnit} onOpenCity={onOpenCity} myColor={myColor} />
+        <NextBar readyCount={readyCount} onAction={onAction} />
       </aside>
     );
   }
@@ -174,6 +186,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
       <h3>{known?.name ?? `City #${selection.id}`}</h3>
       <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
       {view.rules.cityStrength && known && known.owner !== null && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
+      <NextBar readyCount={readyCount} onAction={onAction} />
     </aside>
   );
 }
