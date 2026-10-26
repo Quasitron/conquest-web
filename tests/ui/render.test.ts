@@ -1,5 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
+import { explosionFade } from '../../src/ui/explosions';
 import { drawMap, drawMinimap, type DrawOptions } from '../../src/ui/render';
 import { PLAYER_COLORS, TERRAIN_COLORS, UNIT_GLYPH } from '../../src/ui/colors';
 import { addUnit, makeGame } from '../helpers';
@@ -306,6 +307,19 @@ describe('render', () => {
     const { ctx, calls } = fakeCtx();
     drawMinimap(ctx, getPlayerView(s, 0), PLAYER_COLORS, 70, 30, { x: 0, y: 0, tile: 20 }, 140, 60);
     expect(calls.fillRect).toBeGreaterThan(0);
+  });
+});
+
+describe('explosion fade', () => {
+  it('stays full until the burst is half over, dims steadily, and is half strength when the fight ends', () => {
+    const f = (b: number, s: number) => explosionFade(b, s);
+    expect(f(0.2, 0)).toBe(1);
+    expect(f(0.5, 0)).toBe(1);
+    expect(f(0.75, 0)).toBeCloseTo(0.875, 5);
+    expect(f(1, 0)).toBeCloseTo(0.75, 5);
+    expect(f(1, 0.5)).toBeCloseTo(0.625, 5);
+    expect(f(1, 1)).toBeCloseTo(0.5, 5);
+    for (let i = 1; i <= 10; i++) expect(f(Math.min(1, i / 5), Math.max(0, (i - 5) / 5))).toBeLessThanOrEqual(f(Math.min(1, (i - 1) / 5), Math.max(0, (i - 6) / 5)));
   });
 });
 
