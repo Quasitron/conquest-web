@@ -335,6 +335,24 @@ describe('unit pictures on the map', () => {
     expect(near.fillText).not.toContain(UNIT_GLYPH.destroyer);
   });
 
+  it('a fight that destroys something ends in the explosion picture over the loser, in place of the code burst', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    const fight = {
+      at: { x: 1, y: 1 }, attackerId: 9, from: { x: 2, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const,
+      defenderType: 'army' as const, attackerWon: true, moved: false, destroyed: true, captured: false, text: 't',
+    };
+    const shots = paint(s, 40, { fx: [{ fight, age: 100, duration: 800 }] });
+    const burst = paint(s, 40, { fx: [{ fight, age: 600, duration: 800 }] });
+    const last = paint(s, 40, { fx: [{ fight, age: 780, duration: 800 }] });
+    // The shots are the usual rings; once the result bursts the explosion pictures (fire and smoke) are drawn instead.
+    expect(burst.pictures).toBeGreaterThan(shots.pictures);
+    expect(last.pictures).toBeGreaterThan(shots.pictures);
+    expect(burst.strokes.length).toBeLessThan(shots.strokes.length);
+    // A plain hit keeps the code burst and gets no explosion.
+    const hit = paint(s, 40, { fx: [{ fight: { ...fight, destroyed: false }, age: 600, duration: 800 }] });
+    expect(hit.pictures).toBe(shots.pictures);
+  });
   it('mirrors a picture when the unit heads the other way from the way it faces', () => {
     g.Image = LoadedImage;
     const s = makeGame(M);

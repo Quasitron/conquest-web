@@ -47,7 +47,7 @@ export function onIconsLoaded(listener: () => void): () => void {
 }
 
 /** A picture once it has loaded (loading starts the first time it is asked for), else null. */
-function loaded(src: string): HTMLImageElement | null {
+export function loaded(src: string): HTMLImageElement | null {
   if (typeof Image === 'undefined') return null;
   let img = images.get(src);
   if (!img) {
