@@ -47,7 +47,7 @@ interface Props {
   onQuit: () => void;
 }
 
-type TargetMode = null | 'moveTo' | 'patrol';
+type TargetMode = null | 'moveTo' | 'patrol' | 'escort';
 
 // Rough size of the context menu, used to keep it on screen.
 const MENU_W = 220;
@@ -839,6 +839,7 @@ export function GameScreen({ session, onQuit }: Props) {
         return;
       case 'moveTo':
       case 'patrol':
+      case 'escort':
         setTarget(id);
         setMessage(null);
         return;
@@ -868,6 +869,20 @@ export function GameScreen({ session, onQuit }: Props) {
         return;
       }
       const mode = target;
+      if (mode === 'escort') {
+        // The click must land on one of your transports (at sea or in a city); anything else keeps waiting.
+        const tr = view.myUnits.find((t) => t.type === 'transport' && t.carriedBy === null && t.x === p.x && t.y === p.y);
+        if (!tr) {
+          setMessage('Click one of your transports to escort (Esc cancels).');
+          return;
+        }
+        setTarget(null);
+        const unit = selectedUnit;
+        const info = `${unitDisplayName(unit)} escorts ${unitDisplayName(tr)}.`;
+        setOrders(unit, { kind: 'escort', transportId: tr.id });
+        if (session.view().myUnits.find((x) => x.id === unit.id)?.orders?.kind === 'escort') setMessage(info);
+        return;
+      }
       setTarget(null);
       if (mode === 'moveTo') giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
       else giveRoute(selectedUnit, { kind: 'patrol', a: { x: selectedUnit.x, y: selectedUnit.y }, b: p, toB: true }, p);
@@ -1104,7 +1119,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Settings</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
-          {target && <span class="message" role="status">{target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).</span>}
+          {target && <span class="message" role="status">{target === 'escort' ? 'Escort: click one of your transports (Esc cancels).' : `${target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).`}</span>}
           {!target && groupHint && <span class="message" role="status">{groupHint}</span>}
           {!target && !groupHint && message && <span class="message" role="status">{message}</span>}
           {!target && !groupHint && !message && playing && nothingLeft && <span class="message" role="status">You have no cities or units left.</span>}

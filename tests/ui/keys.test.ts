@@ -49,7 +49,7 @@ describe('keyToAction', () => {
   });
 
   it('no longer maps the old letter-direction keys or unbound letters', () => {
-    for (const k of ['q', 'w', 'e', 'a', 'd']) {
+    for (const k of ['q', 'w', 'a', 'd']) {
       expect(keyToAction(k, `Key${k.toUpperCase()}`)).toBeNull();
     }
     expect(keyToAction('y', 'KeyY')).toBeNull();

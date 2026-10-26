@@ -7,7 +7,7 @@ import { setProduction } from './production';
 import { endTurn, resign } from './turn';
 import { updateFog } from './fog';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
-import { chooseHome, giveOrders } from './orders';
+import { chooseHome, giveOrders, runEscorts } from './orders';
 import { cleanName } from './names';
 import { pickUpRoute, validateRoute } from './routes';
 
@@ -146,6 +146,8 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       error = 'unknown command';
   }
 
+  // Escorts follow their transports (a move, a Go-to or an unload may have moved one).
+  if (!error && cmd.type !== 'endTurn' && cmd.type !== 'resign') runEscorts(s, rng, actor, events);
   if (error) return { ok: false, error };
   s.rngState = rng.state;
   const fogCommands = ['move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
