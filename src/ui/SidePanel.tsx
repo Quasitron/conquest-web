@@ -2,7 +2,7 @@ import { CITY_STRENGTH_HITS, RANK_NAMES, garrisonBonus, rankOf, UNIT_STATS, UNIT
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
-import { describeOrders } from './actions';
+import { ordersText } from './actions';
 import type { ActionId } from './keys';
 import { UNIT_GLYPH } from './colors';
 import { cargoAndPatrols, cargoLoad, cargoSummary, cityIsCoastal, patrolsFrom } from './labels';
@@ -51,7 +51,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
       <Picture src={UNIT_ICONS[u.type]?.src} color={myColor} />
       <h3><span class="glyph owned" style={{ background: myColor }}>{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}<Chevrons rank={rankOf(u.wins)} /></h3>
       {view.rules.promotions && st.promotes && <p>Rank: {RANK_NAMES[rankOf(u.wins)]}{u.wins ? ` (${u.wins} win${u.wins === 1 ? '' : 's'})` : ''}</p>}
-      <p>Orders: {describeOrders(u.orders)}</p>
+      <p>Orders: {ordersText(view, u)}</p>
       <p>Moves {u.movesLeft}/{st.move}</p>
       <HealthBar u={u} />
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
@@ -64,10 +64,10 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
           {open && (
             <ul class="cargo-list">
               {cargo.map((c) => (
-                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {describeOrders(c.orders)}</button></li>
+                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {ordersText(view, c)}</button></li>
               ))}
               {away.map((c) => (
-                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {describeOrders(c.orders)} (away)</button></li>
+                <li key={c.id}><button onClick={(e) => { blur(e); onSelectUnit(c.id); }}>{unitDisplayName(c)} · {ordersText(view, c)} (away)</button></li>
               ))}
             </ul>
           )}
@@ -90,28 +90,33 @@ function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myCol
       {view.rules.cityStrength && <p>Strength {CITY_STRENGTH_HITS - (city.damage ?? 0)}/{CITY_STRENGTH_HITS}</p>}
       {city.warTorn ? <p>War-torn: builds {city.warTorn * 25}% slower</p> : null}
       {view.rules.garrisonsDefend && <p>Garrison defence +{garrisonBonus(here.filter((u) => UNIT_STATS[u.type].domain === 'land').length)}</p>}
-      <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
-      <label>Building{' '}
-        <select value={city.production ?? ''} onChange={(e) => {
-          const v = (e.target as HTMLSelectElement).value;
-          (e.currentTarget as HTMLElement).blur();
-          onProduction(city.id, v === '' ? null : (v as UnitType));
-        }}>
-          <option value="">Nothing</option>
-          {UNIT_TYPES.map((t) => (
-            <option value={t} disabled={UNIT_STATS[t].domain === 'sea' && !coastal}>
-              {UNIT_STATS[t].name} ({buildTime(city, t)} turns)
-            </option>
-          ))}
-        </select>
-      </label>
+      <h4>Orders</h4>
+      <div class="actions">
+        <button onClick={(e) => { blur(e); onOpenCity(city.id); }}>Open city screen</button>
+        <label>Building
+          <select value={city.production ?? ''} onChange={(e) => {
+            const v = (e.target as HTMLSelectElement).value;
+            (e.currentTarget as HTMLElement).blur();
+            onProduction(city.id, v === '' ? null : (v as UnitType));
+          }}>
+            <option value="">Nothing</option>
+            {UNIT_TYPES.map((t) => (
+              <option value={t} disabled={UNIT_STATS[t].domain === 'sea' && !coastal}>
+                {UNIT_STATS[t].name} ({buildTime(city, t)} turns)
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {city.production && <p>Progress {city.progress}/{buildTime(city, city.production)}</p>}
       {here.length > 0 && (
         <div>
           <h4>Units here</h4>
-          {here.map((u) => (
-            <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onSelectUnit(u.id); }}>{UNIT_STATS[u.type].name} ({u.movesLeft} moves)</button>
-          ))}
+          <div class="actions">
+            {here.map((u) => (
+              <button onClick={(e) => { (e.currentTarget as HTMLElement).blur(); onSelectUnit(u.id); }}>{UNIT_STATS[u.type].name} ({u.movesLeft} moves)</button>
+            ))}
+          </div>
         </div>
       )}
     </div>
