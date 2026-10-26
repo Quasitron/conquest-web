@@ -353,6 +353,19 @@ describe('unit pictures on the map', () => {
     const hit = paint(s, 40, { fx: [{ fight: { ...fight, destroyed: false }, age: 600, duration: 800 }] });
     expect(hit.pictures).toBe(shots.pictures);
   });
+  it('the explosion lingers a little after its fight has ended, and then is gone', () => {
+    g.Image = LoadedImage;
+    const s = makeGame(M);
+    const fight = {
+      at: { x: 1, y: 1 }, attackerId: 9, from: { x: 2, y: 1 }, attackerOwner: 1, defenderOwner: 0, attackerType: 'cruiser' as const,
+      defenderType: 'army' as const, attackerWon: true, moved: false, destroyed: true, captured: false, text: 't',
+    };
+    const base = paint(s, 40).pictures;
+    const justAfter = paint(s, 40, { fx: [{ fight, age: 900, duration: 800 }] }).pictures; // 100 ms after the end
+    const muchLater = paint(s, 40, { fx: [{ fight, age: 800 + 2000, duration: 800 }] }).pictures;
+    expect(justAfter).toBeGreaterThan(base);
+    expect(muchLater).toBe(base);
+  });
   it('mirrors a picture when the unit heads the other way from the way it faces', () => {
     g.Image = LoadedImage;
     const s = makeGame(M);

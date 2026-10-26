@@ -1,4 +1,4 @@
-import { drawExplosion, explosionReady, explosionVariant } from './explosions';
+import { EXPLOSION_TAIL_MS, drawExplosion, explosionReady, explosionVariant } from './explosions';
 import { CITY_STRENGTH_HITS, rankOf, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
@@ -515,6 +515,17 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant);
       });
     }
+  }
+  // The explosion of a fight that has just ended lingers a little, fading out.
+  for (const a of o.fx ?? []) {
+    const k = (a.age - a.duration) / EXPLOSION_TAIL_MS;
+    if (k < 0 || k >= 1 || !(a.fight.destroyed || a.fight.captured)) continue;
+    const variant = explosionVariant(a.fight);
+    if (!explosionReady(variant)) continue;
+    const lost = a.fight.attackerWon ? a.fight.at : (a.fight.from ?? a.fight.at);
+    each((mx, my, sx, sy) => {
+      if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, 1, variant, 1 - k);
+    });
   }
   // Other patrols: a dashed line between the endpoints, with a ring at each end.
   for (const pair of o.patrols ?? []) {

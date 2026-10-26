@@ -27,6 +27,7 @@ import { downloadSave } from './exportFile';
 import { keyToAction, type ActionId } from './keys';
 import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
+import { EXPLOSION_TAIL_MS } from './explosions';
 import { approachSquare, attackLabel, bombardLabel, cityAttackChance, cityBombardChance, unitAttackChance, visibleGarrison } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
@@ -596,7 +597,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const start = performance.now();
     setFx(fights.map((fight) => ({ fight, start, duration })));
     window.clearTimeout(fxTimer.current);
-    fxTimer.current = window.setTimeout(() => setFx([]), duration + 60);
+    fxTimer.current = window.setTimeout(() => setFx([]), duration + EXPLOSION_TAIL_MS + 60); // the explosion lingers after the fight
   };
   /** Animated mode: the fights of the player's own last command play out on the map. */
   const showOwnFights = () => {

@@ -6,6 +6,9 @@ import { loaded } from './unitIcons';
  * black round them disappears), with a puff of smoke behind it. The fire flashes in, swells and settles at half
  * strength, where it stays for the last frame of the fight.
  */
+/** After its fight is over the explosion stays this long (ms), fading out. */
+export const EXPLOSION_TAIL_MS = 600;
+
 const FIRE = ['/art/fx/explosion-1.webp', '/art/fx/explosion-2.webp', '/art/fx/explosion-3.webp'];
 const SMOKE = ['/art/fx/smoke-1.webp', '/art/fx/smoke-2.webp'];
 
@@ -20,7 +23,7 @@ export function explosionReady(variant: number): boolean {
 }
 
 /** Draws the explosion centred on (cx, cy) for a tile `t` pixels wide; `burst` runs from 0 (nothing yet) to 1 (settled). */
-export function drawExplosion(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number, burst: number, variant: number): void {
+export function drawExplosion(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number, burst: number, variant: number, fade = 1): void {
   const fire = loaded(FIRE[variant % FIRE.length]);
   if (!fire) return;
   const smoke = loaded(SMOKE[variant % SMOKE.length]);
@@ -28,12 +31,12 @@ export function drawExplosion(ctx: CanvasRenderingContext2D, cx: number, cy: num
   ctx.save();
   if (smoke) {
     const size = t * (0.9 + 1.4 * grow);
-    ctx.globalAlpha = 0.55 * Math.min(1, burst * 3);
+    ctx.globalAlpha = 0.55 * Math.min(1, burst * 3) * fade;
     ctx.drawImage(smoke, cx - size / 2, cy - size / 2 - t * 0.2 * grow, size, size);
   }
   const size = t * (0.8 + 1.4 * grow);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = burst < 0.2 ? burst / 0.2 : 1 - 0.5 * ((burst - 0.2) / 0.8);
+  ctx.globalAlpha = (burst < 0.2 ? burst / 0.2 : 1 - 0.5 * ((burst - 0.2) / 0.8)) * fade;
   ctx.drawImage(fire, cx - size / 2, cy - size / 2, size, size);
   ctx.restore();
 }
