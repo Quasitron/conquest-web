@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView, type GameEvent } from '../../src/engine';
+import { soundsForEvents } from '../../src/audio/fromEvents';
+import { fightsFromEvents } from '../../src/ui/fights';
 import type { LogEntry } from '../../src/app/session';
 import { battlesAgainstMe, newEliminations, recentSightings } from '../../src/ui/reportLines';
 import { addUnit, makeGame } from '../helpers';
@@ -88,5 +90,29 @@ describe('newEliminations', () => {
     expect(newEliminations([started(1, 0), out(1, 0), started(2, 0)], 0)).toEqual([]);
     expect(newEliminations([started(1, 0), started(1, 1), started(2, 0)], 0)).toEqual([]);
     expect(newEliminations([], 0)).toEqual([]);
+  });
+});
+describe('promotion sound at turn start', () => {
+  const promoted = { type: 'unitPromoted', unitId: 5, owner: 0, unitType: 'cruiser', rank: 1 } as const;
+  const started = { type: 'turnStarted', player: 0, turn: 9 } as const;
+
+  it('is held back from the turn-start batch when the replay will play it, and plays at once otherwise', () => {
+    const batch = [promoted, started];
+    expect(soundsForEvents(batch, 0)).toContain('promote'); // no replay: as before
+    expect(soundsForEvents(batch, 0, { promoteLater: true })).not.toContain('promote');
+    // In the middle of your own turn (no turn start in the batch) the chime is never held back.
+    expect(soundsForEvents([promoted], 0, { promoteLater: true })).toContain('promote');
+  });
+
+  it('a replayed fight knows when a promotion came out of it', () => {
+    const events = [
+      { type: 'combat', attackerId: 9, attackerOwner: 1, attackerType: 'cruiser', from: { x: 3, y: 1 }, defender: { kind: 'unit', unitId: 5, owner: 0, unitType: 'cruiser' }, x: 2, y: 1, attackerWon: false, attackerDamage: 8, defenderDamage: 2 },
+      { type: 'unitDestroyed', unitId: 9, owner: 1, unitType: 'cruiser', reason: 'combat' },
+      promoted,
+    ] as GameEvent[];
+    const fights = fightsFromEvents(events, () => 'text');
+    expect(fights).toHaveLength(1);
+    expect(fights[0].promoted).toBe(true);
+    expect(fightsFromEvents(events.slice(0, 2), () => 'text')[0].promoted).toBeUndefined();
   });
 });

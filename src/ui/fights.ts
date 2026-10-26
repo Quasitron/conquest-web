@@ -23,6 +23,8 @@ export interface Fight {
   destroyed: boolean;
   /** The attacker took a city. */
   captured: boolean;
+  /** One of your ships was promoted for this fight (only your own promotions are in the log). */
+  promoted?: boolean;
   /** The caption, e.g. "Computer's Cruiser attacked your Army and won." */
   text: string;
 }
@@ -47,6 +49,8 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
       cur.destroyed = true;
     } else if (cur && e.type === 'cityCaptured') {
       cur.captured = true;
+    } else if (cur && e.type === 'unitPromoted') {
+      cur.promoted = true;
     } else if (cur && e.type === 'unitMoved' && e.unitId === cur.attackerId && e.to.x === cur.at.x && e.to.y === cur.at.y) {
       cur.moved = true; // the winner moved into the loser's square
     }
