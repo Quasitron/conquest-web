@@ -2,7 +2,7 @@ import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
 import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
 import { terrainAt } from './map';
-import { destroyUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
+import { destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
 import { resolveCombat } from './combat';
 import { relocate, settleAircraft, spendMove } from './movement';
@@ -163,6 +163,8 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
   city.lastBuilt = null;
   if (from !== null) s.fog[from].knownCityOwner[city.id] = att.owner;
   destroyUnit(s, att, 'garrison', events);
+  // An undamaged Armor that takes a city leaves an Army there at once (as in the original Advanced rules); it has no moves left.
+  if (att.type === 'armor' && att.damage === 0) spawnUnit(s, 'army', att.owner, city.x, city.y).movesLeft = 0;
   events.push({ type: 'cityCaptured', cityId: city.id, by: att.owner, from });
   return null;
 }

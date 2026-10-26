@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled, rankOf, unitDisplayName, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, cargoCapacity, cargoUsed, hitsOf, isCrippled, rankOf, unitDisplayName, type PlayerView, type Unit } from '../engine';
 import { ordersText } from './actions';
 import { UNIT_GLYPH } from './colors';
 import { cargoLoad, cargoSummary, healthText } from './labels';
@@ -68,8 +68,8 @@ export function UnitInfo({ view, unit, onRename, onOrders, onClose }: Props) {
         {st.name}: move {st.move}, attack {st.attack}, defense {st.defense}, hits {st.hits}
         {st.range !== null ? `, range ${st.range}` : ''}
       </p>
-      {UNIT_STATS[unit.type].carries !== null && (
-        <p>{cargoLoad(cargo.length, cargoCapacity(unit))}{cargo.length > 0 && ` (${cargoSummary(cargo)})`}</p>
+      {UNIT_STATS[unit.type].carries.length > 0 && (
+        <p>{cargoLoad(cargoUsed(cargo), cargoCapacity(unit))}{cargo.length > 0 && ` (${cargoSummary(cargo)})`}</p>
       )}
       <div class="picker-actions">
         <button onClick={(e) => {

@@ -16,7 +16,7 @@ export function landingPlan(
 ): { unitId: number; dir: Dir }[] {
   const wanted = new Set(armyIds);
   const armies = view.myUnits
-    .filter((u) => u.type === 'army' && u.carriedBy === transport.id && u.movesLeft > 0 && wanted.has(u.id))
+    .filter((u) => UNIT_STATS[u.type].domain === 'land' && u.carriedBy === transport.id && u.movesLeft > 0 && wanted.has(u.id))
     .sort((a, b) => a.id - b.id);
   const taken = new Set<number>();
   const plan: { unitId: number; dir: Dir }[] = [];

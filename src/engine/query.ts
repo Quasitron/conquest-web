@@ -1,5 +1,5 @@
 import type { City, DestroyReason, GameEvent, GameState, PlayerId, Unit, UnitType } from './types';
-import { UNIT_STATS, cargoCapacity } from './units';
+import { UNIT_STATS, canCarry, cargoCapacity, cargoUsed } from './units';
 import { areFriendly } from './relations';
 import { recordDestroyed } from './stats';
 
@@ -21,6 +21,16 @@ export function topLevelUnitsAt(s: GameState, x: number, y: number): Unit[] {
 
 export function cargoOf(s: GameState, carrier: Unit): Unit[] {
   return s.units.filter((u) => u.carriedBy === carrier.id);
+}
+
+/** Free cargo space aboard a carrier (Armor takes two). */
+export function cargoRoom(s: GameState, carrier: Unit): number {
+  return cargoCapacity(carrier) - cargoUsed(cargoOf(s, carrier));
+}
+
+/** Whether `host` carries units of `type` and has room for one more. */
+export function hasRoomFor(s: GameState, host: Unit, type: UnitType): boolean {
+  return canCarry(host.type, type) && cargoRoom(s, host) >= UNIT_STATS[type].slots;
 }
 
 /** Aircraft refuel on a carrier or in a friendly city. */
@@ -55,10 +65,10 @@ export function destroyUnit(
 /** Destroys cargo beyond the carrier's (damage-reduced) capacity, newest units first. */
 export function trimCargo(s: GameState, carrier: Unit, events: GameEvent[]): void {
   const cargo = cargoOf(s, carrier).sort((a, b) => b.id - a.id);
-  let excess = cargo.length - cargoCapacity(carrier);
+  let excess = cargoUsed(cargo) - cargoCapacity(carrier);
   for (const c of cargo) {
     if (excess <= 0) break;
     destroyUnit(s, c, 'cargoLost', events);
-    excess--;
+    excess -= UNIT_STATS[c.type].slots;
   }
 }

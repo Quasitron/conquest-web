@@ -1,6 +1,6 @@
 import type { ApplyResult, Command, GameEvent, GameState } from './types';
 import { Rng } from './rng';
-import { UNIT_STATS, UNIT_TYPES } from './units';
+import { UNIT_STATS, UNIT_TYPES, buildableTypes } from './units';
 import { cargoOf, cityAt, destroyUnit, topLevelUnitsAt, unitById } from './query';
 import { moveUnit } from './movement';
 import { setProduction } from './production';
@@ -97,6 +97,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       if (!c) error = 'no such city';
       else if (c.owner !== actor) error = 'not your city';
       else if (cmd.unitType !== null && !UNIT_TYPES.includes(cmd.unitType)) error = 'unknown unit type';
+      else if (cmd.unitType !== null && !buildableTypes(s.rules).includes(cmd.unitType)) error = 'that unit is not in this game';
       else error = setProduction(s, c, cmd.unitType);
       break;
     }

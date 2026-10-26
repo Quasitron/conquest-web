@@ -1,5 +1,5 @@
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
+  CITY_STRENGTH_HITS, UNIT_STATS, cargoUsed, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
   type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -53,10 +53,13 @@ function transportsOwnedOrBuilding(view: PlayerView): number {
     + view.myCities.filter((c) => c.production === 'transport').length;
 }
 
+/** Land units that march and take cities: Armies and (with the Advanced units rule) Armor. */
+const isFoot = (t: UnitType): boolean => t === 'army' || t === 'armor';
+
 /** Armies asleep in one of our cities with nothing left to do on foot: they are waiting for a ship. */
 function idleArmies(view: PlayerView): number {
   return view.myUnits.filter(
-    (u) => u.type === 'army' && u.carriedBy === null && u.orders?.kind === 'sentry'
+    (u) => isFoot(u.type) && u.carriedBy === null && u.orders?.kind === 'sentry'
       && view.myCities.some((c) => at(c, u)),
   ).length;
 }
@@ -150,6 +153,8 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
     const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
     if (portReady && ships < wantedWarships(view, t)) return warshipFor(view, t, ships, city);
   }
+  // Hard builds Armor in every third city when the Advanced units rule is on, to crack held cities.
+  if (t.armor && view.rules.advancedUnits && city.id % 3 === 0) return 'armor';
   return 'army';
 }
 
@@ -232,7 +237,7 @@ const THREAT_RANGE = 4;
 const HOME_RANGE = 6;
 
 const landArmies = (view: PlayerView): Unit[] =>
-  view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null);
+  view.myUnits.filter((a) => isFoot(a.type) && a.carriedBy === null);
 
 /** Own armies on foot within `radius` of `p`. */
 function armiesNear(view: PlayerView, p: Pos, radius: number): number {
@@ -416,7 +421,7 @@ function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id);
   const inCity = view.myCities.some((c) => at(c, u));
   if (inCity) {
-    const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, u)).length;
+    const waiting = cargoUsed(view.myUnits.filter((a) => isFoot(a.type) && a.carriedBy === null && at(a, u)));
     const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
     const ready = cargo.length === 0 && waiting >= need;
     if (!ready || (t.escorts && !escortReady(view, u))) return null;
@@ -496,7 +501,7 @@ const ESCORT_RANGE = 12;
 
 /** Armies waiting beside a transport in a city, and how many it wants before it sails. */
 function sailReady(view: PlayerView, tr: Unit, t: AiTuning): boolean {
-  const waiting = view.myUnits.filter((a) => a.type === 'army' && a.carriedBy === null && at(a, tr)).length;
+  const waiting = cargoUsed(view.myUnits.filter((a) => isFoot(a.type) && a.carriedBy === null && at(a, tr)));
   const need = view.turn >= LATE_TURN ? t.lateArmiesToSail : t.armiesToSail;
   return !view.myUnits.some((c) => c.carriedBy === tr.id) && waiting >= need;
 }
@@ -693,7 +698,8 @@ function decideCarrierFighter(view: PlayerView, u: Unit): SessionCommand | null 
 }
 function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
   switch (u.type) {
-    case 'army': return decideArmy(view, u, port, t);
+    case 'army':
+    case 'armor': return decideArmy(view, u, port, t);
     case 'transport': return decideTransport(view, u, t);
     case 'destroyer':
     case 'cruiser':

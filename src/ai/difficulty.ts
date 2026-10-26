@@ -38,6 +38,8 @@ export interface AiTuning {
   subs: boolean;
   /** One carrier with two fighters on patrol tied to it (Hard only). */
   carriers: boolean;
+  /** Every third city builds Armor when the Advanced units rule is on (Hard only). */
+  armor: boolean;
 }
 
 /**
@@ -48,15 +50,15 @@ export interface AiTuning {
 export const TUNING: Record<Difficulty, AiTuning> = {
   easy: {
     assaultArmies: 5, lateAssaultArmies: 4, armiesToSail: 5, lateArmiesToSail: 4, garrison: 1,
-    fleetFromTurn: 24, maxWarships: 4, citiesPerWarship: 3, minShipWinChance: 0.7, idlePercent: 25, escorts: false, avoidPatrols: false, scouts: false, subs: false, carriers: false,
+    fleetFromTurn: 24, maxWarships: 4, citiesPerWarship: 3, minShipWinChance: 0.7, idlePercent: 25, escorts: false, avoidPatrols: false, scouts: false, subs: false, carriers: false, armor: false,
   },
   normal: {
     assaultArmies: 3, lateAssaultArmies: 2, armiesToSail: 3, lateArmiesToSail: 2, garrison: 2,
-    fleetFromTurn: 12, maxWarships: 8, citiesPerWarship: 2, minShipWinChance: 0.45, idlePercent: 0, escorts: false, avoidPatrols: false, scouts: false, subs: false, carriers: false,
+    fleetFromTurn: 12, maxWarships: 8, citiesPerWarship: 2, minShipWinChance: 0.45, idlePercent: 0, escorts: false, avoidPatrols: false, scouts: false, subs: false, carriers: false, armor: false,
   },
   hard: {
     assaultArmies: 2, lateAssaultArmies: 1, armiesToSail: 2, lateArmiesToSail: 2, garrison: 3,
-    fleetFromTurn: 8, maxWarships: 10, citiesPerWarship: 1, minShipWinChance: 0.4, idlePercent: 0, escorts: true, avoidPatrols: true, scouts: true, subs: true, carriers: true,
+    fleetFromTurn: 8, maxWarships: 10, citiesPerWarship: 1, minShipWinChance: 0.4, idlePercent: 0, escorts: true, avoidPatrols: true, scouts: true, subs: true, carriers: true, armor: true,
   },
 };
 

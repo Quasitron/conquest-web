@@ -1,4 +1,4 @@
-import { CITY_STRENGTH_HITS, RANK_NAMES, garrisonBonus, rankOf, UNIT_STATS, UNIT_TYPES, buildTime, cargoCapacity, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
+import { CITY_STRENGTH_HITS, RANK_NAMES, garrisonBonus, rankOf, UNIT_STATS, buildTime, buildableTypes, cargoCapacity, cargoUsed, unitDisplayName, type City, type PlayerView, type Unit, type UnitType } from '../engine';
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { ActionBar } from './ActionBar';
@@ -45,7 +45,7 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
   const cargo = view.myUnits.filter((c) => c.carriedBy === u.id).sort((a, b) => a.id - b.id);
   const [open, setOpen] = useState(false);
   // Fighters out on a patrol tied to this carrier are part of its group even while they are away.
-  const away = st.carries !== null ? patrolsFrom(view.myUnits, u) : [];
+  const away = st.carries.length > 0 ? patrolsFrom(view.myUnits, u) : [];
   return (
     <div>
       <Picture src={UNIT_ICONS[u.type]?.src} color={myColor} />
@@ -55,11 +55,11 @@ function UnitDetails({ u, view, onAction, onSelectUnit, myColor }: {
       <p>Moves {u.movesLeft}/{st.move}</p>
       <HealthBar u={u} />
       {u.fuel !== null && <p>Fuel {u.fuel}/{st.range}</p>}
-      {st.carries !== null && cargo.length === 0 && away.length === 0 && <p>{cargoLoad(0, cargoCapacity(u))}</p>}
+      {st.carries.length > 0 && cargo.length === 0 && away.length === 0 && <p>{cargoLoad(0, cargoCapacity(u))}</p>}
       {(cargo.length > 0 || away.length > 0) && (
         <div>
           <button class="linklike" aria-expanded={open} title={cargoSummary(cargo)} onClick={(e) => { blur(e); setOpen(!open); }}>
-            {cargoAndPatrols(cargo.length, cargoCapacity(u), away.length)}
+            {cargoAndPatrols(cargoUsed(cargo), cargoCapacity(u), away.length)}
           </button>
           {open && (
             <ul class="cargo-list">
@@ -100,7 +100,7 @@ function CityDetails({ city, view, onProduction, onSelectUnit, onOpenCity, myCol
             onProduction(city.id, v === '' ? null : (v as UnitType));
           }}>
             <option value="">Nothing</option>
-            {UNIT_TYPES.map((t) => (
+            {buildableTypes(view.rules).map((t) => (
               <option value={t} disabled={UNIT_STATS[t].domain === 'sea' && !coastal}>
                 {UNIT_STATS[t].name} ({buildTime(city, t)} turns)
               </option>

@@ -9,32 +9,38 @@ export interface UnitStats {
   defense: number;
   shot: number;
   range: number | null;
-  carries: UnitType | null;
+  /** The unit types this one carries (empty for most). */
+  carries: readonly UnitType[];
   capacity: number;
   capacityLossPerDamage: number;
   build: number;
   buildRepeat: number;
   bombard: boolean;
   seesSubs: boolean;
+  /** Cargo space this unit takes aboard a transport (Armor takes two). */
+  slots: number;
+  /** Only built when the Advanced units house rule is on. */
+  advanced: boolean;
   /** Wins promote this unit (the promotions house rule): None, Experienced, Veteran, Elite. */
   promotes: boolean;
 }
 
 export const UNIT_TYPES: readonly UnitType[] = [
-  'army', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier',
+  'army', 'armor', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier',
 ];
 
-const base = { range: null, carries: null, capacity: 0, capacityLossPerDamage: 0, bombard: false, seesSubs: false, promotes: false };
+const base = { range: null, carries: [] as readonly UnitType[], capacity: 0, slots: 1, advanced: false, capacityLossPerDamage: 0, bombard: false, seesSubs: false, promotes: false };
 
 export const UNIT_STATS: Record<UnitType, UnitStats> = {
   army:       { ...base, name: 'Army',       domain: 'land', move: 1, hits: 1,  attack: 2, defense: 2, shot: 1, build: 6,  buildRepeat: 5 },
+  armor:      { ...base, advanced: true, slots: 2, name: 'Armor', domain: 'land', move: 2, hits: 2,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10 },
   fighter:    { ...base, name: 'Fighter',    domain: 'air',  move: 5, hits: 1,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10, range: 20 },
-  transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: 'army', capacity: 6, capacityLossPerDamage: 2 },
+  transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: ['army', 'armor'], capacity: 6, capacityLossPerDamage: 2 },
   destroyer:  { ...base, promotes: true, name: 'Destroyer',  domain: 'sea',  move: 3, hits: 3,  attack: 2, defense: 2, shot: 1, build: 24, buildRepeat: 20, seesSubs: true },
   submarine:  { ...base, promotes: true, name: 'Submarine',  domain: 'sea',  move: 2, hits: 2,  attack: 2, defense: 1, shot: 3, build: 24, buildRepeat: 20, seesSubs: true },
   cruiser:    { ...base, promotes: true, name: 'Cruiser',    domain: 'sea',  move: 2, hits: 8,  attack: 2, defense: 2, shot: 2, build: 42, buildRepeat: 35, bombard: true, seesSubs: true },
   battleship: { ...base, promotes: true, name: 'Battleship', domain: 'sea',  move: 2, hits: 12, attack: 2, defense: 2, shot: 3, build: 60, buildRepeat: 50, bombard: true },
-  carrier:    { ...base, promotes: true, name: 'Carrier',    domain: 'sea',  move: 2, hits: 8,  attack: 1, defense: 2, shot: 1, build: 48, buildRepeat: 40, carries: 'fighter', capacity: 8, capacityLossPerDamage: 1 },
+  carrier:    { ...base, promotes: true, name: 'Carrier',    domain: 'sea',  move: 2, hits: 8,  attack: 1, defense: 2, shot: 1, build: 48, buildRepeat: 40, carries: ['fighter'], capacity: 8, capacityLossPerDamage: 1 },
 };
 
 /** Cities defend like an army and never attack. */
@@ -57,6 +63,26 @@ export function isCrippled(u: Unit): boolean {
 
 export function effectiveMove(u: Unit): number {
   return isCrippled(u) ? 1 : UNIT_STATS[u.type].move;
+}
+
+/** Whether a carrier of type carrier takes units of type cargo. */
+export function canCarry(carrier: UnitType, cargo: UnitType): boolean {
+  return UNIT_STATS[carrier].carries.includes(cargo);
+}
+
+/** The cargo space these units take up (Armor takes two). */
+export function cargoUsed(cargo: readonly Pick<Unit, 'type'>[]): number {
+  return cargo.reduce((n, c) => n + UNIT_STATS[c.type].slots, 0);
+}
+
+/** Whether a carrier host with board already on it can take one more unit of type 	ype. */
+export function hostHasRoom(host: Unit, aboard: readonly Pick<Unit, 'type'>[], type: UnitType): boolean {
+  return canCarry(host.type, type) && cargoCapacity(host) - cargoUsed(aboard) >= UNIT_STATS[type].slots;
+}
+
+/** The unit types a game builds: the Advanced ones only with the Advanced units house rule. */
+export function buildableTypes(rules: { advancedUnits: boolean }): UnitType[] {
+  return UNIT_TYPES.filter((t) => rules.advancedUnits || !UNIT_STATS[t].advanced);
 }
 
 export function cargoCapacity(u: Unit): number {

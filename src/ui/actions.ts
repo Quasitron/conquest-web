@@ -1,14 +1,13 @@
-import { UNIT_STATS, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, canCarry, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
 import type { ActionId } from './keys';
 
 const inOwnCity = (v: PlayerView, u: Pick<Unit, 'x' | 'y'>) => v.myCities.some((c) => c.x === u.x && c.y === u.y);
 
 /** Own units on the transport's square that could board it, by id. */
 export function loadCandidates(view: PlayerView, t: Unit): Unit[] {
-  const carries = UNIT_STATS[t.type].carries;
-  if (!carries) return [];
+  if (UNIT_STATS[t.type].carries.length === 0) return [];
   return view.myUnits
-    .filter((u) => u.id !== t.id && u.type === carries && u.carriedBy === null && u.x === t.x && u.y === t.y)
+    .filter((u) => u.id !== t.id && canCarry(t.type, u.type) && u.carriedBy === null && u.x === t.x && u.y === t.y)
     .sort((a, b) => a.id - b.id);
 }
 
@@ -35,7 +34,7 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     center: true,
     endTurn: true,
     disband: true,
-    load: st.carries !== null && inCity && loadCandidates(view, u).length > 0,
+    load: st.carries.length > 0 && inCity && loadCandidates(view, u).length > 0,
     unload: hasCargo,
     goHome: view.myCities.length > 0 && !inCity,
     patrol: true,
