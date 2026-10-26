@@ -57,6 +57,8 @@ const MENU_H = 400;
 const ROUTE_PAUSE_MS = 700;
 /** After an attack, how long the battle stays on screen before the cycle moves on to the next unit. */
 const BATTLE_PAUSE_MS = 1000;
+/** How long a newly sighted enemy is shown at turn start before the production reports and the unit cycle begin. */
+const SIGHT_HOLD_MS = 1800;
 /** The replay zooms in to at least this tile size so each fight is easy to see. */
 const REPLAY_TILE = 36;
 /** Each replayed fight opens at no closer than this tile size, so you can see where on the map it is. */
@@ -140,6 +142,10 @@ export function GameScreen({ session, onQuit }: Props) {
   // Enemy units discovered at the start of the turn, flashing for a moment, and the ones in sight at the end of the last turn.
   const [newSightings, setNewSightings] = useState<Pos[]>([]);
   const sightingTimer = useRef<number | undefined>(undefined);
+  // Enemies discovered at this turn start, waiting to be shown; and the timer of the pause that shows them.
+  const pendingSights = useRef<Pos[]>([]);
+  const sightHold = useRef<number | undefined>(undefined);
+  const beginReportsRef = useRef<() => void>(() => {});
   const lastSeenEnemies = useRef<{ owner: number; type: string; x: number; y: number }[]>([]);
   const [hover, setHover] = useState<Pos | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -389,12 +395,8 @@ export function GameScreen({ session, onQuit }: Props) {
       if (log.slice(seen.count).some((l) => l.event.type === 'turnStarted' && l.event.player === view.me)) {
         const fresh = view.enemies.filter((e) => e.visibleNow && !lastSeenEnemies.current.some(
           (p) => p.owner === e.owner && p.type === e.type && chebyshev(view as unknown as MapLike, p, e) <= 4));
-        if (fresh.length > 0) {
-          if (!sounds.includes('alert')) sounds = [...sounds, 'alert'];
-          setNewSightings(fresh.map((e) => ({ x: e.x, y: e.y })));
-          window.clearTimeout(sightingTimer.current);
-          sightingTimer.current = window.setTimeout(() => setNewSightings([]), 2200);
-        }
+        // They are shown (camera, flash, alert sound) when the turn proper begins, before any production report.
+        if (fresh.length > 0) pendingSights.current = fresh.map((e) => ({ x: e.x, y: e.y }));
       }
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
@@ -417,6 +419,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const turnKey = `${view.turn}:${view.currentPlayer}:${session.phase}`;
   useEffect(() => {
     cancelAdvance();
+    window.clearTimeout(sightHold.current);
     setSelection(null);
     setTarget(null);
     setGroup(null);
@@ -449,6 +452,19 @@ export function GameScreen({ session, onQuit }: Props) {
 
   /** The start of the turn proper: production reports come first; the unit cycle starts after the last one. */
   const beginTurn = () => {
+    const sights = pendingSights.current;
+    pendingSights.current = [];
+    if (sights.length === 0) return beginReports();
+    // Newly sighted enemies first: the view moves to the first one and it flashes with the alert, then on to the reports.
+    focus(sights[0]);
+    play('alert');
+    setNewSightings(sights);
+    window.clearTimeout(sightingTimer.current);
+    sightingTimer.current = window.setTimeout(() => setNewSightings([]), 2200);
+    window.clearTimeout(sightHold.current);
+    sightHold.current = window.setTimeout(() => beginReportsRef.current(), SIGHT_HOLD_MS);
+  };
+  const beginReports = () => {
     const queue = reportQueue(session.log(view.me), view.turn, view.me, view.myCities)
       .filter((r) => view.myUnits.some((u) => u.id === r.unitId));
     if (queue.length > 0) {
@@ -456,6 +472,7 @@ export function GameScreen({ session, onQuit }: Props) {
       setReports(queue);
     } else startCycle();
   };
+  beginReportsRef.current = beginReports;
 
   // The turn-start replay. Each fight starts with a wide view and a ring on the spot (so you can see where it is),
   // then zooms in and plays with its sounds; the result ring stays on the square until the replay moves on. It moves
