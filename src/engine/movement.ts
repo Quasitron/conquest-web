@@ -1,8 +1,8 @@
 import type { Dir, GameEvent, GameState, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, cargoCapacity } from './units';
+import { UNIT_STATS, canCarry } from './units';
 import { step, terrainAt } from './map';
-import { cargoOf, cityAt, destroyUnit, isAtRefuelPoint, topLevelUnitsAt } from './query';
+import { cargoOf, cargoRoom, cityAt, destroyUnit, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { attackCity, attackUnit, bombardCity } from './attack';
 
@@ -14,7 +14,6 @@ export function spendMove(u: Unit): void {
 
 export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): void {
   const from = { x: u.x, y: u.y };
-  const carried = UNIT_STATS[u.type].carries;
   const leaving = cityAt(s, from.x, from.y);
   u.x = to.x;
   u.y = to.y;
@@ -24,18 +23,21 @@ export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): v
     c.y = to.y;
   }
   // A transport leaving a city takes the armies there, and a carrier the fighters, up to capacity.
-  if (carried && leaving && areFriendly(s, leaving.owner, u.owner)) {
-    const room = cargoCapacity(u) - cargoOf(s, u).length;
+  if (UNIT_STATS[u.type].carries.length > 0 && leaving && areFriendly(s, leaving.owner, u.owner)) {
+    let room = cargoRoom(s, u);
     const waiting = s.units.filter(
       (a) =>
-        a.type === carried &&
+        canCarry(u.type, a.type) &&
         a.carriedBy === null &&
         a.owner === u.owner &&
         a.x === from.x &&
         a.y === from.y &&
         !(s.rules.sentriedStayAsGarrison && a.orders !== null),
     );
-    for (const a of waiting.slice(0, Math.max(0, room))) {
+    for (const a of waiting) {
+      const need = UNIT_STATS[a.type].slots;
+      if (need > room) continue;
+      room -= need;
       a.carriedBy = u.id;
       a.x = to.x;
       a.y = to.y;
@@ -88,7 +90,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   }
 
   const host = occupants.find(
-    (o) => UNIT_STATS[o.type].carries === u.type && cargoOf(s, o).length < cargoCapacity(o),
+    (o) => hasRoomFor(s, o, u.type),
   );
   if (host) {
     spendMove(u);

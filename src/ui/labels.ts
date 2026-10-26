@@ -27,6 +27,7 @@ export function cityStackTop(units: readonly Unit[]): Unit | null {
 export function pluralUnit(type: UnitType, n: number): string {
   const name = UNIT_STATS[type].name;
   if (n === 1) return name;
+  if (type === 'armor') return name;
   return type === 'army' ? 'Armies' : `${name}s`;
 }
 

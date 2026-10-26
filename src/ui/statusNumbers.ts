@@ -1,4 +1,4 @@
-import { UNIT_TYPES, type PlayerView, type UnitType } from '../engine';
+import { buildableTypes, type PlayerView, type UnitType } from '../engine';
 import { turnsToComplete } from './labels';
 
 export interface StatusRow {
@@ -38,7 +38,7 @@ export function opponentStatus(view: PlayerView): OpponentStatus[] {
 /** The numbers on the status report, from the viewer's own information only. */
 export function statusSummary(view: PlayerView): StatusSummary {
   const explored = view.terrain.filter((t) => t !== null).length;
-  const rows = UNIT_TYPES.map((type): StatusRow => {
+  const rows = buildableTypes(view.rules).map((type): StatusRow => {
     const building = view.myCities.filter((c) => c.production === type);
     return {
       type,

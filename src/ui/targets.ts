@@ -1,4 +1,4 @@
-import { CITY_STRENGTH_HITS, UNIT_STATS, cargoCapacity, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
+import { CITY_STRENGTH_HITS, UNIT_STATS, hostHasRoom, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
 
 export interface StepTarget {
   x: number;
@@ -47,8 +47,7 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     }
     const friends = v.myUnits.filter((o) => o.x === p.x && o.y === p.y && o.carriedBy === null && o.id !== u.id);
     const host = friends.find(
-      (o) => UNIT_STATS[o.type].carries === u.type &&
-        v.myUnits.filter((c) => c.carriedBy === o.id).length < cargoCapacity(o),
+      (o) => hostHasRoom(o, v.myUnits.filter((c) => c.carriedBy === o.id), u.type),
     );
     if (ownCity || host) {
       out.push({ ...p, dir: d as Dir, attack: false });

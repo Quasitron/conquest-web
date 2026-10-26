@@ -1,6 +1,6 @@
 import type { GameEvent, GameState, Unit } from './types';
-import { UNIT_STATS, cargoCapacity } from './units';
-import { cargoOf, cityAt } from './query';
+import { UNIT_STATS, canCarry, cargoUsed } from './units';
+import { cargoOf, cargoRoom, cityAt } from './query';
 
 export function inOwnCity(s: GameState, t: Unit): boolean {
   return cityAt(s, t.x, t.y)?.owner === t.owner;
@@ -8,18 +8,17 @@ export function inOwnCity(s: GameState, t: Unit): boolean {
 
 /** Boards the given own armies (or fighters) onto a carrier standing in its owner's city. */
 export function loadUnits(s: GameState, t: Unit, unitIds: number[]): string | null {
-  const carries = UNIT_STATS[t.type].carries;
-  if (!carries) return 'this unit cannot carry cargo';
+  if (UNIT_STATS[t.type].carries.length === 0) return 'this unit cannot carry cargo';
   if (!inOwnCity(s, t)) return 'can only load in one of your cities';
   if (unitIds.length === 0 || new Set(unitIds).size !== unitIds.length) return 'nothing to load';
   const boarding: Unit[] = [];
   for (const id of unitIds) {
     const u = s.units.find((x) => x.id === id);
     if (!u || u.owner !== t.owner) return 'not your unit';
-    if (u.carriedBy !== null || u.x !== t.x || u.y !== t.y || u.type !== carries) return 'unit cannot board here';
+    if (u.carriedBy !== null || u.x !== t.x || u.y !== t.y || !canCarry(t.type, u.type)) return 'unit cannot board here';
     boarding.push(u);
   }
-  if (boarding.length > cargoCapacity(t) - cargoOf(s, t).length) return 'not enough room';
+  if (cargoUsed(boarding) > cargoRoom(s, t)) return 'not enough room';
   for (const u of boarding) {
     u.carriedBy = t.id;
     u.orders = { kind: 'sentry' };

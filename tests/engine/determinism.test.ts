@@ -3,7 +3,7 @@ import { apply } from '../../src/engine/apply';
 import { hashState } from '../../src/engine/hash';
 import { replay } from '../../src/engine/replay';
 import { Rng } from '../../src/engine/rng';
-import { UNIT_STATS, UNIT_TYPES, cargoCapacity } from '../../src/engine/units';
+import { UNIT_STATS, buildableTypes, cargoCapacity, cargoUsed } from '../../src/engine/units';
 import type { Command, Dir, GameState } from '../../src/engine/types';
 import { addUnit, makeGame } from '../helpers';
 
@@ -28,14 +28,14 @@ function checkInvariants(s: GameState): void {
       const carrier = s.units.find((c) => c.id === u.carriedBy);
       expect(carrier).toBeDefined();
       expect([carrier!.x, carrier!.y]).toEqual([u.x, u.y]);
-      expect(UNIT_STATS[carrier!.type].carries).toBe(u.type);
+      expect(UNIT_STATS[carrier!.type].carries).toContain(u.type);
       expect(carrier!.carriedBy).toBeNull();
     } else if (domain === 'land') {
       expect(terrain).not.toBe('water');
     } else if (domain === 'sea') {
       expect(terrain).not.toBe('land');
     }
-    const cargo = s.units.filter((c) => c.carriedBy === u.id).length;
+    const cargo = cargoUsed(s.units.filter((c) => c.carriedBy === u.id));
     expect(cargo).toBeLessThanOrEqual(cargoCapacity(u));
   }
   // Opposing units never share a square (cities aside).
@@ -65,7 +65,7 @@ function playRandomly(initial: GameState, count: number, seed: number, extras = 
     if (extra < 0.002) cmd = { type: 'resign', player: me };
     else if (extra < 0.022 && units.length) cmd = { type: 'disband', player: me, unitId: pick(units).id };
     else if (roll < 0.8 && units.length) cmd = { type: 'move', player: me, unitId: pick(units).id, dir: Math.floor(r.next() * 8) as Dir };
-    else if (roll < 0.86 && cities.length) cmd = { type: 'setProduction', player: me, cityId: pick(cities).id, unitType: pick(UNIT_TYPES) };
+    else if (roll < 0.86 && cities.length) cmd = { type: 'setProduction', player: me, cityId: pick(cities).id, unitType: pick(buildableTypes(s.rules)) };
     else cmd = { type: 'endTurn', player: me };
     const res = apply(s, cmd);
     if (res.ok) {

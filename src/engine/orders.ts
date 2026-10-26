@@ -1,9 +1,9 @@
 import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled } from './units';
+import { UNIT_STATS, canCarry, hitsOf, isCrippled } from './units';
 import { combatWinChance } from './combat';
 import { chebyshev, index, isCoastal, neighbors } from './map';
-import { cargoOf, cityAt, isAtRefuelPoint, topLevelUnitsAt } from './query';
+import { cityAt, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { canPlayerSeeUnit, updateFog } from './fog';
 import { moveUnit } from './movement';
@@ -20,8 +20,8 @@ function isRefuelBase(s: GameState, u: Unit, p: Pos): boolean {
   if (cityAt(s, p.x, p.y)?.owner === u.owner) return true;
   return topLevelUnitsAt(s, p.x, p.y).some(
     (c) =>
-      c.owner === u.owner && UNIT_STATS[c.type].carries === u.type &&
-      (u.carriedBy === c.id || cargoOf(s, c).length < cargoCapacity(c)),
+      c.owner === u.owner && canCarry(c.type, u.type) &&
+      (u.carriedBy === c.id || hasRoomFor(s, c, u.type)),
   );
 }
 
@@ -148,7 +148,7 @@ function ownBlocks(s: GameState, u: Unit, p: Pos): boolean {
   if (UNIT_STATS[u.type].domain === 'air' || cityAt(s, p.x, p.y)) return false;
   const here = topLevelUnitsAt(s, p.x, p.y).filter((o) => o.owner === u.owner && o !== u);
   if (here.length === 0) return false;
-  return !here.some((h) => UNIT_STATS[h.type].carries === u.type && cargoOf(s, h).length < cargoCapacity(h));
+  return !here.some((h) => hasRoomFor(s, h, u.type));
 }
 
 /**
@@ -159,7 +159,7 @@ export function executeOrders(
   s: GameState, rng: RandomSource, u: Unit, events: GameEvent[], turnStart = false,
 ): void {
   const arrive = (): void => {
-    if (UNIT_STATS[u.type].carries === 'army' && cityAt(s, u.x, u.y)?.owner === u.owner) {
+    if (UNIT_STATS[u.type].carries.includes('army') && cityAt(s, u.x, u.y)?.owner === u.owner) {
       unloadCargo(s, u, null, events); // 'nothing to unload' is fine
     }
     if (u.carriedBy !== null) {
@@ -363,7 +363,7 @@ function tieToCarrier(s: GameState, u: Unit, o: Extract<Orders, { kind: 'patrol'
   if (UNIT_STATS[u.type].domain !== 'air') return;
   const hostAt = (p: Pos): Unit | undefined =>
     cityAt(s, p.x, p.y) ? undefined
-      : topLevelUnitsAt(s, p.x, p.y).find((c) => c.owner === u.owner && UNIT_STATS[c.type].carries === u.type);
+      : topLevelUnitsAt(s, p.x, p.y).find((c) => c.owner === u.owner && canCarry(c.type, u.type));
   const hostA = hostAt(o.a);
   const hostB = hostAt(o.b);
   if (hostA) o.carrier = { id: hostA.id, end: 'a' };

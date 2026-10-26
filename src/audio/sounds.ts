@@ -33,7 +33,7 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-carrier': '/sounds/produce-carrier.mp3',
   // Army: a .50 cal machine gun burst, 5.95 s to 7.05 s of a US Navy video (public domain, see docs/sounds.md), softened (less treble, more bass).
   'produce-army': '/sounds/produce-army.mp3',
-  // Armor (not in the game yet), the first 4 seconds of the original recording.
+  // Armor (Advanced units rule), the first 4 seconds of the original recording.
   'produce-armor': '/sounds/produce-armor.mp3',
   // Explosion, seconds 1.5 to 2.5 of the original recording; short enough to repeat for a combat animation.
   explosion: '/sounds/explosion.mp3',
@@ -211,7 +211,7 @@ export const SYNTH: Record<SoundName, SynthFn> = {
       tone(c, o, t + d, 190, 0.06, { type: 'triangle', gain: 0.1, endFreq: 140 });
     });
   },
-  // Armor (for when that unit arrives): a low engine rumble with clanking tracks.
+  // Armor (fallback): a low engine rumble with clanking tracks.
   'produce-armor': (c, o, t) => {
     tone(c, o, t, 55, 0.9, { type: 'sawtooth', gain: 0.18, endFreq: 70 });
     noise(c, o, t, 0.9, { gain: 0.14, from: 500, to: 200, q: 2 });

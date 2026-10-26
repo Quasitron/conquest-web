@@ -16,7 +16,7 @@ export interface PathMap {
   cityOwner: Map<number, PlayerId | null>;
   /** Squares with an enemy last seen this turn. */
   enemy: Set<number>;
-  /** Own top-level units on non-city squares; room[type] = free cargo space on hosts there that carry `type`. */
+  /** Own top-level units on non-city squares; room[type] = free cargo space (in slots) on hosts there that carry `type`. */
   own: Map<number, { count: number; room: Partial<Record<UnitType, number>> }>;
   /** When true, non-air units treat squares holding own units (without room) as walls. */
   blockOwn: boolean;
@@ -33,7 +33,7 @@ function buildOwn(
   units: Unit[],
 ): PathMap['own'] {
   const cargo = new Map<number, number>();
-  for (const u of units) if (u.carriedBy !== null) cargo.set(u.carriedBy, (cargo.get(u.carriedBy) ?? 0) + 1);
+  for (const u of units) if (u.carriedBy !== null) cargo.set(u.carriedBy, (cargo.get(u.carriedBy) ?? 0) + UNIT_STATS[u.type].slots);
   const own: PathMap['own'] = new Map();
   for (const u of units) {
     if (u.carriedBy !== null) continue;
@@ -42,8 +42,7 @@ function buildOwn(
     let e = own.get(i);
     if (!e) own.set(i, (e = { count: 0, room: {} }));
     e.count++;
-    const carries = UNIT_STATS[u.type].carries;
-    if (carries) e.room[carries] = (e.room[carries] ?? 0) + cargoCapacity(u) - (cargo.get(u.id) ?? 0);
+    for (const carried of UNIT_STATS[u.type].carries) e.room[carried] = (e.room[carried] ?? 0) + cargoCapacity(u) - (cargo.get(u.id) ?? 0);
   }
   return own;
 }
@@ -90,7 +89,7 @@ function enterable(m: PathMap, t: UnitType, i: number, isTarget: boolean): boole
   const domain = UNIT_STATS[t].domain;
   const own = m.own.get(i);
   // A host with room can be boarded wherever it floats, whatever the terrain.
-  if (own && isTarget && (own.room[t] ?? 0) > 0) return true;
+  if (own && isTarget && (own.room[t] ?? 0) >= UNIT_STATS[t].slots) return true;
   if (domain === 'land' && terrain !== 'land' && city !== m.me) return false;
   if (domain === 'sea' && terrain !== 'water' && city !== m.me) return false;
   if (own) return isTarget ? false : !m.blockOwn || domain === 'air';

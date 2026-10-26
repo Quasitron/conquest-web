@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GameSession, SessionCommand } from '../app/session';
 import { unloadAndLand } from '../app/unloadAndLand';
 import {
-  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, chebyshev, findPath, pathMapFromView, unitDisplayName,
+  UNIT_STATS, aircraftCanReach, arrivalTurn, cargoCapacity, cargoUsed, hostHasRoom, chebyshev, findPath, pathMapFromView, unitDisplayName,
   type Dir, type MapLike, type Orders, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SaveStore } from '../storage';
@@ -929,8 +929,7 @@ export function GameScreen({ session, onQuit }: Props) {
     // A host with room for the selected unit (a carrier for a fighter, a transport for an army) is a boarding
     // order, not a selection. Press Esc first to select the host itself.
     if (unit && selectedUnit && unit.id !== selectedUnit.id && explored
-      && UNIT_STATS[unit.type].carries === selectedUnit.type
-      && view.myUnits.filter((c) => c.carriedBy === unit.id).length < cargoCapacity(unit)) {
+      && hostHasRoom(unit, view.myUnits.filter((c) => c.carriedBy === unit.id), selectedUnit.type)) {
       return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
     }
     if (unit) return setSelection({ kind: 'unit', id: unit.id });
@@ -1220,7 +1219,7 @@ export function GameScreen({ session, onQuit }: Props) {
           <UnitPicker
             title={`Load onto ${UNIT_STATS[pickerUnit.type].name} #${pickerUnit.id}`}
             units={loadCandidates(view, pickerUnit)}
-            max={Math.max(0, cargoCapacity(pickerUnit) - cargo.length)}
+            room={Math.max(0, cargoCapacity(pickerUnit) - cargoUsed(cargo))}
             onCancel={() => setPicker(null)}
             onConfirm={(ids) => {
               if (ids.length === 0) return;
@@ -1247,7 +1246,7 @@ export function GameScreen({ session, onQuit }: Props) {
                 return;
               }
               const cargoType = cargo.find((c) => ids.includes(c.id))?.type ?? 'army';
-              if (UNIT_STATS[pickerUnit.type].carries === 'army') {
+              if (UNIT_STATS[pickerUnit.type].carries.includes('army')) {
                 const kind = pluralUnit(cargoType, r.landed);
                 setMessage(`${unitDisplayName(pickerUnit)} landed ${r.landed} ${kind}${r.aboard > 0 ? `; ${r.aboard} still aboard` : ''}.`);
               } else {

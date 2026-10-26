@@ -1,7 +1,7 @@
 import type { HouseRules } from './rules';
 
 export type UnitType =
-  | 'army' | 'fighter' | 'transport' | 'destroyer'
+  | 'army' | 'armor' | 'fighter' | 'transport' | 'destroyer'
   | 'submarine' | 'cruiser' | 'battleship' | 'carrier';
 export type Domain = 'land' | 'sea' | 'air';
 export type Terrain = 'water' | 'land' | 'city';

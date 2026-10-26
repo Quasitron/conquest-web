@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, UNIT_TYPES, buildTime, garrisonBonus, pathMapFromView, rankOf, routeUnitTypes, unitDisplayName,
+  CITY_STRENGTH_HITS, UNIT_STATS, buildableTypes, buildTime, garrisonBonus, pathMapFromView, rankOf, routeUnitTypes, unitDisplayName,
   type City, type CityRoute, type PlayerView, type UnitType,
 } from '../engine';
 import { UNIT_GLYPH } from './colors';
@@ -28,7 +28,6 @@ interface Props {
   onClose: () => void;
 }
 
-const ROWS: (UnitType | null)[] = [null, ...UNIT_TYPES];
 
 function routeSummary(view: PlayerView, route: CityRoute): string {
   const dest = view.myCities.find((c) => c.id === route.destId);
@@ -38,6 +37,7 @@ function routeSummary(view: PlayerView, route: CityRoute): string {
 
 export function CityScreen({ view, city, anchor, color, error, onPick, onRename, onSetRoute, onSelectUnit, onClose }: Props) {
   const coastal = cityIsCoastal(view, city);
+  const ROWS: (UnitType | null)[] = [null, ...buildableTypes(view.rules)];
   const usable = (t: UnitType | null) => t === null || coastal || UNIT_STATS[t].domain !== 'sea';
   // The highlight is a pending choice: OK and Enter apply it, Esc drops it.
   const [cursor, setCursor] = useState<UnitType | null>(city.production);
@@ -177,7 +177,7 @@ export function CityScreen({ view, city, anchor, color, error, onPick, onRename,
           </label>
           <fieldset class="route-types">
             <legend>Unit types</legend>
-            {UNIT_TYPES.map((t) => {
+            {buildableTypes(view.rules).map((t) => {
               const ok = canGo ? canGo[t] : false;
               return (
                 <label class={ok ? '' : 'disabled'} title={ok ? undefined : 'Cannot make this trip'}>
