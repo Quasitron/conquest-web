@@ -7,7 +7,7 @@ import { loaded } from './unitIcons';
  * strength, where it stays for the last frame of the fight.
  */
 /** After its fight is over the explosion stays this long (ms), fading out. */
-export const EXPLOSION_TAIL_MS = 600;
+export const EXPLOSION_TAIL_MS = 350;
 
 const FIRE = ['/art/fx/explosion-1.webp', '/art/fx/explosion-2.webp', '/art/fx/explosion-3.webp'];
 const SMOKE = ['/art/fx/smoke-1.webp', '/art/fx/smoke-2.webp'];
