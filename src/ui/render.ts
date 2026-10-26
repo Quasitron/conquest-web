@@ -1,3 +1,4 @@
+import { drawExplosion, explosionReady, explosionVariant } from './explosions';
 import { CITY_STRENGTH_HITS, rankOf, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
@@ -501,9 +502,19 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     for (const actor of r.actors) {
       for (const off of copies) unitMark((actor.x + off - cam.x) * t, (actor.y - cam.y) * t, colors[actor.owner], actor.type, actor.alpha, 1, 0.5, 0.5, actor.faceLeft);
     }
+    // The result of a fight that destroyed something or took a city: the explosion picture over the loser (the code
+    // burst stays for a plain hit, and until the picture has loaded).
+    const variant = explosionVariant(r.fight);
+    const blast = r.frame.burst > 0 && r.frame.outcome !== 'hit' && explosionReady(variant);
     each((mx, my, sx, sy) => {
-      if (mx === r.fight.at.x && my === r.fight.at.y) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, r.frame);
+      if (mx === r.fight.at.x && my === r.fight.at.y && !blast) drawFightFx(ctx, sx + t / 2, sy + t / 2, t, r.frame);
     });
+    if (blast) {
+      const lost = r.fight.attackerWon ? r.fight.at : (r.fight.from ?? r.fight.at);
+      each((mx, my, sx, sy) => {
+        if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant);
+      });
+    }
   }
   // Other patrols: a dashed line between the endpoints, with a ring at each end.
   for (const pair of o.patrols ?? []) {
