@@ -512,11 +512,11 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (blast) {
       const lost = r.fight.attackerWon ? r.fight.at : (r.fight.from ?? r.fight.at);
       each((mx, my, sx, sy) => {
-        if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant);
+        if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant, 1 - 0.5 * r.frame.slide);
       });
     }
   }
-  // The explosion of a fight that has just ended lingers a little, fading out.
+  // The explosion of a fight that has just ended lingers a little, fading out (it has been dimming since the last quarter of the fight).
   for (const a of o.fx ?? []) {
     const k = (a.age - a.duration) / EXPLOSION_TAIL_MS;
     if (k < 0 || k >= 1 || !(a.fight.destroyed || a.fight.captured)) continue;
@@ -524,7 +524,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (!explosionReady(variant)) continue;
     const lost = a.fight.attackerWon ? a.fight.at : (a.fight.from ?? a.fight.at);
     each((mx, my, sx, sy) => {
-      if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, 1, variant, 1 - k);
+      if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, 1, variant, 0.5 * (1 - k));
     });
   }
   // Other patrols: a dashed line between the endpoints, with a ring at each end.

@@ -26,5 +26,5 @@
 
 - **Fire** is drawn as light (`globalCompositeOperation = 'lighter'`), so the black round it disappears and its edges stay soft. Made from `art-originals\Explosion-1..3.webp`: cropped square round the burst, near-black haze cut off with a levels curve (ffmpeg `lutrgb`), 512 px.
 - **Smoke** is a normal alpha picture behind the fire. Made from `Smoke-1..2.webp` (dark cloud on a pale backdrop with a shadow): darkness becomes opacity (`lutyuv` into `alphamerge`), so the backdrop and shadow go transparent.
-- **Timing:** the fire flashes in, swells and settles at half strength, which stays as the last frame. Which picture a fight uses is fixed by its square and attacker, so the same fight always looks the same.
+- **Timing:** the fire flashes in, swells and settles at half strength; from the last quarter of the fight it dims, and after the fight it lingers 0.35 s (EXPLOSION_TAIL_MS) fading out. Which picture a fight uses is fixed by its square and attacker, so the same fight always looks the same.
 - **Not used:** `Explosion-seq.webp` (four side-on panels ending as mushroom clouds, which is more like a bomb than a sunk ship).
