@@ -8,7 +8,7 @@ import {
   type Dir, type MapLike, type Orders, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SaveStore } from '../storage';
-import { availableActions, loadCandidates } from './actions';
+import { availableActions, escortable, loadCandidates } from './actions';
 import { autoFit, centerOn, clampCamera, exploredBox, keepInViewWrap, pan, type Camera } from './camera';
 import { CityScreen } from './CityScreen';
 import { installAudioUnlock, play, playAll } from '../audio/engine';
@@ -733,6 +733,13 @@ export function GameScreen({ session, onQuit }: Props) {
         if (nextHeld === held) nextHeld = new Set(held);
         nextHeld.add(u.id);
         done++;
+        continue;
+      }
+      if (id === 'escort') {
+        // Each warship takes the nearest transport that has no escort yet.
+        const v = session.view();
+        const tr = escortable(v, u).sort((a, b) => chebyshev(v as unknown as MapLike, u, a) - chebyshev(v as unknown as MapLike, u, b) || a.id - b.id)[0];
+        if (tr && act({ type: 'setOrders', unitId: u.id, orders: { kind: 'escort', transportId: tr.id } })) done++;
         continue;
       }
       const cmd: SessionCommand =

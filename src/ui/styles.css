@@ -200,3 +200,8 @@ svg.leader circle { fill: #ffd24a; }
 .glyph.owned { color: #fff; text-shadow: 0 0 2px #000, 0 0 3px #000; padding: 0 2px; }
 
 .chevrons { color: #f2c230; font-weight: 900; letter-spacing: 1px; text-shadow: 0 0 2px #000; }
+
+/* The city panel: its controls and its units are the same full-width buttons, under their own headings. */
+.panel h4 { margin: 8px 0 2px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.75; }
+.actions label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; }
+.actions select { width: 100%; font-size: 0.85rem; padding: 4px 8px; box-sizing: border-box; }

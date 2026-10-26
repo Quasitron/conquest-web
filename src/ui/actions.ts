@@ -1,4 +1,4 @@
-import { UNIT_STATS, type Orders, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
 import type { ActionId } from './keys';
 
 const inOwnCity = (v: PlayerView, u: Pick<Unit, 'x' | 'y'>) => v.myCities.some((c) => c.x === u.x && c.y === u.y);
@@ -57,7 +57,15 @@ export function visibleButtons(view: PlayerView, u: Unit): ActionId[] {
   return UNIT_BUTTONS.filter((id) => avail[id]);
 }
 
-export function describeOrders(o: Orders | null): string {
+/** The orders of u in words, naming the transport an escort follows. */
+export function ordersText(view: PlayerView, u: Unit): string {
+  return describeOrders(u.orders, (id) => {
+    const t = view.myUnits.find((x) => x.id === id);
+    return t ? unitDisplayName(t) : undefined;
+  });
+}
+
+export function describeOrders(o: Orders | null, nameOf?: (id: number) => string | undefined): string {
   if (o === null) return 'None';
   switch (o.kind) {
     case 'sentry': return 'Sentry';
@@ -65,6 +73,6 @@ export function describeOrders(o: Orders | null): string {
     case 'patrol': return `Patrol ${o.a.x},${o.a.y} ↔ ${o.b.x},${o.b.y}`;
     case 'explore': return 'Explore';
     case 'repair': return 'Repair';
-    case 'escort': return 'Escort';
+    case 'escort': { const n = nameOf?.(o.transportId); return n ? `Escort ${n}` : 'Escort'; }
   }
 }

@@ -83,3 +83,20 @@ describe('escort fights', () => {
     expect(r.state.units.find((u) => u.id === ship.id)!.orders).toBeNull();
   });
 });
+describe('escort in the interface', () => {
+  it('the orders text names the transport, and Group mode offers Escort only to warships that have a free transport', async () => {
+    const { ordersText } = await import('../../src/ui/actions');
+    const { eligibleFor } = await import('../../src/ui/group');
+    const { getPlayerView } = await import('../../src/engine');
+    const s = explored(makeGame(water));
+    const tr = addUnit(s, 'transport', 0, 5, 1, { name: 'Ferry' });
+    const d = addUnit(s, 'destroyer', 0, 2, 1);
+    const army = addUnit(s, 'army', 0, 0, 0);
+    const view = () => getPlayerView(s, 0);
+    expect(eligibleFor(view(), [d.id, army.id, tr.id], 'escort').map((u) => u.id)).toEqual([d.id]);
+    d.orders = { kind: 'escort', transportId: tr.id };
+    expect(ordersText(view(), d)).toBe('Escort Ferry');
+    const d2 = addUnit(s, 'cruiser', 0, 2, 2);
+    expect(eligibleFor(view(), [d2.id], 'escort')).toEqual([]); // the only transport already has its escort
+  });
+});

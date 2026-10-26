@@ -18,6 +18,7 @@ export interface GroupBox {
 export const GROUP_ORDERS = [
   { id: 'sentry', action: 'sentry', label: 'Sentry' },
   { id: 'moveTo', action: 'moveTo', label: 'Move To' },
+  { id: 'escort', action: 'escort', label: 'Escort' },
   { id: 'explore', action: 'explore', label: 'Explore' },
   { id: 'goHome', action: 'goHome', label: 'Go Home' },
   { id: 'repair', action: 'repair', label: 'Repair' },

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import {
   UNIT_STATS, UNIT_TYPES, cargoCapacity, rankOf, unitDisplayName, type PlayerView, type Unit, type UnitType,
 } from '../engine';
-import { describeOrders } from './actions';
+import { ordersText } from './actions';
 import { blur } from './blur';
 import { Chevrons } from './Chevrons';
 import { UNIT_GLYPH } from './colors';
@@ -56,7 +56,7 @@ export function UnitList({ view, onSelect, onClose }: Props) {
                   <span class="glyph">{UNIT_GLYPH[u.type]}</span> {unitDisplayName(u)}<Chevrons rank={rankOf(u.wins)} />
                 </button>
                 <span class="muted">
-                  {whereIs(view, u)} · {describeOrders(u.orders)}
+                  {whereIs(view, u)} · {ordersText(view, u)}
                   {UNIT_STATS[u.type].carries !== null && ` · ${cargoAndPatrols(view.myUnits.filter((c) => c.carriedBy === u.id).length, cargoCapacity(u), patrolsFrom(view.myUnits, u).length)}`}
                 </span>
               </li>

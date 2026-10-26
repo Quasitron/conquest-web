@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled, rankOf, unitDisplayName, type PlayerView, type Unit } from '../engine';
-import { describeOrders } from './actions';
+import { ordersText } from './actions';
 import { UNIT_GLYPH } from './colors';
 import { cargoLoad, cargoSummary, healthText } from './labels';
 import { blur } from './blur';
@@ -62,7 +62,7 @@ export function UnitInfo({ view, unit, onRename, onOrders, onClose }: Props) {
         <button type="submit" onClick={blur}>Rename</button>
       </form>
       <p>{whereText(view, unit)}</p>
-      <p>Orders: {describeOrders(unit.orders)}</p>
+      <p>Orders: {ordersText(view, unit)}</p>
       <HealthBar u={unit} />
       <p class="muted">
         {st.name}: move {st.move}, attack {st.attack}, defense {st.defense}, hits {st.hits}
