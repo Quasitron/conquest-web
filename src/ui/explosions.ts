@@ -9,6 +9,15 @@ import { loaded } from './unitIcons';
 /** After its fight is over the explosion stays this long (ms), fading out. */
 export const EXPLOSION_TAIL_MS = 350;
 
+/**
+ * How bright the explosion is while its fight plays, as a share of its full strength: 1 until the burst is half over,
+ * then dimming, and half strength when the fight ends (the tail takes it from there to nothing).
+ */
+export function explosionFade(burst: number, slide: number): number {
+  const early = Math.min(1, Math.max(0, (burst - 0.5) * 2));
+  return 1 - 0.25 * early - 0.25 * Math.min(1, Math.max(0, slide));
+}
+
 const FIRE = ['/art/fx/explosion-1.webp', '/art/fx/explosion-2.webp', '/art/fx/explosion-3.webp'];
 const SMOKE = ['/art/fx/smoke-1.webp', '/art/fx/smoke-2.webp'];
 

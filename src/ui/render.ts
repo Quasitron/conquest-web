@@ -1,4 +1,4 @@
-import { EXPLOSION_TAIL_MS, drawExplosion, explosionReady, explosionVariant } from './explosions';
+import { EXPLOSION_TAIL_MS, drawExplosion, explosionFade, explosionReady, explosionVariant } from './explosions';
 import { CITY_STRENGTH_HITS, rankOf, UNIT_STATS, buildTime, isCrippled, type PlayerView, type Pos, type Unit, type UnitType } from '../engine';
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
@@ -512,11 +512,11 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     if (blast) {
       const lost = r.fight.attackerWon ? r.fight.at : (r.fight.from ?? r.fight.at);
       each((mx, my, sx, sy) => {
-        if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant, 1 - 0.5 * r.frame.slide);
+        if (mx === lost.x && my === lost.y) drawExplosion(ctx, sx + t / 2, sy + t / 2, t, r.frame.burst, variant, explosionFade(r.frame.burst, r.frame.slide));
       });
     }
   }
-  // The explosion of a fight that has just ended lingers a little, fading out (it has been dimming since the last quarter of the fight).
+  // The explosion of a fight that has just ended lingers a little, fading out (it has been dimming since the middle of the burst).
   for (const a of o.fx ?? []) {
     const k = (a.age - a.duration) / EXPLOSION_TAIL_MS;
     if (k < 0 || k >= 1 || !(a.fight.destroyed || a.fight.captured)) continue;
