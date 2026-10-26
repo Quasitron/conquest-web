@@ -32,7 +32,7 @@ import { approachSquare, attackLabel, bombardLabel, cityAttackChance, cityBombar
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
 import { getCombatMode, getReplayPace, getReportAfter, type ReplayPace } from './combatMode';
-import { fightsFromEvents, placeNote, replayFights, stepDuration, FIGHT_MS, SHOT_SHARE, type Fight } from './fights';
+import { fightsFromEvents, placeNote, replayFights, stepDuration, FIGHT_MS, BURST_END, SHOT_SHARE, type Fight } from './fights';
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
@@ -379,7 +379,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const log = session.log(view.me);
     const seen = soundSeen.current;
     if (seen && seen.me === view.me && log.length > seen.count) {
-      let sounds = soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me);
+      let sounds = soundsForEvents(log.slice(seen.count).map((l) => l.event), view.me, { promoteLater: getCombatMode() === 'animated' });
       // The turn ping is only for a quiet turn start: a production screen or the Combat report opening says it already.
       if (sounds.includes('turn') && (
         battlesAgainstMe(log, view.me, names, lookup).length > 0
@@ -510,7 +510,9 @@ export function GameScreen({ session, onQuit }: Props) {
       play('shot');
     }, wideMs);
     const boom = window.setTimeout(() => { if (step.destroyed || step.captured) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
-    return () => { window.clearTimeout(zoom); window.clearTimeout(boom); };
+    // A promotion earned in this fight is announced once the result has landed.
+    const promo = window.setTimeout(() => { if (step.promoted) play('promote'); }, wideMs + fxMs * BURST_END + 250);
+    return () => { window.clearTimeout(zoom); window.clearTimeout(boom); window.clearTimeout(promo); };
   }, [replay?.index, replay !== null]);
   useEffect(() => {
     if (!replay || replayPaused) return;

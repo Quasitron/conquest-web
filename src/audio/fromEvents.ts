@@ -44,13 +44,15 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
 }
 
 /** The sounds to play for a batch of new events, from player `me`'s point of view: in order, no repeats, capped. */
-export function soundsForEvents(events: readonly GameEvent[], me: PlayerId): SoundName[] {
+export function soundsForEvents(events: readonly GameEvent[], me: PlayerId, opts: { promoteLater?: boolean } = {}): SoundName[] {
   const out: SoundName[] = [];
   // A batch that ends in your own turn starting is what happened during the other player's turn. Its battles are
   // in the Combat report that opens by itself, so they are not also played as sounds.
   const newTurn = events.some((e) => e.type === 'turnStarted' && e.player === me);
   for (const e of events) {
     if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
+    // A promotion earned in a battle fought while the others played: the turn-start replay plays its chime after the fight.
+    if (newTurn && opts.promoteLater && e.type === 'unitPromoted') continue;
     // A city that falls to an assault goes up with a boom before the fanfare (the replay at turn start adds its own).
     if (e.type === 'cityCaptured' && !newTurn && (e.by === me || e.from === me) && !out.includes('explosion')) out.push('explosion');
     for (const s of soundFor(e, me)) if (!out.includes(s)) out.push(s);
