@@ -578,3 +578,63 @@ describe('AI submarines (Hard)', () => {
     expect(nextAction(view(s), newMemo('hard'))).toMatchObject({ type: 'move', unitId: sub.id, dir: 2 });
   });
 });
+describe('AI carrier (Hard)', () => {
+  const rows = ['*.*.*.*.*..............'];
+  const setup = () => {
+    const s = game(rows);
+    for (const c of s.cities) { c.owner = 1; c.production = 'army'; }
+    s.turn = 40;
+    addUnit(s, 'destroyer', 1, 12, 0, { orders: { kind: 'sentry' } }); // the fleet has begun
+    return s;
+  };
+  const first = (s: GameState, d: Difficulty, id: number) => {
+    const memo = newMemo(d);
+    for (let i = 0; i < 24; i++) {
+      const cmd = nextAction(view(s), memo);
+      if (cmd === null) return null;
+      if ('unitId' in cmd && cmd.unitId === id) return cmd;
+    }
+    return null;
+  };
+
+  it('the port builds the carrier on Hard, then fighters for it; Normal builds neither', () => {
+    const s = setup();
+    const v = view(s);
+    const port = portCity(v)!;
+    expect(wantedProduction(v, port, port, tuningFor('hard'))).toBe('carrier');
+    expect(wantedProduction(v, port, port, tuningFor('normal'))).not.toBe('carrier');
+    const carrier = addUnit(s, 'carrier', 1, port.x, port.y);
+    expect(wantedProduction(view(s), port, port, tuningFor('hard'))).toBe('fighter');
+    addUnit(s, 'fighter', 1, port.x, port.y, { orders: { kind: 'sentry' } });
+    addUnit(s, 'fighter', 1, port.x, port.y, { orders: { kind: 'sentry' } });
+    expect(wantedProduction(view(s), port, port, tuningFor('hard'))).not.toBe('fighter');
+    expect(carrier.type).toBe('carrier');
+  });
+
+  it('the carrier waits in port for its two fighters, then sails on patrol', () => {
+    const s = setup();
+    const port = portCity(view(s))!;
+    const carrier = addUnit(s, 'carrier', 1, port.x, port.y);
+    addUnit(s, 'fighter', 1, port.x, port.y, { orders: { kind: 'sentry' } });
+    expect(first(s, 'hard', carrier.id)).toBeNull();
+    addUnit(s, 'fighter', 1, port.x, port.y, { orders: { kind: 'sentry' } });
+    expect(first(s, 'hard', carrier.id)).toMatchObject({ type: 'setOrders', orders: { kind: 'patrol' } });
+  });
+
+  it('fighters aboard a carrier at sea patrol tied to it, in different directions', () => {
+    const s = setup();
+    const carrier = addUnit(s, 'carrier', 1, 14, 0, { orders: { kind: 'sentry' } });
+    const f1 = addUnit(s, 'fighter', 1, 14, 0, { carriedBy: carrier.id });
+    const f2 = addUnit(s, 'fighter', 1, 14, 0, { carriedBy: carrier.id });
+    const a = first(s, 'hard', f1.id) as { orders: { kind: string; a: { x: number; y: number }; b: { x: number; y: number } } } | null;
+    expect(a).toMatchObject({ orders: { kind: 'patrol', a: { x: 14, y: 0 } } });
+    const reach = Math.max(Math.abs(a!.orders.b.x - 14), Math.abs(a!.orders.b.y));
+    expect(reach).toBeGreaterThanOrEqual(3);
+    expect(reach).toBeLessThanOrEqual(7);
+    f1.orders = { kind: 'patrol', a: a!.orders.a, b: a!.orders.b, toB: true, carrier: { id: carrier.id, end: 'a' } };
+    const b = first(s, 'hard', f2.id) as { orders: { b: { x: number; y: number } } } | null;
+    expect(b).not.toBeNull();
+    expect(Math.max(Math.abs(b!.orders.b.x - a!.orders.b.x), Math.abs(b!.orders.b.y - a!.orders.b.y))).toBeGreaterThan(2);
+    expect(first(s, 'normal', f1.id)).toBeNull();
+  });
+});

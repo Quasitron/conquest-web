@@ -100,6 +100,20 @@ function warshipFor(view: PlayerView, t: AiTuning, ships: number, city: City): U
   return n >= 8 ? 'battleship' : n >= 4 ? 'cruiser' : 'destroyer';
 }
 
+/** Hard: fighters the carrier sails with, the empire it needs first, and how far its fighters patrol from it. */
+const CARRIER_AIR = 2;
+const CARRIER_FROM_CITIES = 5;
+const CARRIER_FROM_TURN = 20;
+const CARRIER_PATROL_RANGE = 7;
+
+/** Whether the port should be building (or keep building) the one carrier: the fleet has begun, and no carrier exists. */
+function wantsCarrier(view: PlayerView, city: City): boolean {
+  if (view.myCities.length < CARRIER_FROM_CITIES || view.turn < CARRIER_FROM_TURN) return false;
+  if (warshipsOwnedOrBuilding(view) < 1) return false;
+  const carriers = view.myUnits.filter((u) => u.type === 'carrier').length
+    + view.myCities.filter((c) => c.id !== city.id && c.production === 'carrier').length;
+  return carriers === 0;
+}
 /** Hard builds one scouting fighter from this turn on, while there is unexplored map. */
 const SCOUT_FROM_TURN = 4;
 
@@ -122,6 +136,13 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
   if (port && city.id === port.id && idleArmies(view) >= 1) {
     const others = transportsOwnedOrBuilding(view) - (city.production === 'transport' ? 1 : 0);
     if (others < wanted) return 'transport';
+  }
+  if (t.carriers && port && city.id === port.id) {
+    // The carrier takes the fighters waiting in its port when it sails, so the port builds them for it.
+    const carrierHere = view.myUnits.some((u) => u.type === 'carrier' && at(u, city));
+    const fightersHere = view.myUnits.filter((u) => u.type === 'fighter' && u.carriedBy === null && at(u, city)).length;
+    if (carrierHere && fightersHere < CARRIER_AIR) return 'fighter';
+    if (wantsCarrier(view, city)) return 'carrier';
   }
   if (t.scouts && isScoutCity(view, city, port)) return 'fighter';
   if (cityIsCoastal(view, city)) {
@@ -483,8 +504,8 @@ function sailReady(view: PlayerView, tr: Unit, t: AiTuning): boolean {
 /** Transports that want an escort: loaded ones at sea, and ones in port whose armies are ready to sail. */
 function escortWards(view: PlayerView, t: AiTuning): Unit[] {
   return view.myUnits.filter((tr) => {
-    if (tr.type !== 'transport' || tr.carriedBy !== null) return false;
-    if (view.myCities.some((c) => at(c, tr))) return sailReady(view, tr, t);
+    if ((tr.type !== 'transport' && tr.type !== 'carrier') || tr.carriedBy !== null) return false;
+    if (view.myCities.some((c) => at(c, tr))) return tr.type === 'transport' && sailReady(view, tr, t);
     return view.myUnits.some((c) => c.carriedBy === tr.id);
   });
 }
@@ -621,6 +642,55 @@ function decideScout(view: PlayerView, u: Unit): SessionCommand | null {
   if (inCity) return null;
   return view.myCities.length > 0 ? { type: 'goHome', unitId: u.id } : null;
 }
+/** The scouting fighter is the oldest free one; the others wait in port for the carrier. */
+function isScout(view: PlayerView, u: Unit): boolean {
+  return !view.myUnits.some((f) => f.type === 'fighter' && f.carriedBy === null && f.id < u.id);
+}
+
+/**
+ * Hard: the carrier waits in port until its fighters are there (it takes them when it sails), repairs when hurt, and
+ * otherwise patrols out toward the enemy and back like the other ships.
+ */
+function decideCarrier(view: PlayerView, u: Unit): SessionCommand | null {
+  const inCity = view.myCities.some((c) => at(c, u));
+  if (u.damage > 0) {
+    if (inCity) return setOrders(u, { kind: 'repair' });
+    const home = nearestOwnCity(view, u, true);
+    return home && goTo(view, u, home) ? { type: 'goHome', unitId: u.id, repair: true } : null;
+  }
+  if (inCity) {
+    const air = view.myUnits.filter((f) => f.type === 'fighter' && (f.carriedBy === u.id || (f.carriedBy === null && at(f, u)))).length;
+    if (air < CARRIER_AIR) return null;
+  }
+  const end = patrolEnd(view, u);
+  return end ? setOrders(u, { kind: 'patrol', a: { x: u.x, y: u.y }, b: end, toB: true }) : null;
+}
+
+/**
+ * Hard: a fighter aboard a carrier at sea patrols out to the explored square (within range) nearest a known foreign
+ * city, with its path tied to the carrier; a second fighter takes a different direction from the first.
+ */
+function decideCarrierFighter(view: PlayerView, u: Unit): SessionCommand | null {
+  const carrier = view.myUnits.find((c) => c.id === u.carriedBy);
+  if (!carrier || view.myCities.some((c) => at(c, carrier))) return null;
+  const takenEnds = view.myUnits.flatMap((f) => {
+    const o = f.id !== u.id && f.type === 'fighter' ? f.orders : null;
+    return o?.kind === 'patrol' ? [o.carrier?.end === 'a' ? o.b : o.a] : [];
+  });
+  const goals = view.knownCities.filter((c) => c.owner !== view.me);
+  const w = view.width;
+  let best: { sq: Pos; score: number } | null = null;
+  for (let i = 0; i < view.terrain.length; i++) {
+    if (view.terrain[i] === null) continue;
+    const sq = { x: i % w, y: Math.floor(i / w) };
+    const d = chebyshev(geo(view), carrier, sq);
+    if (d < 3 || d > CARRIER_PATROL_RANGE) continue;
+    if (takenEnds.some((e) => chebyshev(geo(view), e, sq) <= 2)) continue;
+    const score = goals.length > 0 ? Math.min(...goals.map((g) => chebyshev(geo(view), g, sq))) : -d;
+    if (best === null || score < best.score) best = { sq, score };
+  }
+  return best ? setOrders(u, { kind: 'patrol', a: { x: carrier.x, y: carrier.y }, b: best.sq, toB: true }) : null;
+}
 function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
   switch (u.type) {
     case 'army': return decideArmy(view, u, port, t);
@@ -628,7 +698,10 @@ function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): Sess
     case 'destroyer':
     case 'cruiser':
     case 'battleship': return decideWarship(view, u, t);
-    case 'fighter': return t.scouts ? decideScout(view, u) : null;
+    case 'fighter':
+      if (u.carriedBy !== null) return t.carriers ? decideCarrierFighter(view, u) : null;
+      return t.scouts && isScout(view, u) ? decideScout(view, u) : null;
+    case 'carrier': return t.carriers ? decideCarrier(view, u) : null;
     case 'submarine': return decideWarship(view, u, t);
     default: return null; // carriers are not built yet
   }
