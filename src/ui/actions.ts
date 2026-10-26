@@ -12,8 +12,14 @@ export function loadCandidates(view: PlayerView, t: Unit): Unit[] {
     .sort((a, b) => a.id - b.id);
 }
 
+/** Own transports an escort could be sent to: not carried, with no escort of their own yet (apart from u itself). */
+export function escortable(view: PlayerView, u: Unit): Unit[] {
+  return view.myUnits.filter((t) => t.type === 'transport' && t.carriedBy === null
+    && !view.myUnits.some((e) => e.id !== u.id && e.orders?.kind === 'escort' && e.orders.transportId === t.id));
+}
+
 export const UNIT_BUTTONS: ActionId[] = [
-  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
@@ -33,6 +39,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     unload: hasCargo,
     goHome: view.myCities.length > 0 && !inCity,
     patrol: true,
+    // A warship (not a transport) can escort when a transport of ours at sea has no escort yet.
+    escort: st.domain === 'sea' && u.type !== 'transport' && u.carriedBy === null && escortable(view, u).length > 0,
     info: true,
     fit: true,
     explore: !air,
@@ -57,5 +65,6 @@ export function describeOrders(o: Orders | null): string {
     case 'patrol': return `Patrol ${o.a.x},${o.a.y} ↔ ${o.b.x},${o.b.y}`;
     case 'explore': return 'Explore';
     case 'repair': return 'Repair';
+    case 'escort': return 'Escort';
   }
 }

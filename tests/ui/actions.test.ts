@@ -119,7 +119,7 @@ describe('describeOrders', () => {
 describe('UNIT_BUTTONS and the new actions', () => {
   it('lists the unit buttons in order', () => {
     expect(UNIT_BUTTONS).toEqual([
-      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'goHome', 'clearOrders', 'center', 'info', 'disband',
     ]);
   });
 

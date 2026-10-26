@@ -10,6 +10,7 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   sentry: { label: 'Sentry', key: 'S' },
   repair: { label: 'Repair', key: 'R' },
   moveTo: { label: 'Move To', key: 'T' },
+  escort: { label: 'Escort', key: 'E' },
   patrol: { label: 'Patrol', key: 'P' },
   goHome: { label: 'Go Home', key: 'H' },
   explore: { label: 'Explore', key: 'X' },

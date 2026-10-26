@@ -1,11 +1,13 @@
 import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, cargoCapacity } from './units';
-import { chebyshev, index, isCoastal } from './map';
+import { UNIT_STATS, cargoCapacity, hitsOf, isCrippled } from './units';
+import { combatWinChance } from './combat';
+import { chebyshev, index, isCoastal, neighbors } from './map';
 import { cargoOf, cityAt, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { canPlayerSeeUnit, updateFog } from './fog';
 import { moveUnit } from './movement';
+import { attackRestriction, attackUnit } from './attack';
 import { unloadCargo } from './cargo';
 import { aircraftCanReach, dirBetween, findFrontier, findPath, pathMapFromState } from './path';
 import { pickUpRoute } from './routes';
@@ -82,6 +84,15 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
       if (leg === null || 2 * leg.length > (UNIT_STATS[u.type].range ?? 0)) return 'out of range';
       const need = path.length + (target === far ? leg.length : 0);
       return need > (u.fuel ?? 0) ? 'out of range' : null;
+    }
+    case 'escort': {
+      if (UNIT_STATS[u.type].domain !== 'sea' || u.type === 'transport') return 'only warships can escort';
+      const tr = s.units.find((x) => x.id === o.transportId);
+      if (!tr || tr.owner !== u.owner || tr.type !== 'transport') return 'an escort needs one of your transports to follow';
+      if (s.units.some((x) => x !== u && x.owner === u.owner && x.orders?.kind === 'escort' && x.orders.transportId === tr.id)) {
+        return 'that transport already has an escort';
+      }
+      return null;
     }
     default:
       return 'unknown orders';
@@ -179,7 +190,7 @@ export function executeOrders(
 
   for (;;) {
     const o = u.orders;
-    if (!s.units.includes(u) || o === null || o.kind === 'sentry' || o.kind === 'repair' || u.movesLeft <= 0) return;
+    if (!s.units.includes(u) || o === null || o.kind === 'sentry' || o.kind === 'repair' || o.kind === 'escort' || u.movesLeft <= 0) return;
     if (o.kind === 'goto' && o.routeCity !== undefined) {
       const dest = s.cities.find((c) => c.id === o.routeCity);
       if (!dest || dest.owner !== u.owner) return endOrders(u, 'destinationLost', events);
@@ -253,6 +264,64 @@ export function executeOrders(
   }
 }
 
+/** An escort attacks an enemy ship beside it only when it is at least this likely to win; otherwise it asks for orders. */
+const ESCORT_MIN_WIN = 0.45;
+
+/**
+ * Runs an escort's orders: fight a visible enemy ship that is next to it (when the odds are fair), then close up on its
+ * transport until it is beside it. It keeps its orders through a won fight; poor odds, a crippling hit or a lost
+ * transport end them so that the player decides.
+ */
+export function executeEscort(s: GameState, rng: RandomSource, u: Unit, events: GameEvent[]): void {
+  for (;;) {
+    const o = u.orders;
+    if (!s.units.includes(u) || o === null || o.kind !== 'escort' || u.movesLeft <= 0) return;
+    const tr = s.units.find((x) => x.id === o.transportId && x.owner === u.owner && x.type === 'transport');
+    if (!tr) return endOrders(u, 'escortLost', events);
+    const foe = s.units.find(
+      (e) => e.carriedBy === null && !areFriendly(s, e.owner, u.owner) && chebyshev(s, e, u) <= 1
+        && canPlayerSeeUnit(s, u.owner, e) && attackRestriction(s, u, e) === null,
+    );
+    if (foe) {
+      const a = UNIT_STATS[u.type];
+      const d = UNIT_STATS[foe.type];
+      const chance = combatWinChance(
+        { attack: a.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+        { defense: d.defense, shot: d.shot, hits: hitsOf(foe), damage: foe.damage },
+      );
+      if (chance < ESCORT_MIN_WIN || attackUnit(s, rng, u, foe, events) !== null) return endOrders(u, 'enemySighted', events);
+      if (!s.units.includes(u)) return;
+      updateFog(s, u.owner);
+      if (isCrippled(u)) return endOrders(u, 'crippled', events);
+      continue;
+    }
+    if (chebyshev(s, u, tr) <= 1) return;
+    // The shortest way to a free square beside the transport.
+    const map = pathMapFromState(s, u.owner);
+    let path: Pos[] | null = null;
+    for (const n of neighbors(s, tr.x, tr.y)) {
+      if (n.x === u.x && n.y === u.y) continue;
+      const p = findPath(map, u, n);
+      if (p !== null && p.length > 0 && (path === null || p.length < path.length)) path = p;
+    }
+    if (path === null) return endOrders(u, 'blocked', events);
+    const next = path[0];
+    if (ownBlocks(s, u, next) || topLevelUnitsAt(s, next.x, next.y).some((x) => !areFriendly(s, x.owner, u.owner))) return;
+    const dir = dirBetween(s, u, next);
+    if (dir === null || moveUnit(s, rng, u, dir, events) !== null) return;
+    if (!s.units.includes(u)) return;
+    updateFog(s, u.owner);
+  }
+}
+
+/** Lets every escort of player `pid` catch up with its transport (after the transport has moved, in id order). */
+export function runEscorts(s: GameState, rng: RandomSource, pid: PlayerId, events: GameEvent[]): void {
+  const ids = s.units.filter((u) => u.owner === pid && u.orders?.kind === 'escort').map((u) => u.id).sort((a, b) => a - b);
+  for (const id of ids) {
+    const u = s.units.find((x) => x.id === id);
+    if (u) executeEscort(s, rng, u, events);
+  }
+}
 /** Wakes sentries (not cargo) that have a visible enemy next to them. */
 export function wakeSentries(s: GameState, pid: PlayerId, events: GameEvent[]): void {
   for (const u of [...s.units]) {
@@ -275,13 +344,14 @@ export function runPlayerOrders(s: GameState, rng: RandomSource, pid: PlayerId, 
   wakeSentries(s, pid, events);
   wakeRepaired(s, pid, events);
   const ids = s.units
-    .filter((u) => u.owner === pid && u.orders !== null && u.orders.kind !== 'sentry' && u.orders.kind !== 'repair')
+    .filter((u) => u.owner === pid && u.orders !== null && u.orders.kind !== 'sentry' && u.orders.kind !== 'repair' && u.orders.kind !== 'escort')
     .map((u) => u.id)
     .sort((a, b) => a - b);
   for (const id of ids) {
     const u = s.units.find((x) => x.id === id);
     if (u) executeOrders(s, rng, u, events, true);
   }
+  runEscorts(s, rng, pid, events); // after their transports have moved
   updateFog(s, pid);
 }
 
@@ -310,6 +380,9 @@ export function giveOrders(
   if (u.orders.kind === 'patrol') tieToCarrier(s, u, u.orders);
   u.blockedTurns = 0;
   u.unloadNextTurn = false;
-  if (u.movesLeft > 0) executeOrders(s, rng, u, events);
+  if (u.movesLeft > 0) {
+    if (u.orders.kind === 'escort') executeEscort(s, rng, u, events);
+    else executeOrders(s, rng, u, events);
+  }
   return null;
 }
