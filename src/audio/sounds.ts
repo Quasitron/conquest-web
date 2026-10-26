@@ -37,6 +37,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   'produce-armor': '/sounds/produce-armor.mp3',
   // Explosion, seconds 1.5 to 2.5 of the original recording; short enough to repeat for a combat animation.
   explosion: '/sounds/explosion.mp3',
+  // A ship is promoted: a rank-up jingle (CC0, see docs/sounds.md), the first 1.45 s of the original, levelled to the other sounds.
+  promote: '/sounds/promote.mp3',
 };
 
 export type MusicName = 'title';
