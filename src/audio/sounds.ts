@@ -18,6 +18,7 @@ export const SOUND_NAMES: SoundName[] = [
  */
 export const OVERRIDES: Partial<Record<SoundName, string>> = {
   // Jet flyby, seconds 4 to 7 of the original recording, trimmed and faded in public/sounds/.
+  lose: '/sounds/lose.mp3', // Piano game-over theme, 11.3 s (see docs/sounds.md)
   win: '/sounds/win.mp3', // Victory trumpets, 4.4 s (see docs/sounds.md)
   'produce-fighter': '/sounds/produce-fighter.mp3',
   // Bomber (Advanced units rule): jet flyover, 3.9 s of a US military video (see docs/sounds.md).
