@@ -13,7 +13,7 @@ const ON = { advancedUnits: true };
 describe('Bomber (Advanced units house rule)', () => {
   it('has the manual numbers and is only built when the rule is on', () => {
     const b = UNIT_STATS.bomber;
-    expect([b.domain, b.move, b.hits, b.attack, b.defense, b.shot, b.range]).toEqual(['air', 4, 1, 2, 2, 2, 24]);
+    expect([b.domain, b.move, b.hits, b.attack, b.defense, b.shot, b.range, b.build, b.buildRepeat]).toEqual(['air', 4, 1, 2, 2, 2, 24, 12, 10]);
     expect(buildableTypes({ advancedUnits: false })).not.toContain('bomber');
     expect(buildableTypes({ advancedUnits: true })).toContain('bomber');
     expect(buildableTypes({ advancedUnits: true })).not.toContain('airbase');
