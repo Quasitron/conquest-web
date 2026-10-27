@@ -94,7 +94,7 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 
 ### Prepared, not in the game yet
 
-`produce-airfield.mp3` (6.3 s) is the finished sound for the Airfield / Airbase of the Advanced rules. It is kept in `sound-originals` until that unit is built; to ship it, copy it to `public/sounds/`, register it in `src/audio/sounds.ts` and move these rows into the table above.
+`produce-airfield.mp3` (6.3 s) is the finished sound for the Airfield / Airbase of the Advanced rules. It ships as `public/sounds/produce-airfield.mp3` and plays (as the `airbase` sound, `OVERRIDES.airbase`) when you turn an Army or Armor into an Airbase. The Bomber has no recording of its own yet: it reuses `produce-fighter.mp3` (`OVERRIDES['produce-bomber']`).
 
 | File | Source | Licence | Used |
 | --- | --- | --- | --- |

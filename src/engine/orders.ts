@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, canCarry, hitsOf, isCrippled } from './units';
+import { UNIT_STATS, canCarry, fightRatings, hitsOf, isCrippled } from './units';
 import { combatWinChance } from './combat';
 import { chebyshev, index, isCoastal, neighbors } from './map';
 import { cityAt, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
@@ -66,7 +66,7 @@ export function validateOrders(s: GameState, u: Unit, o: Orders): string | null 
       const map = pathMapFromState(s, u.owner);
       const path = findPath(map, u, o.target);
       if (path === null) return 'no known path';
-      if (air && !aircraftCanReach(map, path.length, u.fuel ?? 0, o.target)) return 'out of range';
+      if (air && !aircraftCanReach(map, path.length, u.fuel ?? 0, o.target, u.type)) return 'out of range';
       return null;
     }
     case 'patrol': {
@@ -226,7 +226,7 @@ export function executeOrders(
     }
     const path = findPath(map, u, target);
     if (path === null || path.length === 0) return blocked();
-    if (u.fuel !== null && o.kind === 'goto' && !aircraftCanReach(map, path.length, u.fuel, target)) {
+    if (u.fuel !== null && o.kind === 'goto' && !aircraftCanReach(map, path.length, u.fuel, target, u.type)) {
       return endOrders(u, 'lowFuel', events);
     }
     if (u.fuel !== null && o.kind !== 'goto' && path.length > u.fuel) return endOrders(u, 'lowFuel', events);
@@ -285,9 +285,10 @@ export function executeEscort(s: GameState, rng: RandomSource, u: Unit, events: 
     if (foe) {
       const a = UNIT_STATS[u.type];
       const d = UNIT_STATS[foe.type];
+      const rating = fightRatings(s.rules, u.type, foe.type);
       const chance = combatWinChance(
-        { attack: a.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
-        { defense: d.defense, shot: d.shot, hits: hitsOf(foe), damage: foe.damage },
+        { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+        { defense: rating.defense, shot: d.shot, hits: hitsOf(foe), damage: foe.damage },
       );
       if (chance < ESCORT_MIN_WIN || attackUnit(s, rng, u, foe, events) !== null) return endOrders(u, 'enemySighted', events);
       if (!s.units.includes(u)) return;

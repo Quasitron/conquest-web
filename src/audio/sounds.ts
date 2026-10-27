@@ -1,12 +1,12 @@
 export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'win' | 'lose'
-  | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-transport' | 'produce-destroyer'
+  | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-bomber' | 'airbase' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
   'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'win', 'lose',
-  'produce-army', 'produce-armor', 'produce-fighter', 'produce-transport', 'produce-destroyer',
+  'produce-army', 'produce-armor', 'produce-fighter', 'produce-bomber', 'airbase', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
 ];
 
@@ -19,6 +19,10 @@ export const SOUND_NAMES: SoundName[] = [
 export const OVERRIDES: Partial<Record<SoundName, string>> = {
   // Jet flyby, seconds 4 to 7 of the original recording, trimmed and faded in public/sounds/.
   'produce-fighter': '/sounds/produce-fighter.mp3',
+  // Bomber (Advanced units rule): the fighter's jet flyby until it has a sound of its own.
+  'produce-bomber': '/sounds/produce-fighter.mp3',
+  // An Airbase is built (Advanced units rule): jet taxiing into air traffic control chatter, 6.3 s (see docs/sounds.md).
+  airbase: '/sounds/produce-airfield.mp3',
   // Ship horn, seconds 16.7 to 19.2 of the original recording.
   'produce-transport': '/sounds/produce-transport.mp3',
   // Destroyer, seconds 13.2 to 15 of the original recording.
@@ -220,6 +224,15 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   // Fighter: a jet whoosh, a filtered noise sweep rising then fading.
   'produce-fighter': (c, o, t) => {
     noise(c, o, t, 0.7, { gain: 0.3, from: 400, to: 5000, q: 3, filter: 'bandpass' });
+  },
+  // Bomber (fallback): a lower, longer jet roar.
+  'produce-bomber': (c, o, t) => {
+    noise(c, o, t, 0.9, { gain: 0.3, from: 250, to: 2500, q: 2, filter: 'bandpass' });
+  },
+  // Airbase (fallback): a control-tower double beep.
+  airbase: (c, o, t) => {
+    tone(c, o, t, 880, 0.12, { gain: 0.12 });
+    tone(c, o, t + 0.2, 880, 0.12, { gain: 0.12 });
   },
   // Transport: one short low ship-horn blip.
   'produce-transport': (c, o, t) => horn(c, o, t, 98, 0.45, 0.2),

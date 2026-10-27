@@ -1,5 +1,5 @@
 import {
-  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
+  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, fightRatings, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
   type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 
@@ -93,14 +93,30 @@ export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, gar
  * Chance that `u` beats a unit of `type`. The enemy's damage is not known to the player, so it is assumed to have
  * none; ships bombarding land units fight at half the defence, as in the engine.
  */
-export function unitAttackChance(u: Unit, type: UnitType, foeRank = 0): number {
+export function unitAttackChance(u: Unit, type: UnitType, foeRank = 0, rules: { advancedUnits: boolean } = { advancedUnits: false }): number {
   const a = UNIT_STATS[u.type];
   const d = UNIT_STATS[type];
   const bombard = a.domain === 'sea' && d.domain === 'land';
+  const rating = fightRatings(rules, u.type, type);
   return combatWinChance(
-    { attack: a.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
-    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },
+    { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+    { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },
   );
+}
+
+/** Chance that a Bomber u beats the city it bombs (a win costs the city its production or a unit; the city is never taken). */
+export function cityBombChance(view: PlayerView, u: Unit, garrison = 0): number {
+  const st = UNIT_STATS[u.type];
+  const defense = CITY_COMBAT.defense + (view.rules.garrisonsDefend ? garrisonBonus(garrison) : 0);
+  return combatWinChance(
+    { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
+    { defense, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
+  );
+}
+
+/** "Bomb (60%)": a bomber attacking a city. */
+export function bombLabel(chance: number): string {
+  return `Bomb (${Math.round(chance * 100)}%)`;
 }
 
 /** "Bombard (95%)": a ship firing on a city. */

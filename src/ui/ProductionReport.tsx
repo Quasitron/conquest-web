@@ -12,6 +12,8 @@ export const UNIT_BLURB: Record<UnitType, string> = {
   army: 'Foot soldiers: one of two units that can take a city, but slow and helpless at sea.',
   armor: 'Heavy tanks: twice as fast and twice as tough as an army, but they fill two places on a transport.',
   fighter: 'A fast scout and striker; it must land in a city or on a carrier before its fuel runs out.',
+  bomber: 'A slower aircraft with a longer range; it sinks ships and bombs cities, but fights poorly against fighters and cannot land on a carrier.',
+  airbase: 'Made by an army or armor on open land: it cannot move or attack, but aircraft land and refuel there.',
   transport: 'Ferries armies across the water; weak in a fight, so keep it escorted.',
   destroyer: 'A quick, cheap warship that spots submarines and screens bigger ships.',
   submarine: 'Hard to see and hits hard, striking with several shots at once.',

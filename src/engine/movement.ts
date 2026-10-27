@@ -4,7 +4,7 @@ import { UNIT_STATS, canCarry } from './units';
 import { step, terrainAt } from './map';
 import { cargoOf, cargoRoom, cityAt, destroyUnit, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
-import { attackCity, attackUnit, bombardCity } from './attack';
+import { attackCity, attackUnit, bombCity, bombardCity } from './attack';
 
 export function spendMove(u: Unit): void {
   u.movesLeft -= 1;
@@ -65,6 +65,7 @@ export function settleAircraft(s: GameState, u: Unit, events: GameEvent[]): void
 }
 
 export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, events: GameEvent[]): string | null {
+  if (u.type === 'airbase') return 'an airbase cannot move';
   if (u.movesLeft <= 0) return 'unit has no moves left';
   const to = step(s, u.x, u.y, dir);
   if (!to) return 'cannot move off the map';
@@ -73,6 +74,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   const city = cityAt(s, to.x, to.y);
   if (city && !areFriendly(s, city.owner, u.owner)) {
     if (st.domain === 'sea' && st.bombard && s.rules.cityStrength && city.owner !== null) return bombardCity(s, rng, u, city, events);
+    if (st.domain === 'air' && u.type === 'bomber' && s.rules.advancedUnits) return bombCity(s, rng, u, city, events);
     if (st.domain !== 'land') return 'only land units can attack cities';
     return attackCity(s, rng, u, city, events);
   }

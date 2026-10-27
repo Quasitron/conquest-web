@@ -1,4 +1,4 @@
-import { UNIT_STATS, canCarry, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, canBecomeAirbase, canCarry, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
 import type { ActionId } from './keys';
 
 const inOwnCity = (v: PlayerView, u: Pick<Unit, 'x' | 'y'>) => v.myCities.some((c) => c.x === u.x && c.y === u.y);
@@ -18,7 +18,7 @@ export function escortable(view: PlayerView, u: Unit): Unit[] {
 }
 
 export const UNIT_BUTTONS: ActionId[] = [
-  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
@@ -26,27 +26,31 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
   const air = st.domain === 'air';
   const inCity = inOwnCity(view, u);
   const hasCargo = view.myUnits.some((c) => c.carriedBy === u.id);
+  const fixed = u.type === 'airbase'; // an Airbase never moves
   return {
     next: true,
-    skip: true,
-    hold: true,
-    moveTo: true,
+    skip: !fixed,
+    hold: !fixed,
+    moveTo: !fixed,
     center: true,
     endTurn: true,
     disband: true,
     load: st.carries.length > 0 && inCity && loadCandidates(view, u).length > 0,
     unload: hasCargo,
-    goHome: view.myCities.length > 0 && !inCity,
-    patrol: true,
+    goHome: view.myCities.length > 0 && !inCity && !fixed,
+    patrol: !fixed,
     // A warship (not a transport) can escort when a transport of ours at sea has no escort yet.
     escort: st.domain === 'sea' && u.type !== 'transport' && u.carriedBy === null && escortable(view, u).length > 0,
     info: true,
     fit: true,
-    explore: !air,
-    sentry: !air || inCity || u.carriedBy !== null,
+    explore: !air && !fixed,
+    sentry: !fixed && (!air || inCity || u.carriedBy !== null),
+    // An Army or Armor on open land can turn itself into an Airbase (Advanced units rule); it is for good.
+    airbase: view.rules.advancedUnits && canBecomeAirbase(u.type) && u.carriedBy === null && !inCity
+      && view.terrain[u.y * view.width + u.x] === 'land',
     clearOrders: u.orders !== null,
     // Damaged: in a city of ours it sits there until repaired, elsewhere it first goes to the nearest suitable city.
-    repair: u.damage > 0 && u.carriedBy === null && u.orders?.kind !== 'repair' && (inCity || view.myCities.length > 0),
+    repair: !fixed && u.damage > 0 && u.carriedBy === null && u.orders?.kind !== 'repair' && (inCity || view.myCities.length > 0),
   };
 }
 

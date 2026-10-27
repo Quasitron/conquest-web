@@ -1,8 +1,8 @@
 import type { HouseRules } from './rules';
 
 export type UnitType =
-  | 'army' | 'armor' | 'fighter' | 'transport' | 'destroyer'
-  | 'submarine' | 'cruiser' | 'battleship' | 'carrier';
+  | 'army' | 'armor' | 'fighter' | 'bomber' | 'transport' | 'destroyer'
+  | 'submarine' | 'cruiser' | 'battleship' | 'carrier' | 'airbase';
 export type Domain = 'land' | 'sea' | 'air';
 export type Terrain = 'water' | 'land' | 'city';
 export type PlayerId = number;
@@ -163,6 +163,8 @@ export type Command =
   /** `repair`: a damaged unit goes to the nearest suitable own city (or is already in one) and repairs there. */
   | { type: 'goHome'; player: PlayerId; unitId: number; repair?: boolean }
   | { type: 'setRoute'; player: PlayerId; cityId: number; route: Omit<CityRoute, 'by'> | null }
+  /** Turns an Army or Armor into an Airbase where it stands (Advanced units rule); it cannot change back. */
+  | { type: 'buildAirbase'; player: PlayerId; unitId: number }
   | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
   | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }
   | { type: 'endTurn'; player: PlayerId }
@@ -199,6 +201,9 @@ export type GameEvent =
   | { type: 'cityCaptured'; cityId: number; by: PlayerId; from: PlayerId | null }
   | { type: 'unitProduced'; unitId: number; cityId: number; unitType: UnitType }
   | { type: 'unitPromoted'; unitId: number; owner: PlayerId; unitType: UnitType; rank: number }
+  | { type: 'airbaseBuilt'; unitId: number; owner: PlayerId; x: number; y: number }
+  /** A bomber's hit on a city: its production so far is lost, or one of the units in it is destroyed. */
+  | { type: 'cityBombed'; cityId: number; by: PlayerId; owner: PlayerId; effect: 'production' | 'unit'; unitType?: UnitType }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
   | { type: 'ordersEnded'; unitId: number; owner: PlayerId; reason: OrdersEndReason }
   | { type: 'turnStarted'; player: PlayerId; turn: number }

@@ -28,7 +28,7 @@ import { keyToAction, type ActionId } from './keys';
 import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
 import { EXPLOSION_TAIL_MS } from './explosions';
-import { approachSquare, attackLabel, bombardLabel, cityAttackChance, cityBombardChance, unitAttackChance, visibleGarrison } from './plans';
+import { approachSquare, attackLabel, bombLabel, bombardLabel, cityAttackChance, cityBombChance, cityBombardChance, unitAttackChance, visibleGarrison } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
 import { getCombatMode, getReplayPace, getReportAfter, type ReplayPace } from './combatMode';
@@ -287,13 +287,16 @@ export function GameScreen({ session, onQuit }: Props) {
     if (!selectedUnit || !hover || !playing) return null;
     if (!targets.some((t) => t.attack && t.x === hover.x && t.y === hover.y)) return null;
     const city = view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== view.me);
+    if (city && selectedUnit.type === 'bomber') {
+      return { at: hover, label: bombLabel(cityBombChance(view, selectedUnit, visibleGarrison(view, city, city.owner))) };
+    }
     if (city && UNIT_STATS[selectedUnit.type].domain === 'sea') {
       return { at: hover, label: bombardLabel(cityBombardChance(view, selectedUnit, city.damage, visibleGarrison(view, city, city.owner))) };
     }
     if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner, city.damage, visibleGarrison(view, city, city.owner))) };
     // A unit: odds against the first enemy seen on the square (the one that defends), its damage assumed none.
     const foe = view.enemies.find((e) => e.visibleNow && e.x === hover.x && e.y === hover.y);
-    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type, foe.rank ?? 0) : null, true) };
+    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type, foe.rank ?? 0, view.rules) : null, true) };
   }, [selectedUnit, hover, targets, view, playing]);
 
   // Path preview under the pointer; held back right after an order was given on that square.
@@ -855,6 +858,9 @@ export function GameScreen({ session, onQuit }: Props) {
       case 'explore': return setOrders(u, { kind: 'explore' });
       case 'repair': return order(u, { type: 'goHome', unitId: u.id, repair: true });
       case 'clearOrders': return setOrders(u, null);
+      case 'airbase':
+        if (window.confirm('Turn this unit into an Airbase? It cannot move again or change back.')) order(u, { type: 'buildAirbase', unitId: u.id });
+        return;
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':
         if (window.confirm('Disband this unit?')) order(u, { type: 'disband', unitId: u.id });

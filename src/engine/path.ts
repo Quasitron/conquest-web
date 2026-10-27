@@ -238,9 +238,9 @@ export function dirBetween(m: Pick<PathMap, 'width' | 'height' | 'wrap'>, from: 
 }
 
 /** Whether an aircraft with `fuel` can safely make a go-to of `steps` to `target`: it must keep one unit of fuel, unless it ends at a refuel point it knows (own city, or own carrier with room). */
-export function aircraftCanReach(m: PathMap, steps: number, fuel: number, target: Pos): boolean {
+export function aircraftCanReach(m: PathMap, steps: number, fuel: number, target: Pos, type: UnitType = 'fighter'): boolean {
   if (steps < fuel) return true;
   if (steps > fuel) return false;
   const i = target.y * m.width + target.x;
-  return m.cityOwner.get(i) === m.me || (m.own.get(i)?.room.fighter ?? 0) > 0;
+  return m.cityOwner.get(i) === m.me || (m.own.get(i)?.room[type] ?? 0) > 0;
 }

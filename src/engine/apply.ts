@@ -1,8 +1,9 @@
 import type { ApplyResult, Command, GameEvent, GameState } from './types';
 import { Rng } from './rng';
-import { UNIT_STATS, UNIT_TYPES, buildableTypes } from './units';
+import { UNIT_STATS, UNIT_TYPES, buildableTypes, canBecomeAirbase } from './units';
 import { cargoOf, cityAt, destroyUnit, topLevelUnitsAt, unitById } from './query';
 import { moveUnit } from './movement';
+import { terrainAt } from './map';
 import { setProduction } from './production';
 import { endTurn, resign } from './turn';
 import { updateFog } from './fog';
@@ -48,6 +49,25 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       else if (cmd.type === 'load') error = loadUnits(s, t, cmd.unitIds);
       else if (cmd.unitIds !== null && cmd.unitIds.length === 0) error = 'nothing to unload';
       else error = unloadCargo(s, t, cmd.unitIds, events);
+      break;
+    }
+    case 'buildAirbase': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else if (!s.rules.advancedUnits) error = 'airbases are part of the Advanced units rule';
+      else if (!canBecomeAirbase(u.type)) error = 'only an Army or Armor can build an airbase';
+      else if (u.carriedBy !== null || terrainAt(s, u.x, u.y) !== 'land' || cityAt(s, u.x, u.y)) error = 'an airbase needs open land';
+      else {
+        u.type = 'airbase';
+        u.damage = 0;
+        u.wins = undefined;
+        u.movesLeft = 0;
+        u.fuel = null;
+        u.orders = { kind: 'sentry' };
+        u.blockedTurns = 0;
+        events.push({ type: 'airbaseBuilt', unitId: u.id, owner: u.owner, x: u.x, y: u.y });
+      }
       break;
     }
     case 'setOrders': {
@@ -151,7 +171,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
   if (!error && cmd.type !== 'endTurn' && cmd.type !== 'resign') runEscorts(s, rng, actor, events);
   if (error) return { ok: false, error };
   s.rngState = rng.state;
-  const fogCommands = ['move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
+  const fogCommands = ['buildAirbase', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
   if (fogCommands.includes(cmd.type)) updateFog(s, actor);
   return { ok: true, state: s, events };
 }

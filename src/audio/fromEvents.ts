@@ -11,7 +11,7 @@ export const LONG_GAP_MS: Partial<Record<SoundName, number>> = { explosion: 500 
 /** When a batch is over the cap, the least important sounds are dropped first (higher = more important). */
 const PRIORITY: Record<SoundName, number> = {
   win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, promote: 5, unload: 4, chime: 3, turn: 2, click: 1,
-  'produce-army': 3, 'produce-armor': 3, 'produce-fighter': 3, 'produce-transport': 3, 'produce-destroyer': 3,
+  'produce-army': 3, 'produce-armor': 3, 'produce-fighter': 3, 'produce-bomber': 3, airbase: 4, 'produce-transport': 3, 'produce-destroyer': 3,
   'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
 };
 
@@ -34,6 +34,7 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       if (e.from === me) return ['lost'];
       return [];
     // Production sounds play as each unit's report opens (see produceSound), not in the turn-start batch.
+    case 'airbaseBuilt': return e.owner === me ? ['airbase'] : [];
     case 'unitPromoted': return e.owner === me ? ['promote'] : [];
     case 'cargoUnloaded': return e.owner === me ? ['unload'] : [];
     case 'ordersEnded': return e.owner === me && e.reason === 'enemySighted' ? ['alert'] : [];
