@@ -402,7 +402,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
       if (cargo > 0) badge(sx, sy, cargo, ownAlpha(u));
       if (isCrippled(u)) {
         ctx.fillStyle = '#ff3b3b';
-        ctx.fillRect(sx + t * 0.1, sy + t * 0.1, t * 0.18, t * 0.18);
+        ctx.fillRect(sx + t * 0.72, sy + t * 0.72, t * 0.18, t * 0.18); // bottom-right: the top-left holds the rank chevrons
       }
       const range = UNIT_STATS[u.type].range;
       if (range !== null && u.fuel !== null && u.fuel <= Math.ceil(range / 4)) {
