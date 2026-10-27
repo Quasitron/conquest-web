@@ -1147,6 +1147,11 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
         <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Settings</button>
+        <button
+          title="Give up this game: all your units are lost and your cities go neutral"
+          disabled={!playing}
+          onClick={(e) => { blur(e); if (window.confirm('Resign? All your units are lost and your cities become neutral. This cannot be undone.')) act({ type: 'resign' }); }}
+        >Resign</button>
         <button onClick={(e) => { blur(e); onQuit(); }}>Quit</button>
         <span class="topbar-right">
           {target && <span class="message" role="status">{target === 'escort' ? 'Escort: click one of your transports (Esc cancels).' : `${target === 'moveTo' ? 'Move to' : 'Patrol to'}: click a square (Esc cancels).`}</span>}
