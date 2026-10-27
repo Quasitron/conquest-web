@@ -1,4 +1,4 @@
-export type SoundName =
+﻿export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
   | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'win' | 'lose'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-bomber' | 'airbase' | 'produce-transport' | 'produce-destroyer'
@@ -20,7 +20,7 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   // Jet flyby, seconds 4 to 7 of the original recording, trimmed and faded in public/sounds/.
   'produce-fighter': '/sounds/produce-fighter.mp3',
   // Bomber (Advanced units rule): the fighter's jet flyby until it has a sound of its own.
-  'produce-bomber': '/sounds/produce-fighter.mp3',
+  'produce-bomber': '/sounds/produce-bomber.mp3',
   // An Airbase is built (Advanced units rule): jet taxiing into air traffic control chatter, 6.3 s (see docs/sounds.md).
   airbase: '/sounds/produce-airfield.mp3',
   // Ship horn, seconds 16.7 to 19.2 of the original recording.
