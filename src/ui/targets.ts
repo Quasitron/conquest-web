@@ -35,6 +35,8 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     const enemyHere = v.enemies.some((e) => e.visibleNow && e.x === p.x && e.y === p.y);
     if (city && !ownCity) {
       if (domain === 'land') out.push({ ...p, dir: d as Dir, attack: true });
+      // A Bomber can bomb a player's city (not a neutral one); it never takes it.
+      else if (u.type === 'bomber' && v.rules.advancedUnits && city.owner !== null) out.push({ ...p, dir: d as Dir, attack: true });
       // With city strength on, a bombarding ship can fire on a player's city (not a neutral one) until it is nearly spent.
       else if (UNIT_STATS[u.type].bombard && v.rules.cityStrength && city.owner !== null && city.damage < CITY_STRENGTH_HITS - 1) {
         out.push({ ...p, dir: d as Dir, attack: true });

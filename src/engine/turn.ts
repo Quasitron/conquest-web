@@ -32,7 +32,7 @@ export function checkElimination(s: GameState, pid: PlayerId, events: GameEvent[
   const p = s.players[pid];
   if (p.eliminated) return;
   const hasCity = s.cities.some((c) => c.owner === pid);
-  const canTakeCity = s.units.some((u) => u.owner === pid && UNIT_STATS[u.type].domain === 'land');
+  const canTakeCity = s.units.some((u) => u.owner === pid && UNIT_STATS[u.type].domain === 'land' && u.type !== 'airbase');
   if (!hasCity && !canTakeCity) {
     for (const u of s.units.filter((x) => x.owner === pid)) destroyUnit(s, u, 'resigned', events);
     p.eliminated = true;

@@ -1,5 +1,5 @@
 import { RANK_NAMES, UNIT_STATS, unitDisplayName, type DestroyReason, type GameEvent, type OrdersEndReason, type PlayerId, type UnitType } from '../engine';
-import { cargoSummary } from './labels';
+import { cargoSummary, withArticle } from './labels';
 
 const REASON: Record<DestroyReason, string | null> = {
   combat: 'was destroyed in combat',
@@ -63,6 +63,13 @@ export function describeEvent(
       const unit = lookup?.unit(e.unitId)?.name ?? unitDisplayName({ id: e.unitId, type: e.unitType, name: null });
       const city = lookup?.city(e.cityId);
       return `${city ?? 'A city'} produced ${unit}.`;
+    }
+    case 'airbaseBuilt':
+      return `${whose(e.owner, true)} airbase is ready.`;
+    case 'cityBombed': {
+      const city = lookup?.city(e.cityId) ?? 'a city';
+      const effect = e.effect === 'unit' ? `lost ${withArticle(UNIT_STATS[e.unitType ?? 'army'].name)}` : 'lost its production';
+      return e.owner === me ? `An enemy bomber hit ${city}: it ${effect}.` : `Your bomber hit ${city}: it ${effect}.`;
     }
     case 'unitPromoted':
       return `${unitName(e.unitId)} was promoted to ${RANK_NAMES[e.rank]}.`;

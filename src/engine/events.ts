@@ -47,6 +47,14 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
       case 'ordersEnded':
         if (mine(e.owner)) out.push(e);
         break;
+      case 'airbaseBuilt':
+        if (mine(e.owner) || seen(e.x, e.y)) out.push(e);
+        break;
+      case 'cityBombed': {
+        const c = s.cities.find((x) => x.id === e.cityId);
+        if (mine(e.by) || mine(e.owner) || (c !== undefined && seen(c.x, c.y))) out.push(e);
+        break;
+      }
       case 'unitPromoted':
       case 'unitProduced':
         if (mine(owners.get(e.unitId))) out.push(e);

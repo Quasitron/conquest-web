@@ -21,26 +21,31 @@ export interface UnitStats {
   slots: number;
   /** Only built when the Advanced units house rule is on. */
   advanced: boolean;
+  /** Cities can build it (an Airbase is made from a land unit instead). */
+  producible: boolean;
   /** Wins promote this unit (the promotions house rule): None, Experienced, Veteran, Elite. */
   promotes: boolean;
 }
 
 export const UNIT_TYPES: readonly UnitType[] = [
-  'army', 'armor', 'fighter', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier',
+  'army', 'armor', 'fighter', 'bomber', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier', 'airbase',
 ];
 
-const base = { range: null, carries: [] as readonly UnitType[], capacity: 0, slots: 1, advanced: false, capacityLossPerDamage: 0, bombard: false, seesSubs: false, promotes: false };
+const base = { range: null, carries: [] as readonly UnitType[], capacity: 0, slots: 1, advanced: false, producible: true, capacityLossPerDamage: 0, bombard: false, seesSubs: false, promotes: false };
 
 export const UNIT_STATS: Record<UnitType, UnitStats> = {
   army:       { ...base, name: 'Army',       domain: 'land', move: 1, hits: 1,  attack: 2, defense: 2, shot: 1, build: 6,  buildRepeat: 5 },
   armor:      { ...base, advanced: true, slots: 2, name: 'Armor', domain: 'land', move: 2, hits: 2,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10 },
   fighter:    { ...base, name: 'Fighter',    domain: 'air',  move: 5, hits: 1,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10, range: 20 },
+  bomber:     { ...base, advanced: true, name: 'Bomber', domain: 'air', move: 4, hits: 1, attack: 2, defense: 2, shot: 2, build: 24, buildRepeat: 20, range: 24 },
   transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: ['army', 'armor'], capacity: 6, capacityLossPerDamage: 2 },
   destroyer:  { ...base, promotes: true, name: 'Destroyer',  domain: 'sea',  move: 3, hits: 3,  attack: 2, defense: 2, shot: 1, build: 24, buildRepeat: 20, seesSubs: true },
   submarine:  { ...base, promotes: true, name: 'Submarine',  domain: 'sea',  move: 2, hits: 2,  attack: 2, defense: 1, shot: 3, build: 24, buildRepeat: 20, seesSubs: true },
   cruiser:    { ...base, promotes: true, name: 'Cruiser',    domain: 'sea',  move: 2, hits: 8,  attack: 2, defense: 2, shot: 2, build: 42, buildRepeat: 35, bombard: true, seesSubs: true },
   battleship: { ...base, promotes: true, name: 'Battleship', domain: 'sea',  move: 2, hits: 12, attack: 2, defense: 2, shot: 3, build: 60, buildRepeat: 50, bombard: true },
   carrier:    { ...base, promotes: true, name: 'Carrier',    domain: 'sea',  move: 2, hits: 8,  attack: 1, defense: 2, shot: 1, build: 48, buildRepeat: 40, carries: ['fighter'], capacity: 8, capacityLossPerDamage: 1 },
+  /** Made from an Army or Armor on open land; never moves or attacks, and holds up to eight aircraft of either kind. */
+  airbase:    { ...base, advanced: true, producible: false, name: 'Airbase', domain: 'land', move: 0, hits: 1, attack: 0, defense: 2, shot: 1, build: 0, buildRepeat: 0, carries: ['fighter', 'bomber'], capacity: 8 },
 };
 
 /** Cities defend like an army and never attack. */
@@ -75,14 +80,32 @@ export function cargoUsed(cargo: readonly Pick<Unit, 'type'>[]): number {
   return cargo.reduce((n, c) => n + UNIT_STATS[c.type].slots, 0);
 }
 
-/** Whether a carrier host with board already on it can take one more unit of type 	ype. */
+/** Whether `host` with `aboard` already on it can take one more unit of type `type`. */
 export function hostHasRoom(host: Unit, aboard: readonly Pick<Unit, 'type'>[], type: UnitType): boolean {
   return canCarry(host.type, type) && cargoCapacity(host) - cargoUsed(aboard) >= UNIT_STATS[type].slots;
 }
 
 /** The unit types a game builds: the Advanced ones only with the Advanced units house rule. */
 export function buildableTypes(rules: { advancedUnits: boolean }): UnitType[] {
-  return UNIT_TYPES.filter((t) => rules.advancedUnits || !UNIT_STATS[t].advanced);
+  return UNIT_TYPES.filter((t) => UNIT_STATS[t].producible && (rules.advancedUnits || !UNIT_STATS[t].advanced));
+}
+
+/** The land units that can turn themselves into an Airbase. */
+export function canBecomeAirbase(type: UnitType): boolean {
+  return type === 'army' || type === 'armor';
+}
+
+/**
+ * The attack and defence ratings in a fight between two unit types. A Bomber fights poorly (1) against a Fighter either
+ * way round, and with the Advanced units rule every ship but a Carrier attacks aircraft at 1.
+ */
+export function fightRatings(rules: { advancedUnits: boolean }, att: UnitType, def: UnitType): { attack: number; defense: number } {
+  let attack = UNIT_STATS[att].attack;
+  let defense = UNIT_STATS[def].defense;
+  if (UNIT_STATS[def].domain === 'air' && UNIT_STATS[att].domain === 'sea' && att !== 'carrier' && rules.advancedUnits) attack = Math.min(attack, 1);
+  if (att === 'bomber' && def === 'fighter') attack = 1;
+  if (def === 'bomber' && att === 'fighter') defense = 1;
+  return { attack, defense };
 }
 
 export function cargoCapacity(u: Unit): number {

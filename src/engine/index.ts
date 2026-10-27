@@ -1,7 +1,7 @@
 export * from './types';
 export type { HouseRules } from './rules';
 export { CLASSIC_RULES, RULES_VERSION } from './rules';
-export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, CITY_STRENGTH_HITS, garrisonBonus, RANK_NAMES, RANK_WINS, rankOf, hitsOf, isCrippled, effectiveMove, cargoCapacity, cargoUsed, canCarry, hostHasRoom, buildableTypes } from './units';
+export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, CITY_STRENGTH_HITS, garrisonBonus, RANK_NAMES, RANK_WINS, rankOf, hitsOf, isCrippled, effectiveMove, cargoCapacity, cargoUsed, canCarry, hostHasRoom, buildableTypes, canBecomeAirbase, fightRatings } from './units';
 export type { UnitStats } from './units';
 export { parseAscii } from './ascii';
 export type { ParsedMap } from './ascii';

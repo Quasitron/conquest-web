@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, fightRatings, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
 import { terrainAt } from './map';
 import { destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -50,14 +50,15 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   const a = UNIT_STATS[att.type];
   const d = UNIT_STATS[def.type];
   const bombard = a.domain === 'sea' && d.domain === 'land';
+  const rating = fightRatings(s.rules, att.type, def.type);
   const target = { x: def.x, y: def.y };
 
   spendMove(att);
   reveal(s, att.owner, def);
   reveal(s, def.owner, att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
-    { defense: bombard ? d.defense / 2 : d.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
+    { attack: rating.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
+    { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
     rng,
   );
   att.damage = r.attackerDamage;
@@ -117,6 +118,48 @@ export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: Ci
   });
   if (!r.attackerWon) destroyUnit(s, att, 'combat', events, city.owner);
   else if (isCrippled(att)) att.movesLeft = 0; // wearing a city down is no kill: no win towards a promotion
+  return null;
+}
+
+/**
+ * A Bomber's attack on a city (Advanced units rule). It fights the city like any attacker, but does not take it or
+ * move in: a win costs the city either the production it has built up or a random unit standing in it, and the Bomber
+ * keeps its place having used one move. A loss destroys the Bomber.
+ */
+export function bombCity(s: GameState, rng: RandomSource, att: Unit, city: City, events: GameEvent[]): string | null {
+  if (city.owner === null) return 'there is nothing to bomb in a neutral city';
+  const a = UNIT_STATS[att.type];
+  const garrison = s.rules.garrisonsDefend
+    ? garrisonBonus(unitsAt(s, city.x, city.y).filter((u) => u.owner === city.owner && UNIT_STATS[u.type].domain === 'land').length)
+    : 0;
+  const owner = city.owner;
+  spendMove(att);
+  const r = resolveCombat(
+    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
+    { defense: CITY_COMBAT.defense + garrison, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
+    rng,
+  );
+  att.damage = r.attackerDamage;
+  events.push({
+    type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
+    defender: { kind: 'city', cityId: city.id, owner },
+    x: city.x, y: city.y, attackerWon: r.attackerWon,
+    attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,
+  });
+  if (!r.attackerWon) {
+    destroyUnit(s, att, 'combat', events, owner);
+    return null;
+  }
+  const inside = topLevelUnitsAt(s, city.x, city.y);
+  if (inside.length > 0 && rng.next() < 0.5) {
+    const victim = inside[Math.floor(rng.next() * inside.length)];
+    events.push({ type: 'cityBombed', cityId: city.id, by: att.owner, owner, effect: 'unit', unitType: victim.type });
+    destroyUnit(s, victim, 'combat', events, att.owner);
+  } else {
+    city.progress = 0;
+    events.push({ type: 'cityBombed', cityId: city.id, by: att.owner, owner, effect: 'production' });
+  }
+  settleAircraft(s, att, events);
   return null;
 }
 

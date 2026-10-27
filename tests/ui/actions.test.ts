@@ -119,7 +119,7 @@ describe('describeOrders', () => {
 describe('UNIT_BUTTONS and the new actions', () => {
   it('lists the unit buttons in order', () => {
     expect(UNIT_BUTTONS).toEqual([
-      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'goHome', 'clearOrders', 'center', 'info', 'disband',
     ]);
   });
 
@@ -145,5 +145,20 @@ describe('visibleButtons', () => {
     expect(shown).not.toContain('unload');
     expect(shown).toContain('sentry');
     expect(shown).toEqual(UNIT_BUTTONS.filter((id) => shown.includes(id)));
+  });
+});
+describe('Build Airbase action', () => {
+  it('is offered to an Army or Armor on open land when Advanced units is on, never in a city, and an airbase cannot move', () => {
+    const s = makeGame(M, { rules: { advancedUnits: true } });
+    const field = addUnit(s, 'army', 0, 1, 0);
+    const city = addUnit(s, 'armor', 0, 0, 0);
+    const base = addUnit(s, 'airbase', 0, 2, 0, { movesLeft: 0, fuel: null });
+    const can = (id: number) => { const { v, u } = viewOf(s, id); return availableActions(v, u); };
+    expect([can(field.id).airbase, can(city.id).airbase, can(base.id).airbase]).toEqual([true, false, false]);
+    expect([can(base.id).moveTo, can(base.id).patrol, can(base.id).sentry, can(base.id).skip]).toEqual([false, false, false, false]);
+    const off = makeGame(M);
+    const a = addUnit(off, 'army', 0, 1, 0);
+    const { v, u } = viewOf(off, a.id);
+    expect(availableActions(v, u).airbase).toBe(false);
   });
 });
