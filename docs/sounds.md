@@ -98,9 +98,9 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 
 | File | Source | Licence | Used |
 | --- | --- | --- | --- |
-| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the recording the carrier sound used before the Navy clip | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded (0.65 s) into the next part |
+| `produce-airfield.mp3` (jet part) | https://freesound.org/people/qubodup/sounds/162449/ (qubodup), the recording the carrier sound used before the Navy clip | CC0 (checked by the game's owner) | 2:56 to 2:59, sped up 1.25x, crossfaded (1.1 s, about a quarter of the clip) into the next part |
 | `produce-airfield.mp3` (air traffic control part) | https://freesound.org/people/deleted_user_2906614/sounds/256852/ (alaskan air traffic control) | CC0 (checked by the game's owner) | 2:12 to 2:16.5 |
 | `produce-bomber.mp3` | https://www.dvidshub.net/video/988417/sunrise-sortie-btf-26-1 (DVIDS, Sunrise Sortie BTF 26-1; US military footage) | DVIDS US government work, normally public domain (owner to confirm the page carries no restriction) | audio from 15 s to 18.9 s of the video (stops before the cut at 19 s), high-pass 60 Hz, loudness-normalised, 0.4 s fade in, 0.9 s fade out, mono |
 | `win.mp3` | https://freesound.org/people/FunWithSound/sounds/456966/ (FunWithSound, Victory trumpets) | CC0 (checked on the Freesound page) | whole clip, 4.4 s, unedited; plays on the Victory screen (`OVERRIDES.win`) |
 | `lose.mp3` | https://freesound.org/people/kanaizo/sounds/731657/ (kanaizo, Piano Game Over Theme, 85 BPM, F minor) | CC0 (checked on the Freesound page) | whole clip, 11.3 s, converted from WAV to MP3 only; plays on the Defeated screen (`OVERRIDES.lose`) |
-| `produce-airfield.mp3` (level) | | | the air traffic control part is turned down 3 dB (about 30 per cent quieter) from 2.1 s on, with a short ramp from 1.9 s, so it no longer outshouts the jet |
+| `produce-airfield.mp3` (level) | | | the air traffic control part is levelled 3 dB below the jet so it no longer outshouts it; total length 5.8 s |
