@@ -198,10 +198,14 @@ function shorePictures(): { img: HTMLImageElement; byWater: HTMLCanvasElement[] 
  */
 function shoreBand(
   ctx: CanvasRenderingContext2D, shore: { img: HTMLImageElement; byWater: HTMLCanvasElement[] }, sea: boolean, k: number,
-  mx: number, my: number, px: number, py: number, size: number, trimStart: number, trimEnd: number,
+  mx: number, my: number, left: number, top: number, right: number, bottom: number, trimStartPx: number, trimEndPx: number,
 ): boolean {
-  // The band stops short of a coast corner (a rounded arc takes over there): by a fraction of the square at each end.
-  const keep = 1 - trimStart - trimEnd;
+  // The square's edges are whole pixels shared with its neighbours (so the foam line is one line across the coast). The
+  // band stops short of a coast corner (a rounded arc takes over there) by the arc's radius at each end, so they meet exactly.
+  const size = right - left;
+  const edgeLen = k === 0 || k === 2 ? right - left : bottom - top;
+  const keep = (edgeLen - trimStartPx - trimEndPx) / edgeLen;
+  const trimStart = trimStartPx / edgeLen;
   if (keep <= 0.02) return true;
   // Which way the sea lies from the foam line, as a side index: toward this square's inside when it is the sea.
   const water = sea ? (k + 2) % 4 : k;
@@ -223,20 +227,27 @@ function shoreBand(
   else if (water === 2) { sx = along0; sy = h - r1; sw = alongLen; sh = r1 - r0; }
   else if (water === 1) { sx = h - r1; sy = along0; sw = r1 - r0; sh = alongLen; }
   else { sx = r0; sy = along0; sw = r1 - r0; sh = alongLen; }
-  const d0 = trimStart * size;
-  const dLen = keep * size;
+  const dLen = edgeLen - trimStartPx - trimEndPx;
   // Zoomed out, the pale strips would outline every coast too boldly, so they are drawn fainter.
   ctx.globalAlpha = size < 36 ? 0.7 : 1;
-  if (k === 0) ctx.drawImage(picture, sx, sy, sw, sh, px + d0, py, dLen, depth);
-  else if (k === 2) ctx.drawImage(picture, sx, sy, sw, sh, px + d0, py + size - depth, dLen, depth);
-  else if (k === 1) ctx.drawImage(picture, sx, sy, sw, sh, px + size - depth, py + d0, depth, dLen);
-  else ctx.drawImage(picture, sx, sy, sw, sh, px, py + d0, depth, dLen);
+  if (k === 0) ctx.drawImage(picture, sx, sy, sw, sh, left + trimStartPx, top, dLen, depth);
+  else if (k === 2) ctx.drawImage(picture, sx, sy, sw, sh, left + trimStartPx, bottom - depth, dLen, depth);
+  else if (k === 1) ctx.drawImage(picture, sx, sy, sw, sh, right - depth, top + trimStartPx, depth, dLen);
+  else ctx.drawImage(picture, sx, sy, sw, sh, left, top + trimStartPx, depth, dLen);
   ctx.globalAlpha = 1;
   return true;
 }
-
 /** How far a coast corner is rounded: the radius of its arc, in squares (the arc runs from the middle of each edge). */
 const ROUND = 0.5;
+
+/**
+ * The size corner patches are made at (the square's size rounded to a multiple of four, so zooming does not make a new set
+ * at every step) and the arc's radius in whole pixels at that size. The straight strips stop this far from a corner.
+ */
+function cornerSize(t: number): { made: number; radius: number } {
+  const made = Math.max(8, Math.round(t / 4) * 4);
+  return { made, radius: ROUND * made };
+}
 
 /**
  * A coast corner is a grid point where exactly one of the four squares around it is the odd one out in being sea or land.
@@ -264,13 +275,14 @@ function roundedCorner(
   at: (x: number, y: number) => Surface | null, view: PlayerView, cam: Camera, vx: number, vy: number, corner: { odd: number; bay: boolean },
 ): void {
   const t = cam.tile;
-  const Vx = (vx - cam.x) * t;
-  const Vy = (vy - cam.y) * t;
+  // Whole pixels, the same ones the squares' own edges are drawn at, so the arc meets the straight strips exactly.
+  const Vx = Math.floor((vx - cam.x) * t);
+  const Vy = Math.floor((vy - cam.y) * t);
   const east = corner.odd === 0 || corner.odd === 1;
   const north = corner.odd === 0 || corner.odd === 3;
   const sx = east ? 1 : -1;
   const sy = north ? -1 : 1;
-  const R = ROUND * t;
+  const { made, radius: R } = cornerSize(t);
   const Cx = Vx + sx * R;
   const Cy = Vy + sy * R;
   // The odd square, and what its cut-off corner becomes: the ground diagonally opposite it, or the sea when it is land.
@@ -297,11 +309,8 @@ function roundedCorner(
   // The strip, bent round the arc: water inside the circle for a bay, land inside for a point.
   ctx.save();
   ctx.globalAlpha = t < 36 ? 0.7 : 1;
-  // Patches are made for sizes in steps of four pixels (so zooming does not make a new set at every step) and scaled to fit.
-  const made = Math.max(8, Math.round(t / 4) * 4);
   const patch = cornerPatch(shore, made, corner.bay, sx, sy, mod(vx + vy, 3));
-  const w = patch.width * (t / made);
-  ctx.drawImage(patch, Cx - w / 2, Cy - w / 2, w, w);
+  ctx.drawImage(patch, Cx - patch.width / 2, Cy - patch.height / 2);
   ctx.restore();
 }
 
@@ -390,7 +399,10 @@ function cornerPatch(
       if (ang > Math.PI) ang -= 2 * Math.PI;
       if (ang < -Math.PI) ang += 2 * Math.PI;
       const f = ang / delta;
-      if (f < -0.004 || f > 1.004) continue;
+      // The arc ends on whole-pixel lines shared with the straight strips beside it, so pixels are shared out exactly; a
+      // hair of tolerance only guards against rounding.
+      const tol = 0.2 / (Math.max(dist, 1) * Math.abs(delta));
+      if (f < -tol || f > 1 + tol) continue;
       const row = foam + (sgn * (dist - R)) / k;
       if (row < 0 || row > H - 1) continue;
       sample(along0 + Math.max(0, Math.min(1, f)) * arc, row, px);
@@ -481,9 +493,11 @@ export function drawGroundLayer(
           const [v0, v1]: [[number, number], [number, number]] = k === 0 ? [[rawX, my], [rawX + 1, my]]
             : k === 2 ? [[rawX, my + 1], [rawX + 1, my + 1]]
               : k === 3 ? [[rawX, my], [rawX, my + 1]] : [[rawX + 1, my], [rawX + 1, my + 1]];
-          const trimStart = coastCornerAt(at, v0[0], v0[1]) ? ROUND : 0;
-          const trimEnd = coastCornerAt(at, v1[0], v1[1]) ? ROUND : 0;
-          if (shoreBand(ctx, shore, sea, k, mx, my, px, py, size, trimStart, trimEnd)) continue;
+          const trimStart = coastCornerAt(at, v0[0], v0[1]) ? cornerSize(t).radius : 0;
+          const trimEnd = coastCornerAt(at, v1[0], v1[1]) ? cornerSize(t).radius : 0;
+          const right = Math.floor((rawX + 1 - cam.x) * t);
+          const bottom = Math.floor((my + 1 - cam.y) * t);
+          if (shoreBand(ctx, shore, sea, k, mx, my, px, py, right, bottom, trimStart, trimEnd)) continue;
         }
         const reach = (sea ? 0.2 : COAST_REACH * 0.6) * size;
         const grad = k === 0 ? ctx.createLinearGradient(0, py, 0, py + reach)
