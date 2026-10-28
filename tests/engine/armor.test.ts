@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { UNIT_STATS, buildableTypes, cargoUsed } from '../../src/engine';
+import { UNIT_STATS, buildableTypes, cargoUsed, hitsOf, rankOf } from '../../src/engine';
 import { apply } from '../../src/engine/apply';
-import { attackCity } from '../../src/engine/attack';
+import { attackCity, attackUnit } from '../../src/engine/attack';
 import { loadUnits } from '../../src/engine/cargo';
 import { moveUnit } from '../../src/engine/movement';
 import { cargoOf, trimCargo } from '../../src/engine/query';
@@ -83,5 +83,35 @@ describe('Armor (Advanced units house rule)', () => {
     attackCity(s, attackerAlwaysHits(), tank, city, []);
     expect(city.owner).toBe(0);
     expect(s.units.filter((u) => u.owner === 0 && u.x === city.x && u.y === city.y)).toEqual([]);
+  });
+});
+
+describe('Armor promotions (promotions rule)', () => {
+  const RULES = { advancedUnits: true, promotions: true };
+
+  it('an Armor that wins is promoted at 1, 3 and 5 wins, a promotion heals one hit, and Elite takes one more', () => {
+    const s = makeGame(['*####*'], { rules: RULES });
+    const tank = addUnit(s, 'armor', 0, 0, 0, { damage: 1 });
+    const events: never[] = [];
+    attackUnit(s, attackerAlwaysHits(), tank, addUnit(s, 'army', 1, 1, 0), events as never);
+    expect(tank.wins).toBe(1);
+    expect(tank.damage).toBe(0);
+    expect(events).toContainEqual({ type: 'unitPromoted', unitId: tank.id, owner: 0, unitType: 'armor', rank: 1 });
+    for (let i = 0; i < 4; i++) {
+      tank.x = 0;
+      tank.y = 0;
+      tank.movesLeft = 2;
+      attackUnit(s, attackerAlwaysHits(), tank, addUnit(s, 'army', 1, 1, 0), []);
+    }
+    expect(rankOf(tank.wins)).toBe(3);
+    expect(hitsOf(tank)).toBe(UNIT_STATS.armor.hits + 1);
+  });
+
+  it('an Army still does not promote, and nothing promotes with the rule off', () => {
+    expect(UNIT_STATS.army.promotes).toBe(false);
+    const off = makeGame(['*####*'], { rules: { advancedUnits: true } });
+    const tank = addUnit(off, 'armor', 0, 0, 0);
+    attackUnit(off, attackerAlwaysHits(), tank, addUnit(off, 'army', 1, 1, 0), []);
+    expect(tank.wins).toBeUndefined();
   });
 });

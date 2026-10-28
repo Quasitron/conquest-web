@@ -17,3 +17,4 @@ The title screen shows `Version X.Y.Z · build <hash> · <date>` (`src/ui/versio
 | 0.9.2 | 2026-10-28 | Smooth, rounded coast corners (points of land, bays and one-square lakes) instead of square ones; faster drawing when zoomed out. |
 | 0.9.3 | 2026-10-28 | A ship reaching Elite gets its own sound (the Victory trumpets cut short) instead of the plain promotion jingle. |
 | 0.9.4 | 2026-10-28 | Soft fog of war: the dark over known-but-unseen squares fades in at the edge of sight instead of ending in straight lines. |
+| 0.9.5 | 2026-10-29 | Armor can be promoted under the Promotions rule (with Advanced units): Experienced, Veteran and Elite at 1, 3 and 5 wins, Elite taking a third hit. Older games saved with both rules on load from their saved position. |
