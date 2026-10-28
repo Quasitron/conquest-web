@@ -93,10 +93,28 @@ function cell(ctx: CanvasRenderingContext2D, img: HTMLImageElement, mx: number, 
   const src = lv.src as HTMLImageElement | HTMLCanvasElement;
   const sw = src instanceof HTMLImageElement ? src.naturalWidth : src.width;
   const sh = src instanceof HTMLImageElement ? src.naturalHeight : src.height;
-  const cw = sw / PERIOD_X;
+  const cw = sw / periodX;
   const ch = sh / PERIOD_Y;
-  ctx.drawImage(lv.src, mod(mx, PERIOD_X) * cw, mod(my, PERIOD_Y) * ch, cw, ch, dx, dy, w, h);
+  const u = mod(mx, periodX) * cw;
+  const v = mod(my, PERIOD_Y) * ch;
+  if (u + cw <= sw + 1e-6) {
+    ctx.drawImage(lv.src, u, v, cw, ch, dx, dy, w, h);
+    return;
+  }
+  // A period that is not a whole number of squares (wrapping maps, see below) can end part-way through a square: that
+  // square's picture continues from the picture's left edge.
+  const first = sw - u;
+  const firstW = (w * first) / cw;
+  ctx.drawImage(lv.src, u, v, first, ch, dx, dy, firstW, h);
+  ctx.drawImage(lv.src, 0, v, cw - first, ch, dx + firstW, dy, w - firstW, h);
 }
+
+/**
+ * How many squares across a picture covers before it repeats. 12, except on a map that wraps round: the picture must
+ * then repeat a whole number of times across the map's width, or the ground would jump at the seam where the map wraps.
+ * (The picture is stretched a little, never more than a few per cent for the usual widths.)
+ */
+let periodX = PERIOD_X;
 let scratch: HTMLCanvasElement | null = null;
 function scratchFor(size: number): CanvasRenderingContext2D {
   if (!scratch) scratch = document.createElement('canvas');
@@ -430,6 +448,7 @@ export function drawGroundLayer(
   ctx: CanvasRenderingContext2D, view: PlayerView, cam: Camera, width: number, height: number,
 ): boolean {
   const t = cam.tile;
+  periodX = view.wrap ? view.width / Math.max(1, Math.round(view.width / PERIOD_X)) : PERIOD_X;
   const pics = t >= TEXTURE_MIN_TILE ? pictures() : null;
   if (t >= TEXTURE_MIN_TILE && !pics) return false;
   const x0 = Math.floor(cam.x);
