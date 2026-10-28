@@ -47,8 +47,8 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
         attackerWon: e.attackerWon, moved: false, destroyed: false, captured: false, text: describe(e) ?? '',
       };
       out.push(cur);
-    } else if (cur && e.type === 'unitDestroyed' && e.reason === 'combat') {
-      cur.destroyed = true;
+    } else if (cur && ((e.type === 'unitDestroyed' && e.reason === 'combat') || e.type === 'cityBombed')) {
+      cur.destroyed = true; // a bombed city blows up too, whether it lost its production or a unit
     } else if (cur && e.type === 'cityCaptured') {
       cur.captured = true;
     } else if (cur && e.type === 'unitPromoted') {
