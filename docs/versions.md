@@ -15,3 +15,4 @@ build; **the version number is bumped by hand when a feature ships**, and each b
 | 0.7 | 2026-10-28 | Beaches: coasts have a strip of shallows, foam and sand from the Shore picture, replacing the plain tint. |
 | 0.8 | 2026-10-28 | Smoother coasts: soft patches of shallows and sand fill the notches where a coast turns, rounding points of land and the heads of bays. |
 | 0.9 | 2026-10-28 | A Stats button on the Victory, Defeated and no-survivors cards opens the Status report straight away. |
+| 0.10 | 2026-10-28 | The Hard computer player uses the Advanced units: it builds Bombers (one at four cities, more later) that fly out to bomb the nearest enemy city and come home to refuel and repair, and it turns an idle Army into an Airbase near the front for them to land on. |

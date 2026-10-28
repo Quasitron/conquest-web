@@ -4,7 +4,7 @@ import {
 } from '../engine';
 import type { SessionCommand } from '../app/session';
 import { cityIsCoastal } from '../ui/labels';
-import { cityBombardChance, landingPlan } from '../ui/plans';
+import { cityBombChance, cityBombardChance, landingPlan, visibleGarrison } from '../ui/plans';
 import { dirTo } from '../ui/targets';
 import { leftIdle, tuningFor, type AiTuning, type Difficulty } from './difficulty';
 
@@ -129,6 +129,25 @@ function isScoutCity(view: PlayerView, city: City, port: City | null): boolean {
   const first = [...view.myCities].sort((a, b) => a.id - b.id).find((c) => c.id !== port?.id) ?? view.myCities[0];
   return first !== undefined && first.id === city.id;
 }
+/** Hard (Advanced units rule): Bombers are built from this turn on, one for each ten cities (and one at four cities). */
+const BOMBER_FROM_TURN = 25;
+const BOMBER_FROM_CITIES = 4;
+const BOMBER_MAX = 3;
+
+function wantedBombers(view: PlayerView): number {
+  if (view.turn < BOMBER_FROM_TURN || view.myCities.length < BOMBER_FROM_CITIES) return 0;
+  return Math.min(BOMBER_MAX, 1 + Math.floor(view.myCities.length / 10));
+}
+
+/** Whether `city` is the one that builds the Bombers: the second city by id that is not the port (the first builds the scout). */
+function isBomberCity(view: PlayerView, city: City, port: City | null): boolean {
+  const owned = view.myUnits.filter((u) => u.type === 'bomber').length
+    + view.myCities.filter((c) => c.id !== city.id && c.production === 'bomber').length;
+  if (owned >= wantedBombers(view)) return false;
+  const eligible = view.myCities.filter((c) => c.id !== port?.id).sort((a, b) => a.id - b.id);
+  return eligible[1]?.id === city.id;
+}
+
 /**
  * What a city should be building: armies, except that the port builds a transport once armies have run out of
  * land to conquer (some are idle in a city) and no transport exists or is on the way, and coastal cities build
@@ -148,6 +167,7 @@ export function wantedProduction(view: PlayerView, city: City, port: City | null
     if (wantsCarrier(view, city)) return 'carrier';
   }
   if (t.scouts && isScoutCity(view, city, port)) return 'fighter';
+  if (t.bombers && view.rules.advancedUnits && isBomberCity(view, city, port)) return 'bomber';
   if (cityIsCoastal(view, city)) {
     const ships = warshipsOwnedOrBuilding(view) - (isFleet(city.production) ? 1 : 0);
     const portReady = city.id !== port?.id || view.myUnits.some((u) => u.type === 'transport');
@@ -697,10 +717,119 @@ function decideCarrierFighter(view: PlayerView, u: Unit): SessionCommand | null 
   }
   return best ? setOrders(u, { kind: 'patrol', a: { x: carrier.x, y: carrier.y }, b: best.sq, toB: true }) : null;
 }
-function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning): SessionCommand | null {
+/** Squares where a Bomber lands and refuels: the cities, and the Airbases that have room. */
+function refuelPoints(view: PlayerView): Pos[] {
+  const bases = view.myUnits.filter(
+    (b) => b.type === 'airbase' && cargoUsed(view.myUnits.filter((c) => c.carriedBy === b.id)) < UNIT_STATS.airbase.capacity,
+  );
+  return [...view.myCities, ...bases];
+}
+
+/** A Bomber flies out only if it can reach the city and still get home with this many squares of fuel to spare. */
+const SORTIE_MARGIN = 3;
+/** ...and only against a city it beats at least this often (a lost bombing costs the Bomber). */
+const MIN_BOMB_CHANCE = 0.45;
+
+/**
+ * Hard (Advanced units rule): a Bomber that is whole and has fuel flies to the square beside the nearest known foreign
+ * city it can reach and still get home from, bombs it once, then goes back to refuel (and to repair when hurt).
+ */
+function decideBomber(view: PlayerView, u: Unit, memo: AiMemo): SessionCommand | null {
+  const fuel = u.fuel ?? 0;
+  const points = refuelPoints(view);
+  const dist = (a: Pos, b: Pos) => chebyshev(geo(view), a, b);
+  const homeDist = (p: Pos) => Math.min(999, ...points.map((c) => dist(p, c)));
+  const here = points.some((c) => at(c, u));
+  const goBack = (): SessionCommand | null => {
+    if (here) return null;
+    const home = [...points].sort((a, b) => dist(u, a) - dist(u, b))[0];
+    if (!home) return null;
+    return view.myCities.some((c) => at(c, home)) ? { type: 'goHome', unitId: u.id } : goTo(view, u, { x: home.x, y: home.y });
+  };
+  if (u.damage > 0) {
+    if (view.myCities.some((c) => at(c, u))) return setOrders(u, { kind: 'repair' });
+    return view.myCities.length > 0 ? { type: 'goHome', unitId: u.id, repair: true } : null;
+  }
+  if (!here && fuel <= homeDist(u) + 2) return goBack();
+
+  const target = view.knownCities
+    .filter((c) => c.owner !== null && c.owner !== view.me && dist(u, c) + homeDist(c) + SORTIE_MARGIN <= fuel)
+    .sort((a, b) => dist(u, a) - dist(u, b) || a.id - b.id)
+    .find((c) => cityBombChance(view, u, visibleGarrison(view, c, c.owner)) >= MIN_BOMB_CHANCE);
+  if (!target) return goBack();
+
+  if (dist(u, target) === 1) {
+    const key = `bomb${u.id}`;
+    if ((memo.tries.get(key) ?? 0) > 0) return goBack();
+    const dir = dirTo(view, u, target);
+    if (dir === null) return goBack();
+    memo.tries.set(key, 1);
+    return { type: 'move', unitId: u.id, dir };
+  }
+  // Fly to the free square beside the city that is nearest the Bomber.
+  const spot = neighbors(geo(view), target.x, target.y)
+    .filter((n) => view.terrain[n.y * view.width + n.x] !== null
+      && !view.enemies.some((e) => e.visibleNow && at(e, n))
+      && !view.knownCities.some((c) => at(c, n) && c.owner !== view.me))
+    .sort((a, b) => dist(u, a) - dist(u, b))[0];
+  return (spot ? goTo(view, u, spot) : null) ?? goBack();
+}
+
+/** Hard (Advanced units rule): there is a Bomber, the army is big enough to spare one soldier, and Airbases are few. */
+const AIRBASE_FROM_TURN = 30;
+function wantsAirbase(view: PlayerView): boolean {
+  if (view.turn < AIRBASE_FROM_TURN || !view.myUnits.some((u) => u.type === 'bomber')) return false;
+  const soldiers = view.myUnits.filter((u) => u.type === 'army' || u.type === 'armor').length;
+  const bases = view.myUnits.filter((u) => u.type === 'airbase').length;
+  return soldiers >= 4 && bases < Math.min(2, 1 + Math.floor(view.myCities.length / 12));
+}
+
+/** Open land two to six squares from an own city and at least three from any foreign one, away from other Airbases. */
+function airbaseSquare(view: PlayerView, sq: Pos): boolean {
+  if (view.terrain[sq.y * view.width + sq.x] !== 'land') return false;
+  const dOwn = Math.min(999, ...view.myCities.map((c) => chebyshev(geo(view), sq, c)));
+  if (dOwn < 2 || dOwn > 6) return false;
+  if (view.knownCities.some((c) => c.owner !== view.me && chebyshev(geo(view), sq, c) < 3)) return false;
+  return !view.myUnits.some((b) => b.type === 'airbase' && chebyshev(geo(view), sq, b) < 4);
+}
+
+/**
+ * An idle soldier on a good square turns itself into an Airbase; otherwise the oldest idle soldier waiting in a city
+ * walks to the good square nearest the enemy that it can reach.
+ */
+function airbaseOrders(view: PlayerView, u: Unit): SessionCommand | null {
+  if (!wantsAirbase(view) || u.carriedBy !== null) return null;
+  if (airbaseSquare(view, u)) return { type: 'buildAirbase', unitId: u.id };
+  const inCity = view.myCities.some((c) => at(c, u));
+  const oldest = view.myUnits
+    .filter((s) => (s.type === 'army' || s.type === 'armor') && s.carriedBy === null && s.orders === null && view.myCities.some((c) => at(c, s)))
+    .sort((a, b) => a.id - b.id)[0];
+  if (!inCity || oldest?.id !== u.id) return null;
+  const foreign = view.knownCities.filter((c) => c.owner !== view.me);
+  if (foreign.length === 0) return null;
+  const walk = reach(view, u);
+  let best: { sq: Pos; d: number } | null = null;
+  for (const [i, steps] of walk) {
+    if (steps < 2 || steps > 10) continue;
+    const sq = { x: i % view.width, y: Math.floor(i / view.width) };
+    if (!airbaseSquare(view, sq)) continue;
+    const d = Math.min(...foreign.map((c) => chebyshev(geo(view), sq, c)));
+    if (best === null || d < best.d || (d === best.d && steps < (walk.get(best.sq.y * view.width + best.sq.x) ?? 999))) best = { sq, d };
+  }
+  return best ? goTo(view, u, best.sq) : null;
+}
+
+function decide(view: PlayerView, u: Unit, port: City | null, t: AiTuning, memo: AiMemo): SessionCommand | null {
   switch (u.type) {
     case 'army':
-    case 'armor': return decideArmy(view, u, port, t);
+    case 'armor': {
+      if (t.airbases && view.rules.advancedUnits) {
+        const base = airbaseOrders(view, u);
+        if (base) return base;
+      }
+      return decideArmy(view, u, port, t);
+    }
+    case 'bomber': return t.bombers && view.rules.advancedUnits ? decideBomber(view, u, memo) : null;
     case 'transport': return decideTransport(view, u, t);
     case 'destroyer':
     case 'cruiser':
@@ -734,7 +863,7 @@ export function nextAction(view: PlayerView, memo: AiMemo): SessionCommand | nul
   for (const u of ready) {
     if ((memo.tries.get(`u${u.id}`) ?? 0) >= MAX_TRIES) continue;
     if (leftIdle(u.id, view.turn, memo.tuning.idlePercent)) continue; // not this turn (Easy)
-    const cmd = decide(view, u, port, memo.tuning);
+    const cmd = decide(view, u, port, memo.tuning, memo);
     if (cmd && bump(memo, `u${u.id}`)) return cmd;
   }
 
