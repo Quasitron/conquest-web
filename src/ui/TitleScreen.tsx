@@ -44,7 +44,7 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
   {
     key: 'promotions',
     label: 'Promotions',
-    hint: 'Ships that win fights are promoted: Experienced (1 win), Veteran (3), Elite (5). Each promotion heals one hit, and Elite ships take one more. Shown as gold pips on the unit.',
+    hint: 'Ships (and Armor, with Advanced units) that win fights are promoted: Experienced (1 win), Veteran (3), Elite (5). Each promotion heals one hit, and Elite units take one more. Shown as gold chevrons on the unit.',
   },
   {
     key: 'advancedUnits',

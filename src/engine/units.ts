@@ -35,7 +35,7 @@ const base = { range: null, carries: [] as readonly UnitType[], capacity: 0, slo
 
 export const UNIT_STATS: Record<UnitType, UnitStats> = {
   army:       { ...base, name: 'Army',       domain: 'land', move: 1, hits: 1,  attack: 2, defense: 2, shot: 1, build: 6,  buildRepeat: 5 },
-  armor:      { ...base, advanced: true, slots: 2, name: 'Armor', domain: 'land', move: 2, hits: 2,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10 },
+  armor:      { ...base, advanced: true, promotes: true, slots: 2, name: 'Armor', domain: 'land', move: 2, hits: 2,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10 },
   fighter:    { ...base, name: 'Fighter',    domain: 'air',  move: 5, hits: 1,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10, range: 20 },
   bomber:     { ...base, advanced: true, name: 'Bomber', domain: 'air', move: 4, hits: 1, attack: 2, defense: 2, shot: 2, build: 12, buildRepeat: 10, range: 24 },
   transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: ['army', 'armor'], capacity: 6, capacityLossPerDamage: 2 },
