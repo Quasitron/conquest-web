@@ -67,3 +67,24 @@ format). Do not crop or recolour them.
    fog. You see it first, and if a pair does not blend I tell you which picture to regenerate and why.
 3. Then they go into the game, replacing the flat green and blue squares. Rivers are drawn in code from the Water
    picture, so there is nothing extra to make for them.
+
+
+## The Shore picture (optional upgrade)
+
+The five pictures above are chosen and in the game (Version 0.6). Coasts currently use a pale strip of shallows and a thin band of sand drawn in code. A real **Shore** picture would replace that: a strip of beach that the game rotates and cuts for each coast direction, fading its ocean end into the Water picture and its grass end into the Clear picture.
+
+Name the files `Shore-A` to `Shore-D` (up to four options) in `Documents\Claude\art-originals\terrain\`. Only the left and right edges have to repeat (the strip runs along the coast); I fix the seam. Wide format, 3:1 if possible, otherwise 3:2.
+
+The straight, horizontal coastline is deliberate: it must stay perfectly straight (no bays, rocks, piers, boats, people, buildings or roads) so it can be rotated and cut for every direction. Layout from top to bottom, as a share of the height:
+
+1. calm medium-deep ocean blue, about 25%
+2. clear shallow turquoise water, lighter towards the shore, about 20%
+3. a thin soft white line of foam, no more than 3%
+4. a strip of pale wet-to-dry sand, about 20%
+5. dry sandy grass and low beach vegetation fading to meadow green at the very bottom, about 32%
+
+Prompt to start from:
+
+> Seamless horizontally tileable top-down aerial texture of a straight beach edge, straight-down satellite view, no perspective, no horizon, no text, no border, no vignette, even soft light from the top-left, photo-real painterly style matching an aerial photo of calm ocean and meadow. The picture is a wide strip with the coastline running perfectly straight and horizontal across the middle. From top to bottom: (1) calm medium-deep ocean blue, about 25% of the height; (2) a band of clear shallow turquoise water that grows lighter towards the shore, about 20%; (3) a thin soft white line of foam where the water meets the sand, no more than 3% of the height; (4) a strip of pale wet-to-dry sand, about 20%; (5) dry sandy grass and low beach vegetation fading to meadow green at the very bottom, about 32%. The edge of the sand must be a straight line, with no bays, rocks, piers, boats, people, buildings, roads or single standout objects. Fills the whole picture edge to edge. Wide format, 3:1 if possible, otherwise 3:2.
+
+Corners and bays (where a coast turns) are built by blending the same strip at the corners, so there is nothing extra to make.
