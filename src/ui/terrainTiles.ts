@@ -152,6 +152,82 @@ function fadeSprite(img: HTMLImageElement, name: string, size: number, where: nu
   return sp;
 }
 
+/**
+ * The shore picture (public/art/terrain/shore.webp, made by tools/make-terrain-tiles.ps1): a strip of beach, 624 x 200,
+ * water at the top, the foam line 53% of the way down, sand below it, both long edges fading to transparent.
+ * It repeats along a coast every SHORE_PERIOD squares. Here it is turned into four copies, one for each side the sea
+ * lies on, each flipped or turned so that its along-coast axis still runs the way the map's x or y does.
+ */
+const SHORE_PERIOD = 4;
+const SHORE_WATER_FRACTION = 180 / 340;
+let shoreSet: { img: HTMLImageElement; byWater: HTMLCanvasElement[] } | null = null;
+
+/** Shore copies for the sea lying north, east, south and west of the coast, or null while the picture loads. */
+function shorePictures(): { img: HTMLImageElement; byWater: HTMLCanvasElement[] } | null {
+  if (typeof document === 'undefined') return null;
+  const img = loaded('/art/terrain/shore.webp');
+  if (!img) return null;
+  if (shoreSet?.img === img) return shoreSet;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const make = (cw: number, ch: number, m: [number, number, number, number, number, number]): HTMLCanvasElement => {
+    const c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    const g = c.getContext('2d')!;
+    g.setTransform(...m);
+    g.drawImage(img, 0, 0);
+    return c;
+  };
+  shoreSet = {
+    img,
+    byWater: [
+      make(w, h, [1, 0, 0, 1, 0, 0]),
+      make(h, w, [0, 1, -1, 0, h, 0]),
+      make(w, h, [1, 0, 0, -1, 0, h]),
+      make(h, w, [0, 1, 1, 0, 0, 0]),
+    ],
+  };
+  return shoreSet;
+}
+
+/**
+ * Lays the part of the shore that belongs to this square along its side `k` (0 N, 1 E, 2 S, 3 W), where the other kind
+ * of ground lies. A sea square gets the shallows (the picture above the foam line), a land square the sand below it;
+ * the foam line falls on the shared edge. The strip is cut by map position along the coast so neighbours join up.
+ */
+function shoreBand(
+  ctx: CanvasRenderingContext2D, shore: { img: HTMLImageElement; byWater: HTMLCanvasElement[] }, sea: boolean, k: number,
+  mx: number, my: number, px: number, py: number, size: number,
+): boolean {
+  // Which way the sea lies from the foam line, as a side index: toward this square's inside when it is the sea.
+  const water = sea ? (k + 2) % 4 : k;
+  const picture = shore.byWater[water];
+  const h = shore.img.naturalHeight;
+  const perSquare = shore.img.naturalWidth / SHORE_PERIOD;
+  const foam = h * SHORE_WATER_FRACTION;
+  // Rows of the strip used and how deep they reach into the square (a square is `perSquare` picture pixels wide).
+  const [r0, r1] = sea ? [0, foam] : [foam, h];
+  const depth = ((r1 - r0) / perSquare) * size;
+  // Along the coast: x for a coast running east-west, y for one running north-south.
+  const along = (water === 0 || water === 2 ? mx : my) % SHORE_PERIOD;
+  const a0 = (along < 0 ? along + SHORE_PERIOD : along) * perSquare;
+  // The same rows in the turned copy, and where the band sits in the square.
+  let sx: number, sy: number, sw: number, sh: number;
+  if (water === 0) { sx = a0; sy = r0; sw = perSquare; sh = r1 - r0; }
+  else if (water === 2) { sx = a0; sy = h - r1; sw = perSquare; sh = r1 - r0; }
+  else if (water === 1) { sx = h - r1; sy = a0; sw = r1 - r0; sh = perSquare; }
+  else { sx = r0; sy = a0; sw = r1 - r0; sh = perSquare; }
+  // Zoomed out, the pale strips would outline every coast too boldly, so they are drawn fainter.
+  ctx.globalAlpha = size < 36 ? 0.7 : 1;
+  if (k === 0) ctx.drawImage(picture, sx, sy, sw, sh, px, py, size, depth);
+  else if (k === 2) ctx.drawImage(picture, sx, sy, sw, sh, px, py + size - depth, size, depth);
+  else if (k === 1) ctx.drawImage(picture, sx, sy, sw, sh, px + size - depth, py, depth, size);
+  else ctx.drawImage(picture, sx, sy, sw, sh, px, py, depth, size);
+  ctx.globalAlpha = 1;
+  return true;
+}
+
 const SIDES: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const CORNERS: readonly (readonly [number, number])[] = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
 
@@ -178,6 +254,7 @@ export function drawGroundLayer(
   };
   const blend = pics !== null && t >= BLEND_MIN_TILE;
   const exact = t >= EXACT_FADE_TILE;
+  const shore = blend ? shorePictures() : null;
   for (let j = 0; j < rows; j++) {
     const my = y0 + j;
     if (my >= view.height) break;
@@ -217,10 +294,11 @@ export function drawGroundLayer(
         if (exact) fade(ctx, pics[n], mx, my, px, py, size, 4 + k, REACH, 0.5);
         else ctx.drawImage(fadeSprite(pics[n], n, size, 4 + k), px, py);
       }
-      // The coast: shallows on the sea's side, a thin band of sand on the land's.
+      // The coast: the shore picture's shallows on the sea's side and its sand on the land's, else a plain tint.
       for (let k = 0; k < 4; k++) {
         const n = at(rawX + SIDES[k][0], my + SIDES[k][1]);
         if (n === null || (n === 'water') === sea) continue;
+        if (shore && shoreBand(ctx, shore, sea, k, mx, my, px, py, size)) continue;
         const reach = (sea ? 0.2 : COAST_REACH * 0.6) * size;
         const grad = k === 0 ? ctx.createLinearGradient(0, py, 0, py + reach)
           : k === 2 ? ctx.createLinearGradient(0, py + size, 0, py + size - reach)

@@ -49,3 +49,17 @@ foreach ($g in $grounds) {
   ffmpeg -hide_banner -y -i $seam -vf "colorchannelmixer=rr=$($k1[0]):gg=$($k1[1]):bb=$($k1[2]),colorchannelmixer=rr=$($k2[0]):gg=$($k2[1]):bb=$($k2[2]),scale=936:624:flags=lanczos" -c:v libwebp -quality 82 $final 2>&1 | Out-Null
   '{0}: average {1} -> {2}, {3:N0} KB' -f $n, ($m -join ','), ($g.target -join ','), ((Get-Item $final).Length / 1KB)
 }
+
+# The shore: a strip of beach (public/art/terrain/shore.webp), cut from Shore-D. Rows 300..640 of the 1248 x 832
+# picture, from the shallows through the foam line (row 180 of the strip) and the sand to the start of the vegetation. It is
+# made seamless left to right (it repeats along a coast every 4 squares), its two long edges fade to transparent so it
+# lays over the sea and the grass, its colour is calmed a little, and it is halved to 624 x 170 px.
+$shoreRaw = Join-Path $tmp 'shore-raw.png'
+$shoreSeam = Join-Path $tmp 'shore-seam.png'
+ffmpeg -hide_banner -y -i (Join-Path $src 'Shore-D.webp') -vf 'scale=1248:832,crop=1248:340:0:300' $shoreRaw 2>&1 | Out-Null
+$xmask = "color=c=black:s=1248x340,format=gray,geq=lum='255*pow(sin(PI*(X+0.5)/W),2)'"
+ffmpeg -hide_banner -y -i $shoreRaw -f lavfi -i $xmask -filter_complex '[0:v]split=2[a][b];[a]crop=624:340:624:0[r];[b]crop=624:340:0:0[l];[r][l]hstack[shift];[0:v]format=gbrp[img];[shift]format=gbrp[sh];[1:v]format=gray[mask];[sh][img][mask]maskedmerge,format=rgb24' -frames:v 1 $shoreSeam 2>&1 | Out-Null
+$shoreOut = Join-Path $out 'shore.webp'
+$fade = "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*pow(clip(Y/100,0,1),2)*(3-2*clip(Y/100,0,1))*pow(clip((339-Y)/140,0,1),2)*(3-2*clip((339-Y)/140,0,1))'"
+ffmpeg -hide_banner -y -i $shoreSeam -vf "eq=saturation=0.75,format=rgba,$fade,scale=624:170:flags=lanczos" -c:v libwebp -quality 85 $shoreOut 2>&1 | Out-Null
+'shore: {0:N0} KB' -f ((Get-Item $shoreOut).Length / 1KB)
