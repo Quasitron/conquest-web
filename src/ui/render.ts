@@ -3,6 +3,7 @@ import { CITY_STRENGTH_HITS, rankOf, UNIT_STATS, buildTime, isCrippled, type Pla
 import type { Camera } from './camera';
 import type { StepTarget } from './targets';
 import { TERRAIN_COLORS, UNIT_GLYPH } from './colors';
+import { GROUND_COLORS, drawGround, groundAt } from './ground';
 import { badgeMode, cityLabelVisible, cityStackTop } from './labels';
 import type { GroupBox } from './group';
 import { fightActors, fightFrame, type Fight } from './fights';
@@ -191,8 +192,13 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     const i = my * view.width + mx;
     const terrain = view.terrain[i];
     if (terrain === null) return;
-    ctx.fillStyle = terrain === 'water' ? TERRAIN_COLORS.water : TERRAIN_COLORS.land;
-    ctx.fillRect(sx, sy, t, t);
+    const ground = groundAt(view, mx, my);
+    if (ground) {
+      drawGround(ctx, view, ground, mx, my, sx, sy, t);
+    } else {
+      ctx.fillStyle = terrain === 'water' ? TERRAIN_COLORS.water : TERRAIN_COLORS.land;
+      ctx.fillRect(sx, sy, t, t);
+    }
     if (terrain === 'city') {
       const city = view.knownCities.find((c) => c.x === mx && c.y === my);
       drawCity(sx, sy, city && city.owner !== null ? colors[city.owner] : null);
@@ -380,7 +386,7 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         // The unit that needs orders takes the whole square and alternates with the city under it.
         if (o.blinkOn) {
           // Plain ground under it, so the city's picture does not show through and blur the unit's.
-          ctx.fillStyle = TERRAIN_COLORS.land;
+          ctx.fillStyle = GROUND_COLORS[groundAt(view, mx, my) ?? 'clear'];
           ctx.fillRect(sx, sy, t, t);
           unitMark(sx, sy, colors[view.me], face(shown).type, face(shown).movesLeft > 0 ? 1 : 0.6, 1, 0.5, 0.5, left(face(shown)), rankOf(face(shown).wins));
           if (stack.length >= 2) badge(sx, sy, stack.length, 1);
@@ -708,7 +714,8 @@ export function drawMinimap(
     for (let x = 0; x < view.width; x++) {
       const terrain = view.terrain[y * view.width + x];
       if (terrain === null) continue;
-      ctx.fillStyle = terrain === 'water' ? TERRAIN_COLORS.water : TERRAIN_COLORS.land;
+      const ground = groundAt(view, x, y);
+      ctx.fillStyle = ground ? GROUND_COLORS[ground] : terrain === 'water' ? TERRAIN_COLORS.water : TERRAIN_COLORS.land;
       ctx.fillRect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy));
     }
   }

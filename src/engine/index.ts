@@ -1,7 +1,7 @@
 export * from './types';
 export type { HouseRules } from './rules';
 export { CLASSIC_RULES, RULES_VERSION } from './rules';
-export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, CITY_STRENGTH_HITS, garrisonBonus, RANK_NAMES, RANK_WINS, rankOf, hitsOf, isCrippled, effectiveMove, cargoCapacity, cargoUsed, canCarry, hostHasRoom, buildableTypes, canBecomeAirbase, fightRatings } from './units';
+export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, CITY_STRENGTH_HITS, garrisonBonus, RANK_NAMES, RANK_WINS, rankOf, hitsOf, isCrippled, effectiveMove, cargoCapacity, cargoUsed, canCarry, hostHasRoom, buildableTypes, canBecomeAirbase, fightRatings, doublesDefense, armorBlockedBy, armorSlowedBy } from './units';
 export type { UnitStats } from './units';
 export { parseAscii } from './ascii';
 export type { ParsedMap } from './ascii';
@@ -18,7 +18,7 @@ export { combatWinChance } from './combat';
 export { areFriendly } from './relations';
 export { Rng } from './rng';
 export type { RandomSource } from './rng';
-export { DIRS, step, normalize, neighbors, chebyshev, isCoastal, index, terrainAt } from './map';
+export { DIRS, step, normalize, neighbors, chebyshev, isCoastal, index, terrainAt, reliefAt } from './map';
 export type { MapLike } from './map';
 export { eventsFor } from './events';
 export type { EnemyMarker } from './view';

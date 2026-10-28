@@ -1,4 +1,4 @@
-import type { City, GameState, PlayerId, PlayerStats, Terrain, Unit, UnitType } from './types';
+import type { City, GameState, PlayerId, PlayerStats, Relief, Terrain, Unit, UnitType } from './types';
 import { emptyStats } from './stats';
 import type { HouseRules } from './rules';
 import { index } from './map';
@@ -29,6 +29,8 @@ export interface PlayerView {
   wrap: boolean;
   /** null = unexplored. */
   terrain: (Terrain | null)[];
+  /** The known ground on land squares (null = unexplored); absent on a map without terrain. */
+  relief?: (Relief | null)[];
   /** Indices (y * width + x) of squares currently in sight, ascending. */
   visibleSquares: number[];
   players: { id: PlayerId; name: string; eliminated: boolean }[];
@@ -56,6 +58,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     height: s.height,
     wrap: s.wrap,
     terrain: s.terrain.map((t, i) => (fog.explored[i] ? t : null)),
+    ...(s.relief ? { relief: s.relief.map((r, i) => (fog.explored[i] ? r : null)) } : {}),
     visibleSquares: [...visibleSquares(s, me)].sort((a, b) => a - b),
     players: s.players.map((p) => ({ id: p.id, name: p.name, eliminated: p.eliminated })),
     myUnits: structuredClone(s.units.filter((u) => u.owner === me)),

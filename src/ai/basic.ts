@@ -1,5 +1,5 @@
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, cargoUsed, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
+  CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, cargoUsed, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
   type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -171,6 +171,7 @@ function reach(view: PlayerView, u: Unit): Map<number, number> {
     const t = view.terrain[i];
     if (t === null || foes.has(i)) return false;
     if (own.has(i)) return true;
+    if (u.type === 'armor' && view.rules.advancedUnits && armorBlockedBy(view.relief?.[i] ?? 'clear')) return false;
     return domain === 'land' ? t === 'land' : domain === 'sea' ? t === 'water' : true;
   };
   const dist = new Map<number, number>([[u.y * w + u.x, 0]]);

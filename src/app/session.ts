@@ -57,7 +57,7 @@ export class GameSession {
   static create(o: NewSessionOptions, store: SaveStore | null): GameSession {
     if (o.seats.length !== o.world.players) throw new Error('seat count must match the number of players');
     if (!o.seats.some((s) => s.kind === 'human')) throw new Error('at least one seat must be human');
-    const world = generateWorld(o.world, o.seed);
+    const world = generateWorld(o.world, o.seed, !!o.rules?.advancedUnits);
     const initial = createGame({
       map: world.map,
       wrap: o.world.wrap,

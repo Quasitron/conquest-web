@@ -5,6 +5,11 @@ export type UnitType =
   | 'submarine' | 'cruiser' | 'battleship' | 'carrier' | 'airbase';
 export type Domain = 'land' | 'sea' | 'air';
 export type Terrain = 'water' | 'land' | 'city';
+/**
+ * The kind of ground on a land square (the Advanced rules' terrain, Appendix III of the original manual). Clear is
+ * ordinary land. Only land squares have one; water and cities are always read as clear.
+ */
+export type Relief = 'clear' | 'rough' | 'river' | 'forest' | 'mountain';
 export type PlayerId = number;
 /** 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW */
 export type Dir = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -138,6 +143,8 @@ export interface GameState {
   height: number;
   wrap: boolean;
   terrain: Terrain[];
+  /** The ground on each land square, same indexing as `terrain`; absent on a map without terrain (all clear). */
+  relief?: Relief[];
   cities: City[];
   units: Unit[];
   players: Player[];

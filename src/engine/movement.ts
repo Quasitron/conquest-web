@@ -1,7 +1,7 @@
 import type { Dir, GameEvent, GameState, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, canCarry } from './units';
-import { step, terrainAt } from './map';
+import { UNIT_STATS, armorBlockedBy, armorSlowedBy, canCarry } from './units';
+import { reliefAt, step, terrainAt } from './map';
 import { cargoOf, cargoRoom, cityAt, destroyUnit, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { attackCity, attackUnit, bombCity, bombardCity } from './attack';
@@ -10,6 +10,11 @@ export function spendMove(u: Unit): void {
   u.movesLeft -= 1;
   u.movedThisTurn = true;
   if (u.fuel !== null) u.fuel -= 1;
+}
+
+/** Armor that has just entered rough, river or forest ground (Advanced rules) has its move cut to one, so it is spent. */
+export function slowArmor(s: GameState, u: Unit): void {
+  if (u.type === 'armor' && s.rules.advancedUnits && armorSlowedBy(reliefAt(s, u.x, u.y))) u.movesLeft = 0;
 }
 
 export function relocate(s: GameState, u: Unit, to: Pos, events: GameEvent[]): void {
@@ -105,6 +110,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
 
   const terrain = terrainAt(s, to.x, to.y);
   if (st.domain === 'land' && terrain !== 'land') return 'land units cannot enter water';
+  if (u.type === 'armor' && s.rules.advancedUnits && armorBlockedBy(reliefAt(s, to.x, to.y))) return 'Armor cannot enter mountains';
   if (st.domain === 'sea' && terrain !== 'water') return 'ships can only enter water or friendly cities';
   if (occupants.length > 0) {
     const canPassOver = st.domain === 'air' && u.movesLeft > 1 && (u.fuel ?? 0) > 1;
@@ -114,6 +120,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   spendMove(u);
   u.carriedBy = null;
   relocate(s, u, to, events);
+  slowArmor(s, u);
   settleAircraft(s, u, events);
   return null;
 }
