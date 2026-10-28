@@ -1,10 +1,8 @@
 # Versions
 
-The title screen shows `Version X.Y · build <hash> · <date>` (`src/ui/version.ts`). The build hash changes with every
-build; **the version number is bumped by hand when a feature ships**, and each bump gets a line here.
+The title screen shows `Version X.Y.Z · build <hash> · <date>` (`src/ui/version.ts`). The build hash changes with every build; **the version number is bumped by hand when a feature ships**, and each bump gets a line here.
 
-- Minor number (0.4 to 0.5): a new feature or rule, a new unit, a new screen.
-- Patch number (0.4 to 0.4.1): only when a fix is released on its own; small fixes ride along with the next minor bump.
+- Until 1.0 the number has three parts and only the last one moves: 0.9.1, 0.9.2, ... for each feature, rule, unit or screen that ships (small fixes ride along). Two-part numbers 0.4 to 0.9 were used for the first versions; a `0.10` was tried and dropped because it reads as 0.1.
 - 1.0: when the game is complete enough to call it finished (the roadmap in the project memory).
 
 | Version | Date | What it covers |
@@ -15,4 +13,4 @@ build; **the version number is bumped by hand when a feature ships**, and each b
 | 0.7 | 2026-10-28 | Beaches: coasts have a strip of shallows, foam and sand from the Shore picture, replacing the plain tint. |
 | 0.8 | 2026-10-28 | Smoother coasts: soft patches of shallows and sand fill the notches where a coast turns, rounding points of land and the heads of bays. |
 | 0.9 | 2026-10-28 | A Stats button on the Victory, Defeated and no-survivors cards opens the Status report straight away. |
-| 0.10 | 2026-10-28 | The Hard computer player uses the Advanced units: it builds Bombers (one at four cities, more later) that fly out to bomb the nearest enemy city and come home to refuel and repair, and it turns an idle Army into an Airbase near the front for them to land on. |
+| 0.9.1 | 2026-10-28 | The Hard computer player uses the Advanced units: it builds Bombers (one at four cities, more later) that fly out to bomb the nearest enemy city and come home to refuel and repair, and it turns an idle Army into an Airbase near the front for them to land on. |
