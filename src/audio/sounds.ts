@@ -45,6 +45,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   explosion: '/sounds/explosion.mp3',
   // A ship is promoted: a rank-up jingle (CC0, see docs/sounds.md), the first 1.45 s of the original, levelled to the other sounds.
   promote: '/sounds/promote.mp3',
+  // Troops unloaded: a rifle magazine being loaded (CC0, see docs/sounds.md), 0.8 s to 1.2 s of the original, pitched down and bassed so it is not tinny.
+  unload: '/sounds/unload.mp3',
   // A ship reaches Elite: the Victory trumpets cut short (0.27 s to 0.8 s, then 2.4 s to 3.1 s of the original, joined and given a quick fade; see docs/sounds.md).
   'promote-elite': '/sounds/promote-elite.mp3',
 };
