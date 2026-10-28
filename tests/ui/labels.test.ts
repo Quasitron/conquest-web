@@ -63,8 +63,8 @@ describe('unit and city label helpers', () => {
   it('summarizes cargo in unit type order', () => {
     expect(cargoSummary([{ type: 'fighter' }, { type: 'army' }, { type: 'army' }])).toBe('2 Armies, 1 Fighter');
     expect(cargoSummary([{ type: 'army' }, { type: 'army' }, { type: 'army' }])).toBe('3 Armies');
-    expect(cargoLoad(5, 6)).toBe('Carrying: 5/6 Units');
-    expect(cargoLoad(0, 4)).toBe('Carrying: 0/4 Units');
+    expect(cargoLoad(5, 6)).toBe('Cargo: 5/6 spaces used');
+    expect(cargoLoad(0, 4)).toBe('Cargo: 0/4 spaces used');
   });
 
   it('adds an article', () => {
@@ -108,7 +108,7 @@ describe('carrier patrol group', () => {
   });
 
   it('counts fighters away on patrol in the load, and says how many are away only when some are', () => {
-    expect(cargoAndPatrols(2, 8, 0)).toBe('Carrying: 2/8 Units');
-    expect(cargoAndPatrols(4, 8, 2)).toBe('Carrying: 6/8 Units · 2 away');
+    expect(cargoAndPatrols(2, 8, 0)).toBe('Cargo: 2/8 spaces used');
+    expect(cargoAndPatrols(4, 8, 2)).toBe('Cargo: 6/8 spaces used · 2 away');
   });
 });

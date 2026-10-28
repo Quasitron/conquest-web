@@ -40,9 +40,9 @@ export function cargoSummary(cargo: readonly Pick<Unit, 'type'>[]): string {
     .join(', ');
 }
 
-/** A carrier's load as "Carrying: 5/6 Units" (capacity shrinks with damage). */
+/** A carrier's load as "Cargo: 5/6 spaces used" (capacity shrinks with damage; an Armor takes two spaces, so this is not a unit count). */
 export function cargoLoad(used: number, capacity: number): string {
-  return `Carrying: ${used}/${capacity} Units`;
+  return `Cargo: ${used}/${capacity} spaces used`;
 }
 
 /** Aircraft out on a patrol tied to this carrier (not aboard it right now), by id. */
@@ -54,7 +54,7 @@ export function patrolsFrom(units: readonly Unit[], carrier: Pick<Unit, 'id'>): 
 
 /**
  * A carrier's whole group: those aboard plus those away on its patrols, since a patrolling fighter still holds
- * its place. "Carrying: 6/8 Units · 2 away" means 4 aboard and 2 out on patrol.
+ * its place. "Cargo: 6/8 spaces used · 2 away" means 4 aboard and 2 out on patrol.
  */
 export function cargoAndPatrols(aboard: number, capacity: number, away: number): string {
   return cargoLoad(aboard + away, capacity) + (away > 0 ? ` · ${away} away` : '');
