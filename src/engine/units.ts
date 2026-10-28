@@ -1,4 +1,4 @@
-import type { Domain, Unit, UnitType } from './types';
+import type { Domain, Relief, Unit, UnitType } from './types';
 
 export interface UnitStats {
   name: string;
@@ -96,12 +96,33 @@ export function canBecomeAirbase(type: UnitType): boolean {
 }
 
 /**
+ * Terrain's help to a defending land unit (Advanced rules, Appendix III): in a forest or on a mountain its defence is
+ * doubled against every attacker but an Army (the original's Infantry), and in a river against Armor.
+ */
+export function doublesDefense(att: UnitType, def: UnitType, ground: Relief): boolean {
+  if (def !== 'army' && def !== 'armor') return false;
+  if (ground === 'forest' || ground === 'mountain') return att !== 'army';
+  return ground === 'river' && att === 'armor';
+}
+
+/** Armor cannot enter mountains, and its move is cut to one in rough, river and forest squares. */
+export function armorBlockedBy(ground: Relief): boolean {
+  return ground === 'mountain';
+}
+export function armorSlowedBy(ground: Relief): boolean {
+  return ground === 'rough' || ground === 'river' || ground === 'forest';
+}
+
+/**
  * The attack and defence ratings in a fight between two unit types. A Bomber fights poorly (1) against a Fighter either
  * way round, and with the Advanced units rule every ship but a Carrier attacks aircraft at 1.
  */
-export function fightRatings(rules: { advancedUnits: boolean }, att: UnitType, def: UnitType): { attack: number; defense: number } {
+export function fightRatings(
+  rules: { advancedUnits: boolean }, att: UnitType, def: UnitType, defGround: Relief = 'clear',
+): { attack: number; defense: number } {
   let attack = UNIT_STATS[att].attack;
   let defense = UNIT_STATS[def].defense;
+  if (rules.advancedUnits && doublesDefense(att, def, defGround)) defense *= 2;
   if (UNIT_STATS[def].domain === 'air' && UNIT_STATS[att].domain === 'sea' && att !== 'carrier' && rules.advancedUnits) attack = Math.min(attack, 1);
   if (att === 'bomber' && def === 'fighter') attack = 1;
   if (def === 'bomber' && att === 'fighter') defense = 1;

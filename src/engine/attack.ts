@@ -1,11 +1,11 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, fightRatings, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
-import { terrainAt } from './map';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, fightRatings, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
+import { reliefAt, terrainAt } from './map';
 import { destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
 import { resolveCombat } from './combat';
-import { relocate, settleAircraft, spendMove } from './movement';
+import { relocate, settleAircraft, slowArmor, spendMove } from './movement';
 import { reveal } from './fog';
 import { WAR_TORN_MAX } from './production';
 
@@ -37,8 +37,10 @@ export function attackRestriction(s: GameState, att: Unit, def: Unit): string | 
   return null;
 }
 
-function canOccupy(att: Unit, terrain: string): boolean {
+function canOccupy(s: GameState, att: Unit, target: { x: number; y: number }): boolean {
   const domain = UNIT_STATS[att.type].domain;
+  const terrain = terrainAt(s, target.x, target.y);
+  if (att.type === 'armor' && s.rules.advancedUnits && armorBlockedBy(reliefAt(s, target.x, target.y))) return false;
   if (domain === 'land') return terrain === 'land';
   if (domain === 'sea') return terrain === 'water';
   return true;
@@ -50,7 +52,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   const a = UNIT_STATS[att.type];
   const d = UNIT_STATS[def.type];
   const bombard = a.domain === 'sea' && d.domain === 'land';
-  const rating = fightRatings(s.rules, att.type, def.type);
+  const rating = fightRatings(s.rules, att.type, def.type, reliefAt(s, def.x, def.y));
   const target = { x: def.x, y: def.y };
 
   spendMove(att);
@@ -76,9 +78,10 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
     recordWin(s, att, events);
     trimCargo(s, att, events);
     const targetClear = topLevelUnitsAt(s, target.x, target.y).every((u) => areFriendly(s, u.owner, att.owner));
-    if (targetClear && canOccupy(att, terrainAt(s, target.x, target.y))) {
+    if (targetClear && canOccupy(s, att, target)) {
       att.carriedBy = null;
       relocate(s, att, target, events);
+      slowArmor(s, att);
     }
     if (isCrippled(att)) att.movesLeft = 0;
     settleAircraft(s, att, events);

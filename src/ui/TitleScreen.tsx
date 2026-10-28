@@ -49,7 +49,7 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
   {
     key: 'advancedUnits',
     label: 'Advanced units',
-    hint: 'Adds Armor (twice as fast and tough as an army, takes two places on a transport; an undamaged Armor that takes a city leaves an Army in it), Bombers (range 24; they bomb an enemy city to wipe its production or destroy a unit in it, fight poorly against fighters, and cannot land on carriers) and Airbases (an Army or Armor on open land can turn itself into one for good; it holds 8 aircraft and cannot move or attack). Ships other than carriers attack aircraft at 1. No terrain limits yet.',
+    hint: 'Adds Armor (twice as fast and tough as an army, takes two places on a transport; an undamaged Armor that takes a city leaves an Army in it), Bombers (range 24; they bomb an enemy city to wipe its production or destroy a unit in it, fight poorly against fighters, and cannot land on carriers) and Airbases (an Army or Armor on open land can turn itself into one for good; it holds 8 aircraft and cannot move or attack). Ships other than carriers attack aircraft at 1. The map also gets terrain: mountains (Armor cannot enter), forest, rough ground and rivers (Armor can only move one square there), and land units defend at double in forests and on mountains against everything but Armies, and in rivers against Armor.',
   },
   {
     key: 'cityStrength',

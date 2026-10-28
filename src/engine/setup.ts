@@ -36,6 +36,7 @@ export function createGame(o: NewGameOptions): GameState {
     height: o.map.height,
     wrap: o.wrap ?? false,
     terrain: [...o.map.terrain],
+    ...(o.map.relief ? { relief: [...o.map.relief] } : {}),
     cities: o.map.cities.map((p, id) => ({
       id, name: o.cityNames?.[id] ?? defaultCityName(id), x: p.x, y: p.y, owner: null, production: null, progress: 0, lastBuilt: null,
     })),

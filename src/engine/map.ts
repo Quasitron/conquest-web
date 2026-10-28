@@ -1,6 +1,6 @@
-import type { Dir, GameState, Pos, Terrain } from './types';
+import type { Dir, GameState, Pos, Relief, Terrain } from './types';
 
-export type MapLike = Pick<GameState, 'width' | 'height' | 'wrap' | 'terrain'>;
+export type MapLike = Pick<GameState, 'width' | 'height' | 'wrap' | 'terrain' | 'relief'>;
 
 /** Offsets for Dir 0..7: N, NE, E, SE, S, SW, W, NW. */
 export const DIRS: ReadonlyArray<readonly [number, number]> = [
@@ -25,6 +25,12 @@ export function index(m: MapLike, x: number, y: number): number {
 
 export function terrainAt(m: MapLike, x: number, y: number): Terrain {
   return m.terrain[index(m, x, y)];
+}
+
+/** The ground on a square: 'clear' on a map without terrain, and on water and cities. */
+export function reliefAt(m: MapLike, x: number, y: number): Relief {
+  const i = index(m, x, y);
+  return m.terrain[i] === 'land' ? (m.relief?.[i] ?? 'clear') : 'clear';
 }
 
 export function neighbors(m: MapLike, x: number, y: number): Pos[] {

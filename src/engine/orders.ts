@@ -2,7 +2,7 @@ import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos
 import type { RandomSource } from './rng';
 import { UNIT_STATS, canCarry, fightRatings, hitsOf, isCrippled } from './units';
 import { combatWinChance } from './combat';
-import { chebyshev, index, isCoastal, neighbors } from './map';
+import { chebyshev, index, isCoastal, neighbors, reliefAt } from './map';
 import { cityAt, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
 import { areFriendly } from './relations';
 import { canPlayerSeeUnit, updateFog } from './fog';
@@ -285,7 +285,7 @@ export function executeEscort(s: GameState, rng: RandomSource, u: Unit, events: 
     if (foe) {
       const a = UNIT_STATS[u.type];
       const d = UNIT_STATS[foe.type];
-      const rating = fightRatings(s.rules, u.type, foe.type);
+      const rating = fightRatings(s.rules, u.type, foe.type, reliefAt(s, foe.x, foe.y));
       const chance = combatWinChance(
         { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
         { defense: rating.defense, shot: d.shot, hits: hitsOf(foe), damage: foe.damage },

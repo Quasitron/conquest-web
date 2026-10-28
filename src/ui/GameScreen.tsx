@@ -28,7 +28,7 @@ import { keyToAction, type ActionId } from './keys';
 import { pathLabel, pluralUnit } from './labels';
 import { cityScreenPoint } from './placement';
 import { EXPLOSION_TAIL_MS } from './explosions';
-import { approachSquare, attackLabel, bombLabel, bombardLabel, cityAttackChance, cityBombChance, cityBombardChance, unitAttackChance, visibleGarrison } from './plans';
+import { approachSquare, attackLabel, bombLabel, bombardLabel, cityAttackChance, cityBombChance, cityBombardChance, unitAttackChance, viewRelief, visibleGarrison } from './plans';
 import { ProductionReport } from './ProductionReport';
 import { MapCanvas, type ActiveFx } from './MapCanvas';
 import { getCombatMode, getReplayPace, getReportAfter, type ReplayPace } from './combatMode';
@@ -296,7 +296,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (city) return { at: hover, label: attackLabel(cityAttackChance(view, selectedUnit, city.owner, city.damage, visibleGarrison(view, city, city.owner))) };
     // A unit: odds against the first enemy seen on the square (the one that defends), its damage assumed none.
     const foe = view.enemies.find((e) => e.visibleNow && e.x === hover.x && e.y === hover.y);
-    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type, foe.rank ?? 0, view.rules) : null, true) };
+    return { at: hover, label: attackLabel(foe ? unitAttackChance(selectedUnit, foe.type, foe.rank ?? 0, view.rules, viewRelief(view, hover.x, hover.y)) : null, true) };
   }, [selectedUnit, hover, targets, view, playing]);
 
   // Path preview under the pointer; held back right after an order was given on that square.

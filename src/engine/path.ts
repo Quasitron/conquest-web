@@ -1,8 +1,8 @@
-import type { Dir, GameState, PlayerId, Pos, Terrain, Unit, UnitType } from './types';
+import type { Dir, GameState, PlayerId, Pos, Relief, Terrain, Unit, UnitType } from './types';
 import type { PlayerView } from './view';
 import type { MapLike } from './map';
 import { DIRS, chebyshev, index, normalize as normalizeSquare } from './map';
-import { UNIT_STATS, cargoCapacity, effectiveMove } from './units';
+import { UNIT_STATS, armorBlockedBy, armorSlowedBy, cargoCapacity, effectiveMove } from './units';
 
 export interface PathMap {
   width: number;
@@ -12,6 +12,8 @@ export interface PathMap {
   turn: number;
   /** null = unexplored. */
   terrain: (Terrain | null)[];
+  /** Known ground on land squares; absent on a map without terrain or when the Advanced units rule is off. */
+  relief?: (Relief | null)[];
   /** Known cities by square index; own cities = me. */
   cityOwner: Map<number, PlayerId | null>;
   /** Squares with an enemy last seen this turn. */
@@ -50,6 +52,7 @@ function buildOwn(
 export function pathMapFromState(s: GameState, pid: PlayerId, opts: { blockOwn?: boolean } = {}): PathMap {
   const fog = s.fog[pid];
   const terrain = s.terrain.map((t, i) => (fog.explored[i] ? t : null));
+  const relief = s.relief && s.rules.advancedUnits ? s.relief.map((r, i) => (fog.explored[i] ? r : null)) : undefined;
   const cityOwner = new Map<number, PlayerId | null>();
   for (const c of s.cities) {
     const i = index(s, c.x, c.y);
@@ -61,7 +64,7 @@ export function pathMapFromState(s: GameState, pid: PlayerId, opts: { blockOwn?:
   const m = { width: s.width, terrain };
   return {
     width: s.width, height: s.height, wrap: s.wrap, me: pid, turn: s.turn,
-    terrain, cityOwner, enemy,
+    terrain, ...(relief ? { relief } : {}), cityOwner, enemy,
     own: buildOwn(m, s.units.filter((u) => u.owner === pid)),
     blockOwn: opts.blockOwn ?? false,
   };
@@ -75,7 +78,7 @@ export function pathMapFromView(v: PlayerView, opts: { blockOwn?: boolean } = {}
   const m = { width: v.width, terrain: v.terrain };
   return {
     width: v.width, height: v.height, wrap: v.wrap, me: v.me, turn: v.turn,
-    terrain: v.terrain, cityOwner, enemy,
+    terrain: v.terrain, ...(v.relief && v.rules.advancedUnits ? { relief: v.relief } : {}), cityOwner, enemy,
     own: buildOwn(m, v.myUnits),
     blockOwn: opts.blockOwn ?? false,
   };
@@ -91,6 +94,7 @@ function enterable(m: PathMap, t: UnitType, i: number, isTarget: boolean): boole
   // A host with room can be boarded wherever it floats, whatever the terrain.
   if (own && isTarget && (own.room[t] ?? 0) >= UNIT_STATS[t].slots) return true;
   if (domain === 'land' && terrain !== 'land' && city !== m.me) return false;
+  if (t === 'armor' && armorBlockedBy(m.relief?.[i] ?? 'clear')) return false;
   if (domain === 'sea' && terrain !== 'water' && city !== m.me) return false;
   if (own) return isTarget ? false : !m.blockOwn || domain === 'air';
   return true;
@@ -144,6 +148,9 @@ function pop(h: HeapItem[]): HeapItem {
   return top;
 }
 
+/** Extra path cost of a square that spends Armor's whole turn (the cost of going round is usually less). */
+const SLOW_COST = 0.9;
+
 /** Steps after the start, ending at `to`; [] when already there; null when unreachable. */
 export function findPath(m: PathMap, u: Mobile, to: Pos): Pos[] | null {
   if (u.x === to.x && u.y === to.y) return [];
@@ -185,7 +192,9 @@ export function findPath(m: PathMap, u: Mobile, to: Pos): Pos[] | null {
     const gi = g.get(i)!;
     for (const n of neighborsOf(m, i)) {
       if (closed.has(n) || !enterable(m, u.type, n, n === goal)) continue;
-      const gn = gi + 1 + TIE * offLine(n);
+      // Armor loses the rest of its turn in rough, river and forest ground, so those squares cost it a little more.
+      const slow = u.type === 'armor' && armorSlowedBy(m.relief?.[n] ?? 'clear') ? SLOW_COST : 0;
+      const gn = gi + 1 + slow + TIE * offLine(n);
       if (gn >= (g.get(n) ?? Infinity)) continue;
       g.set(n, gn);
       from.set(n, i);

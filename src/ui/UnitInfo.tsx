@@ -5,6 +5,7 @@ import { UNIT_GLYPH } from './colors';
 import { cargoLoad, cargoSummary, healthText } from './labels';
 import { blur } from './blur';
 import { Chevrons } from './Chevrons';
+import { GROUND_HINTS, GROUND_NAMES, groundAt } from './ground';
 
 export function HealthBar({ u }: { u: Unit }) {
   const hits = hitsOf(u);
@@ -20,7 +21,8 @@ export function HealthBar({ u }: { u: Unit }) {
 
 function whereText(view: PlayerView, u: Unit): string {
   const t = view.terrain[u.y * view.width + u.x];
-  let kind = 'Land';
+  const ground = groundAt(view, u.x, u.y);
+  let kind = ground ? GROUND_NAMES[ground] : 'Land';
   if (t === 'water') kind = 'Ocean';
   else if (t === 'city') {
     const c = view.knownCities.find((x) => x.x === u.x && x.y === u.y);
@@ -62,6 +64,7 @@ export function UnitInfo({ view, unit, onRename, onOrders, onClose }: Props) {
         <button type="submit" onClick={blur}>Rename</button>
       </form>
       <p>{whereText(view, unit)}</p>
+      {groundAt(view, unit.x, unit.y) && groundAt(view, unit.x, unit.y) !== 'clear' && view.rules.advancedUnits && <p class="muted">{GROUND_HINTS[groundAt(view, unit.x, unit.y)!]}</p>}
       <p>Orders: {ordersText(view, unit)}</p>
       <HealthBar u={unit} />
       <p class="muted">

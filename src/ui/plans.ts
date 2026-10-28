@@ -1,7 +1,12 @@
 import {
   CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, fightRatings, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
-  type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
+  type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Relief, type Unit, type UnitType,
 } from '../engine';
+
+/** The known ground on a square, 'clear' when the map has no terrain or the square is unexplored. */
+export function viewRelief(view: PlayerView, x: number, y: number): Relief {
+  return view.relief?.[y * view.width + x] ?? 'clear';
+}
 
 /** Geometry only: normalize and chebyshev never read terrain. */
 const geo = (v: PlayerView): MapLike => v as unknown as MapLike;
@@ -93,11 +98,13 @@ export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, gar
  * Chance that `u` beats a unit of `type`. The enemy's damage is not known to the player, so it is assumed to have
  * none; ships bombarding land units fight at half the defence, as in the engine.
  */
-export function unitAttackChance(u: Unit, type: UnitType, foeRank = 0, rules: { advancedUnits: boolean } = { advancedUnits: false }): number {
+export function unitAttackChance(
+  u: Unit, type: UnitType, foeRank = 0, rules: { advancedUnits: boolean } = { advancedUnits: false }, ground: Relief = 'clear',
+): number {
   const a = UNIT_STATS[u.type];
   const d = UNIT_STATS[type];
   const bombard = a.domain === 'sea' && d.domain === 'land';
-  const rating = fightRatings(rules, u.type, type);
+  const rating = fightRatings(rules, u.type, type, ground);
   return combatWinChance(
     { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
     { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },

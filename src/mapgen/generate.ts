@@ -8,6 +8,7 @@ import { labelLand, thresholdLand } from './land';
 import { placeCities } from './cities';
 import { chooseStarts } from './starts';
 import { assignCityNames } from './names';
+import { generateRelief } from './relief';
 
 export interface GeneratedWorld {
   map: ParsedMap;
@@ -19,7 +20,7 @@ export interface GeneratedWorld {
 const ATTEMPTS = 50;
 const MIN_ISLAND = 4;
 
-function attempt(o: WorldOptions, seed: number, minOthers: number): GeneratedWorld | null {
+function attempt(o: WorldOptions, seed: number, minOthers: number, withRelief: boolean): GeneratedWorld | null {
   const { width, height, wrap } = o;
   const h = heightField(width, height, wrap, BASE_CELL[o.landmass], seed);
   const { land, labels } = labelLand(thresholdLand(h, width, height, o.waterPercent), width, height, wrap, MIN_ISLAND);
@@ -30,25 +31,27 @@ function attempt(o: WorldOptions, seed: number, minOthers: number): GeneratedWor
   if (!starts) return null;
   const terrain: Terrain[] = land.map((l) => (l ? 'land' : 'water'));
   for (const c of cities) terrain[c.y * width + c.x] = 'city';
+  const relief = withRelief ? generateRelief(h, land, width, height, wrap, cities, seed) : null;
   return {
-    map: { width, height, terrain, cities },
+    map: { width, height, terrain, ...(relief ? { relief } : {}), cities },
     startCityIndices: starts,
     seedUsed: seed,
     cityNames: assignCityNames(cities.length, seed, o.nameRegion),
   };
 }
 
-export function generateWorld(o: WorldOptions, seed: number): GeneratedWorld {
+/** `withRelief` adds the Advanced rules' terrain (mountains, rough ground, forest, rivers); the land and cities are the same either way. */
+export function generateWorld(o: WorldOptions, seed: number, withRelief = false): GeneratedWorld {
   const sizeError = validateMapSize(o.width, o.height);
   if (sizeError) throw new Error(sizeError);
   if (!Number.isInteger(o.players) || o.players < 2 || o.players > 6) throw new Error('players must be 2 to 6');
   if (o.waterPercent < 60 || o.waterPercent > 85) throw new Error('water must be 60% to 85%');
   for (let k = 0; k < ATTEMPTS; k++) {
-    const w = attempt(o, (seed + k) | 0, 3);
+    const w = attempt(o, (seed + k) | 0, 3, withRelief);
     if (w) return w;
   }
   for (let k = 0; k < ATTEMPTS; k++) {
-    const w = attempt(o, (seed + k) | 0, 0);
+    const w = attempt(o, (seed + k) | 0, 0, withRelief);
     if (w) return w;
   }
   if (o.starts === 'separate') throw new Error('could not give every player a landmass of their own; try more islands, a larger map, or fewer players');

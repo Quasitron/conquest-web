@@ -39,6 +39,7 @@ function isSeat(v: unknown): v is SeatConfig {
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 const TERRAINS = ['water', 'land', 'city'];
+const RELIEFS = ['clear', 'rough', 'river', 'forest', 'mountain'];
 
 /** Structural check of a GameState. Returns a problem description, or null when the shape is usable. */
 function gameStateProblem(v: unknown): string | null {
@@ -51,6 +52,8 @@ function gameStateProblem(v: unknown): string | null {
   if (typeof wrap !== 'boolean') return 'invalid wrap flag';
   const area = width * height;
   if (!Array.isArray(terrain) || terrain.length !== area || !terrain.every((t) => TERRAINS.includes(t as string))) return 'invalid terrain';
+  const relief = v.relief;
+  if (relief !== undefined && (!Array.isArray(relief) || relief.length !== area || !relief.every((r) => RELIEFS.includes(r as string)))) return 'invalid terrain';
   if (!Array.isArray(cities) || !cities.every((c) => isObj(c) && typeof c.name === 'string' && c.name !== '')) return 'invalid cities';
   if (!Array.isArray(units) || !units.every((u) => isObj(u) && (u.name === null || typeof u.name === 'string') && isInt(u.blockedTurns) && u.blockedTurns >= 0)) return 'invalid units';
   if (!Array.isArray(players) || players.length < 1 || !players.every(isObj)) return 'invalid players';
