@@ -57,6 +57,8 @@ const MENU_H = 400;
 const ROUTE_PAUSE_MS = 700;
 /** After an attack, how long the battle stays on screen before the cycle moves on to the next unit. */
 const BATTLE_PAUSE_MS = 1000;
+/** After a step that uses up a unit's last move, how long it stays selected so the ground around it can be seen. */
+const STEP_PAUSE_MS = 500;
 /** How long a newly sighted enemy is shown at turn start before the battle replay, production reports and unit cycle begin. */
 const SIGHT_HOLD_MS = 1800;
 /** The replay zooms in to at least this tile size so each fight is easy to see. */
@@ -368,6 +370,20 @@ export function GameScreen({ session, onQuit }: Props) {
       advanceTimer.current = undefined;
       fn();
     }, BATTLE_PAUSE_MS);
+  };
+  /**
+   * After a step by hand: an attack waits BATTLE_PAUSE_MS (see afterBattle); a step that used the unit's last move waits
+   * STEP_PAUSE_MS, so what it has just uncovered can be seen before the next unit is selected. Selecting anything else
+   * in the meantime replaces the wait.
+   */
+  const afterStep = (id: number, fn: () => void) => {
+    if (session.lastEvents.some((e) => e.type === 'combat' && e.attackerOwner === view.me)) return afterBattle(fn);
+    if (readyNow().some((u) => u.id === id)) return fn();
+    cancelAdvance();
+    advanceTimer.current = window.setTimeout(() => {
+      advanceTimer.current = undefined;
+      fn();
+    }, STEP_PAUSE_MS);
   };
   /** After a command on `id`: stay if it is still ready, otherwise move on to the next ready unit. */
   const settle = (id: number, pre: readonly Unit[]) => {
@@ -795,7 +811,7 @@ export function GameScreen({ session, onQuit }: Props) {
         else focus(still);
         // Out of moves: move on to the next unit that needs orders, or deselect when none is left (the map
         // stays put) so only End Turn flashes.
-        afterBattle(() => settle(still.id, ready));
+        afterStep(still.id, () => settle(still.id, ready));
       }
     }
   };
