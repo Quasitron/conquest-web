@@ -44,7 +44,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `capture` | You captured a city (brass fanfare); winning an ordinary fight has no sound of its own beyond the shot and explosion |
 | `lost` | One of your cities was captured (alarm) |
 | `alert` | One of your units sighted an enemy and stopped |
-| `unload` | Your transport unloaded troops (recorded, 0.47 s, a rifle magazine being loaded, bassed and pitched down; the synth splash and step is the fallback) |
+| `unload` | Your transport unloaded troops (recorded, 0.56 s, a rifle magazine being loaded, bassed and pitched down; the synth splash and step is the fallback) |
 | `promote` | One of your ships is promoted (recorded, 1.45 s, a rank-up jingle; the synth two-note chime is the fallback) |
 | `promote-elite` | One of your ships reaches Elite, the top rank (recorded, 1.2 s, the Victory trumpets cut short; a bigger synth bell line is the fallback) |
 | `win` | You won the game |
@@ -106,4 +106,4 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 | `lose.mp3` | https://freesound.org/people/kanaizo/sounds/731657/ (kanaizo, Piano Game Over Theme, 85 BPM, F minor) | CC0 (checked on the Freesound page) | whole clip, 11.3 s, converted from WAV to MP3 only; plays on the Defeated screen (`OVERRIDES.lose`) |
 | `produce-airfield.mp3` (level) | | | the air traffic control part is levelled 3 dB below the jet so it no longer outshouts it; total length 4.7 s |
 | `promote-elite.mp3` | the Victory trumpets, https://freesound.org/people/FunWithSound/sounds/456966/ (FunWithSound) | CC0 (checked on the Freesound page) | from `win.mp3`'s source: 0.27 s to 0.8 s, then 2.4 s to 3.1 s, joined with a 60 ms crossfade, the last 0.22 s faded out (the original's own fade is cut off for a sharper ending) (ffmpeg `atrim` and `acrossfade`) |
-| `unload.mp3` | https://freesound.org/people/ser%C3%B8ut%C5%8Dnin--depriv%C9%99d/sounds/674742/ (serøutōnin--deprivəd, 'AK-47 Assault Rifle being unloaded and reloaded') | CC0 (checked on the Freesound page) | 0.8 s to 1.2 s of the original; pitched down to 85%, high-pass 45 Hz, bass shelf +14 dB at 130 Hz, treble cut above 2.5 kHz, low-pass 3.8 kHz, soft limiter, short fades (ffmpeg) |
+| `unload.mp3` | https://freesound.org/people/ser%C3%B8ut%C5%8Dnin--depriv%C9%99d/sounds/674742/ (serøutōnin--deprivəd, 'AK-47 Assault Rifle being unloaded and reloaded') | CC0 (checked on the Freesound page) | 0.8 s to 1.2 s of the original; pitched down to 72%, high-pass 40 Hz, bass shelf +16 dB at 110 Hz, treble cut above 2.2 kHz, low-pass 3.2 kHz, soft limiter, short fades (ffmpeg) |
