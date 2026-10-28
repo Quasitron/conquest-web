@@ -60,6 +60,48 @@ export interface DrawOptions {
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 
+/** How dark the fog is over a square that is known but not in sight (see TERRAIN_COLORS.fog). */
+const FOG_ALPHA = 0.42;
+let fogMask: HTMLCanvasElement | null = null;
+
+/**
+ * The fog over squares that are known but not in sight, drawn softly: one pixel per square (dark for fog, clear for sight),
+ * stretched over the screen with smoothing, so the dark fades in over about one square at the edge of sight, rounded at
+ * the corners, instead of ending in straight lines. A square beside the edge of the map takes its nearest neighbour's value.
+ */
+function drawSoftFog(
+  ctx: CanvasRenderingContext2D, view: PlayerView, visible: ReadonlySet<number>, cam: Camera,
+  x0: number, y0: number, cols: number, rows: number,
+): void {
+  const w = cols + 2;
+  const h = rows + 2;
+  if (!fogMask) fogMask = document.createElement('canvas');
+  if (fogMask.width !== w || fogMask.height !== h) {
+    fogMask.width = w;
+    fogMask.height = h;
+  }
+  const g = fogMask.getContext('2d')!;
+  const img = g.createImageData(w, h);
+  const dark = Math.round(FOG_ALPHA * 255);
+  for (let j = 0; j < h; j++) {
+    const my = Math.min(view.height - 1, Math.max(0, y0 + j - 1));
+    for (let i = 0; i < w; i++) {
+      const rawX = x0 + i - 1;
+      const mx = view.wrap ? mod(rawX, view.width) : Math.min(view.width - 1, Math.max(0, rawX));
+      const idx = my * view.width + mx;
+      // Unexplored squares count as fog, so the edge of what is known is not bright against the black.
+      img.data[(j * w + i) * 4 + 3] = view.terrain[idx] !== null && visible.has(idx) ? 0 : dark;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const t = cam.tile;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(fogMask, (x0 - 1 - cam.x) * t, (y0 - 1 - cam.y) * t, w * t, h * t);
+  ctx.restore();
+}
+
 export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
   const { view, cam, width, height, colors } = o;
   const t = cam.tile;
@@ -217,11 +259,13 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
         ctx.strokeRect(sx + t * 0.06, sy + t * 0.8, full, bandH);
       }
     }
-    if (!visible.has(i)) {
+    // Without a document (tests) the fog is the plain flat box; otherwise it is drawn softly after the loop.
+    if (typeof document === 'undefined' && !visible.has(i)) {
       ctx.fillStyle = TERRAIN_COLORS.fog;
       ctx.fillRect(sx, sy, t, t);
     }
   });
+  if (typeof document !== 'undefined') drawSoftFog(ctx, view, visible, cam, x0, y0, cols, rows);
 
   // Move/attack targets.
   for (const target of o.targets) {
