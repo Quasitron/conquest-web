@@ -228,6 +228,35 @@ function shoreBand(
   return true;
 }
 
+/**
+ * A soft patch in corner `k` (0 NE, 1 SE, 2 SW, 3 NW) of a square where the coast turns: a radial fade of foam, then
+ * shallows (the sea square at the point of a headland) or of sand (the land square at the head of a bay).
+ */
+function coastCorner(ctx: CanvasRenderingContext2D, sea: boolean, k: number, px: number, py: number, size: number): void {
+  const cx = k === 0 || k === 1 ? px + size : px;
+  const cy = k === 1 || k === 2 ? py + size : py;
+  const r = size * (sea ? 0.6 : 0.52);
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  if (sea) {
+    g.addColorStop(0, 'rgba(244,242,232,0.95)');
+    g.addColorStop(0.14, 'rgba(176,222,216,0.85)');
+    g.addColorStop(0.55, 'rgba(110,190,205,0.4)');
+    g.addColorStop(1, 'rgba(110,190,205,0)');
+  } else {
+    g.addColorStop(0, 'rgba(238,226,196,0.95)');
+    g.addColorStop(0.6, 'rgba(226,210,172,0.55)');
+    g.addColorStop(1, 'rgba(226,210,172,0)');
+  }
+  ctx.save();
+  ctx.globalAlpha = size < 36 ? 0.7 : 1;
+  ctx.beginPath();
+  ctx.rect(px, py, size, size);
+  ctx.clip();
+  ctx.fillStyle = g;
+  ctx.fillRect(px, py, size, size);
+  ctx.restore();
+}
+
 const SIDES: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const CORNERS: readonly (readonly [number, number])[] = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
 
@@ -293,6 +322,20 @@ export function drawGroundLayer(
         if (a !== own || b !== own) continue;
         if (exact) fade(ctx, pics[n], mx, my, px, py, size, 4 + k, REACH, 0.5);
         else ctx.drawImage(fadeSprite(pics[n], n, size, 4 + k), px, py);
+      }
+      // Coast corners: where the coast turns, the two straight strips leave a notch, so a soft patch fills it. At a point
+      // of land the corner of the sea square diagonally off it gets shallows; at a bay the land square diagonally off it
+      // gets sand.
+      if (shore) {
+        for (let k = 0; k < 4; k++) {
+          const d = at(rawX + CORNERS[k][0], my + CORNERS[k][1]);
+          const a = at(rawX + CORNERS[k][0], my);
+          const b = at(rawX, my + CORNERS[k][1]);
+          if (d === null || a === null || b === null) continue;
+          if (sea ? d !== 'water' && a === 'water' && b === 'water' : d === 'water' && a !== 'water' && b !== 'water') {
+            coastCorner(ctx, sea, k, px, py, size);
+          }
+        }
       }
       // The coast: the shore picture's shallows on the sea's side and its sand on the land's, else a plain tint.
       for (let k = 0; k < 4; k++) {

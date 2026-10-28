@@ -13,3 +13,4 @@ build; **the version number is bumped by hand when a feature ships**, and each b
 | 0.5 | 2026-10-28 | Terrain for the Advanced rules, as in the original manual: mountains (Armor cannot enter), forest, rough ground and rivers (Armor's move cut to one square), land units defending at double in forest and on mountains, and in rivers against Armor. Drawn as plain stand-ins until the terrain pictures arrive. |
 | 0.6 | 2026-10-28 | Photo-real terrain: the sea, grass, rough ground, forest and mountains are drawn from pictures, blending into each other, with curving rivers. Used in every game, not only the Advanced rules. |
 | 0.7 | 2026-10-28 | Beaches: coasts have a strip of shallows, foam and sand from the Shore picture, replacing the plain tint. |
+| 0.8 | 2026-10-28 | Smoother coasts: soft patches of shallows and sand fill the notches where a coast turns, rounding points of land and the heads of bays. |
