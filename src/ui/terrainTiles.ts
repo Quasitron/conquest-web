@@ -22,8 +22,8 @@ const PERIOD_Y = 8;
 export const TEXTURE_MIN_TILE = 12;
 /** From this size, squares of different ground fade into each other over their shared edges. */
 export const BLEND_MIN_TILE = 24;
-/** From this size each fade is cut from the picture at the square's own place (so the join is seamless); below, a stock sprite. */
-export const EXACT_FADE_TILE = 30;
+/** From this size each fade is cut from the picture at the square's own place (so the join is seamless); below, a stock sprite (much cheaper when many squares are in view). */
+export const EXACT_FADE_TILE = 48;
 
 /** The average colour of each picture, for the flat map, the minimap and while the pictures load. */
 export const FLAT: Record<Surface, string> = {
@@ -198,8 +198,11 @@ function shorePictures(): { img: HTMLImageElement; byWater: HTMLCanvasElement[] 
  */
 function shoreBand(
   ctx: CanvasRenderingContext2D, shore: { img: HTMLImageElement; byWater: HTMLCanvasElement[] }, sea: boolean, k: number,
-  mx: number, my: number, px: number, py: number, size: number,
+  mx: number, my: number, px: number, py: number, size: number, trimStart: number, trimEnd: number,
 ): boolean {
+  // The band stops short of a coast corner (a rounded arc takes over there): by a fraction of the square at each end.
+  const keep = 1 - trimStart - trimEnd;
+  if (keep <= 0.02) return true;
   // Which way the sea lies from the foam line, as a side index: toward this square's inside when it is the sea.
   const water = sea ? (k + 2) % 4 : k;
   const picture = shore.byWater[water];
@@ -213,50 +216,195 @@ function shoreBand(
   const along = (water === 0 || water === 2 ? mx : my) % SHORE_PERIOD;
   const a0 = (along < 0 ? along + SHORE_PERIOD : along) * perSquare;
   // The same rows in the turned copy, and where the band sits in the square.
+  const along0 = a0 + trimStart * perSquare;
+  const alongLen = keep * perSquare;
   let sx: number, sy: number, sw: number, sh: number;
-  if (water === 0) { sx = a0; sy = r0; sw = perSquare; sh = r1 - r0; }
-  else if (water === 2) { sx = a0; sy = h - r1; sw = perSquare; sh = r1 - r0; }
-  else if (water === 1) { sx = h - r1; sy = a0; sw = r1 - r0; sh = perSquare; }
-  else { sx = r0; sy = a0; sw = r1 - r0; sh = perSquare; }
+  if (water === 0) { sx = along0; sy = r0; sw = alongLen; sh = r1 - r0; }
+  else if (water === 2) { sx = along0; sy = h - r1; sw = alongLen; sh = r1 - r0; }
+  else if (water === 1) { sx = h - r1; sy = along0; sw = r1 - r0; sh = alongLen; }
+  else { sx = r0; sy = along0; sw = r1 - r0; sh = alongLen; }
+  const d0 = trimStart * size;
+  const dLen = keep * size;
   // Zoomed out, the pale strips would outline every coast too boldly, so they are drawn fainter.
   ctx.globalAlpha = size < 36 ? 0.7 : 1;
-  if (k === 0) ctx.drawImage(picture, sx, sy, sw, sh, px, py, size, depth);
-  else if (k === 2) ctx.drawImage(picture, sx, sy, sw, sh, px, py + size - depth, size, depth);
-  else if (k === 1) ctx.drawImage(picture, sx, sy, sw, sh, px + size - depth, py, depth, size);
-  else ctx.drawImage(picture, sx, sy, sw, sh, px, py, depth, size);
+  if (k === 0) ctx.drawImage(picture, sx, sy, sw, sh, px + d0, py, dLen, depth);
+  else if (k === 2) ctx.drawImage(picture, sx, sy, sw, sh, px + d0, py + size - depth, dLen, depth);
+  else if (k === 1) ctx.drawImage(picture, sx, sy, sw, sh, px + size - depth, py + d0, depth, dLen);
+  else ctx.drawImage(picture, sx, sy, sw, sh, px, py + d0, depth, dLen);
   ctx.globalAlpha = 1;
   return true;
 }
 
+/** How far a coast corner is rounded: the radius of its arc, in squares (the arc runs from the middle of each edge). */
+const ROUND = 0.5;
+
 /**
- * A soft patch in corner `k` (0 NE, 1 SE, 2 SW, 3 NW) of a square where the coast turns: a radial fade of foam, then
- * shallows (the sea square at the point of a headland) or of sand (the land square at the head of a bay).
+ * A coast corner is a grid point where exactly one of the four squares around it is the odd one out in being sea or land.
+ * Which of the four it is (0 NE, 1 SE, 2 SW, 3 NW), and whether it is the sea that is odd (a bay) or the land (a point).
  */
-function coastCorner(ctx: CanvasRenderingContext2D, sea: boolean, k: number, px: number, py: number, size: number): void {
-  const cx = k === 0 || k === 1 ? px + size : px;
-  const cy = k === 1 || k === 2 ? py + size : py;
-  const r = size * (sea ? 0.6 : 0.52);
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-  if (sea) {
-    g.addColorStop(0, 'rgba(244,242,232,0.95)');
-    g.addColorStop(0.14, 'rgba(176,222,216,0.85)');
-    g.addColorStop(0.55, 'rgba(110,190,205,0.4)');
-    g.addColorStop(1, 'rgba(110,190,205,0)');
-  } else {
-    g.addColorStop(0, 'rgba(238,226,196,0.95)');
-    g.addColorStop(0.6, 'rgba(226,210,172,0.55)');
-    g.addColorStop(1, 'rgba(226,210,172,0)');
-  }
+function coastCornerAt(
+  at: (x: number, y: number) => Surface | null, vx: number, vy: number,
+): { odd: number; bay: boolean } | null {
+  const sq = [at(vx, vy - 1), at(vx, vy), at(vx - 1, vy), at(vx - 1, vy - 1)]; // NE, SE, SW, NW
+  if (sq.some((s) => s === null)) return null;
+  const wet = sq.map((s) => s === 'water');
+  const count = wet.filter(Boolean).length;
+  if (count !== 1 && count !== 3) return null;
+  const bay = count === 1;
+  return { odd: wet.findIndex((w) => w === bay), bay };
+}
+
+/**
+ * Draws the rounded coast corner at grid point (vx, vy): the part of the odd square near the point that the arc cuts off
+ * is repainted as the other ground, and the shore strip is bent round the arc in a fan of thin slices (the straight strips
+ * on the two edges stop short of the point, see shoreBand).
+ */
+function roundedCorner(
+  ctx: CanvasRenderingContext2D, shore: { img: HTMLImageElement; byWater: HTMLCanvasElement[] }, pics: Record<Surface, HTMLImageElement>,
+  at: (x: number, y: number) => Surface | null, view: PlayerView, cam: Camera, vx: number, vy: number, corner: { odd: number; bay: boolean },
+): void {
+  const t = cam.tile;
+  const Vx = (vx - cam.x) * t;
+  const Vy = (vy - cam.y) * t;
+  const east = corner.odd === 0 || corner.odd === 1;
+  const north = corner.odd === 0 || corner.odd === 3;
+  const sx = east ? 1 : -1;
+  const sy = north ? -1 : 1;
+  const R = ROUND * t;
+  const Cx = Vx + sx * R;
+  const Cy = Vy + sy * R;
+  // The odd square, and what its cut-off corner becomes: the ground diagonally opposite it, or the sea when it is land.
+  const ox = vx + (east ? 0 : -1);
+  const oy = vy + (north ? -1 : 0);
+  const opposite = at(vx + (east ? -1 : 0), vy + (north ? 0 : -1));
+  const repaint: Surface | null = corner.bay ? opposite : 'water';
+  if (repaint === null) return;
+  const px = Math.floor((ox - cam.x) * t);
+  const py = Math.floor((oy - cam.y) * t);
+  const size = Math.ceil(t) + 1;
   ctx.save();
-  ctx.globalAlpha = size < 36 ? 0.7 : 1;
   ctx.beginPath();
-  ctx.rect(px, py, size, size);
+  // A couple of pixels past the grid point on each side, so no hairline of the old ground shows along the box's edges.
+  ctx.rect(Math.min(Vx - sx * 2, Cx), Math.min(Vy - sy * 2, Cy), R + 2, R + 2);
   ctx.clip();
-  ctx.fillStyle = g;
-  ctx.fillRect(px, py, size, size);
+  ctx.beginPath();
+  ctx.rect(Vx - 2 * t, Vy - 2 * t, 4 * t, 4 * t);
+  ctx.arc(Cx, Cy, R, 0, Math.PI * 2);
+  ctx.clip('evenodd');
+  cell(ctx, pics[repaint], mod(ox, view.width), oy, px, py, size, size);
+  ctx.restore();
+
+  // The strip, bent round the arc: water inside the circle for a bay, land inside for a point.
+  ctx.save();
+  ctx.globalAlpha = t < 36 ? 0.7 : 1;
+  // Patches are made for sizes in steps of four pixels (so zooming does not make a new set at every step) and scaled to fit.
+  const made = Math.max(8, Math.round(t / 4) * 4);
+  const patch = cornerPatch(shore, made, corner.bay, sx, sy, mod(vx + vy, 3));
+  const w = patch.width * (t / made);
+  ctx.drawImage(patch, Cx - w / 2, Cy - w / 2, w, w);
   ctx.restore();
 }
 
+/** The strip's pixels, for sampling when a corner patch is made. */
+let stripPixels: { img: HTMLImageElement; data: ImageData } | null = null;
+function pixelsOf(img: HTMLImageElement): ImageData {
+  if (stripPixels?.img === img) return stripPixels.data;
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const g = c.getContext('2d')!;
+  g.drawImage(img, 0, 0);
+  stripPixels = { img, data: g.getImageData(0, 0, c.width, c.height) };
+  return stripPixels.data;
+}
+
+/** Corner patches made so far, by size, kind, quadrant and place in the strip; there are only a few dozen of each size. */
+const patches = new Map<string, HTMLCanvasElement>();
+
+/**
+ * The shore strip bent round a quarter circle of radius ROUND squares (a square being `t` pixels), as a picture centred on
+ * the circle's centre. Each pixel looks up the strip by its distance from the centre (across the strip) and its angle
+ * (along it), with smooth sampling, so there are no seams. `bay` puts the sea inside the circle, else the land.
+ * `sx` and `sy` (+1 or -1) say which quadrant the arc is in, so the strip runs the right way round.
+ */
+function cornerPatch(
+  shore: { img: HTMLImageElement; byWater: HTMLCanvasElement[] }, t: number, bay: boolean, sx: number, sy: number, alongIndex: number,
+): HTMLCanvasElement {
+  const key = `${t}:${bay ? 1 : 0}:${sx}:${sy}:${alongIndex}`;
+  const cached = patches.get(key);
+  if (cached) return cached;
+  if (patches.size > 400) patches.clear();
+  const img = shore.img;
+  const W = img.naturalWidth;
+  const H = img.naturalHeight;
+  const P = W / SHORE_PERIOD;
+  const foam = H * SHORE_WATER_FRACTION;
+  const k = t / P; // pixels per strip pixel
+  const R = ROUND * t;
+  const half = Math.ceil((ROUND + 0.62) * t) + 1;
+  const size = half * 2;
+  const out = document.createElement('canvas');
+  out.width = size;
+  out.height = size;
+  const g = out.getContext('2d')!;
+  const dst = g.createImageData(size, size);
+  const src = pixelsOf(img).data;
+  const sgn = bay ? 1 : -1;
+  const a1 = Math.atan2(0, -sx);
+  const a2 = Math.atan2(-sy, 0);
+  let delta = a2 - a1;
+  if (delta > Math.PI) delta -= 2 * Math.PI;
+  if (delta < -Math.PI) delta += 2 * Math.PI;
+  const arc = ROUND * (Math.PI / 2) * P;
+  const along0 = alongIndex * P;
+  const sample = (x: number, y: number, o: number[]): void => {
+    const x0 = Math.max(0, Math.min(W - 2, Math.floor(x)));
+    const y0 = Math.max(0, Math.min(H - 2, Math.floor(y)));
+    const fx = Math.max(0, Math.min(1, x - x0));
+    const fy = Math.max(0, Math.min(1, y - y0));
+    let r = 0, gr = 0, b = 0, a = 0;
+    // The four pixels around (x, y), weighted by how near they are, colours weighted by their opacity.
+    for (let n = 0; n < 4; n++) {
+      const dx = n & 1;
+      const dy = n >> 1;
+      const w = (dx ? fx : 1 - fx) * (dy ? fy : 1 - fy);
+      const i = ((y0 + dy) * W + x0 + dx) * 4;
+      const al = (src[i + 3] / 255) * w;
+      r += src[i] * al;
+      gr += src[i + 1] * al;
+      b += src[i + 2] * al;
+      a += al;
+    }
+    o[0] = a > 0 ? r / a : 0;
+    o[1] = a > 0 ? gr / a : 0;
+    o[2] = a > 0 ? b / a : 0;
+    o[3] = a * 255;
+  };
+  const px = [0, 0, 0, 0];
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      const dx = i + 0.5 - half;
+      const dy = j + 0.5 - half;
+      const dist = Math.hypot(dx, dy);
+      let ang = Math.atan2(dy, dx) - a1;
+      if (ang > Math.PI) ang -= 2 * Math.PI;
+      if (ang < -Math.PI) ang += 2 * Math.PI;
+      const f = ang / delta;
+      if (f < -0.004 || f > 1.004) continue;
+      const row = foam + (sgn * (dist - R)) / k;
+      if (row < 0 || row > H - 1) continue;
+      sample(along0 + Math.max(0, Math.min(1, f)) * arc, row, px);
+      const o = (j * size + i) * 4;
+      dst.data[o] = px[0];
+      dst.data[o + 1] = px[1];
+      dst.data[o + 2] = px[2];
+      dst.data[o + 3] = px[3];
+    }
+  }
+  g.putImageData(dst, 0, 0);
+  patches.set(key, out);
+  return out;
+}
 const SIDES: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const CORNERS: readonly (readonly [number, number])[] = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
 
@@ -323,25 +471,20 @@ export function drawGroundLayer(
         if (exact) fade(ctx, pics[n], mx, my, px, py, size, 4 + k, REACH, 0.5);
         else ctx.drawImage(fadeSprite(pics[n], n, size, 4 + k), px, py);
       }
-      // Coast corners: where the coast turns, the two straight strips leave a notch, so a soft patch fills it. At a point
-      // of land the corner of the sea square diagonally off it gets shallows; at a bay the land square diagonally off it
-      // gets sand.
-      if (shore) {
-        for (let k = 0; k < 4; k++) {
-          const d = at(rawX + CORNERS[k][0], my + CORNERS[k][1]);
-          const a = at(rawX + CORNERS[k][0], my);
-          const b = at(rawX, my + CORNERS[k][1]);
-          if (d === null || a === null || b === null) continue;
-          if (sea ? d !== 'water' && a === 'water' && b === 'water' : d === 'water' && a !== 'water' && b !== 'water') {
-            coastCorner(ctx, sea, k, px, py, size);
-          }
-        }
-      }
-      // The coast: the shore picture's shallows on the sea's side and its sand on the land's, else a plain tint.
+      // The coast: the shore picture's shallows on the sea's side and its sand on the land's, else a plain tint. Each strip
+      // stops short of an end that is a coast corner, where a rounded arc takes over (below).
       for (let k = 0; k < 4; k++) {
         const n = at(rawX + SIDES[k][0], my + SIDES[k][1]);
         if (n === null || (n === 'water') === sea) continue;
-        if (shore && shoreBand(ctx, shore, sea, k, mx, my, px, py, size)) continue;
+        if (shore) {
+          // The grid points at the start and end of this edge, along the map's x (north and south edges) or y.
+          const [v0, v1]: [[number, number], [number, number]] = k === 0 ? [[rawX, my], [rawX + 1, my]]
+            : k === 2 ? [[rawX, my + 1], [rawX + 1, my + 1]]
+              : k === 3 ? [[rawX, my], [rawX, my + 1]] : [[rawX + 1, my], [rawX + 1, my + 1]];
+          const trimStart = coastCornerAt(at, v0[0], v0[1]) ? ROUND : 0;
+          const trimEnd = coastCornerAt(at, v1[0], v1[1]) ? ROUND : 0;
+          if (shoreBand(ctx, shore, sea, k, mx, my, px, py, size, trimStart, trimEnd)) continue;
+        }
         const reach = (sea ? 0.2 : COAST_REACH * 0.6) * size;
         const grad = k === 0 ? ctx.createLinearGradient(0, py, 0, py + reach)
           : k === 2 ? ctx.createLinearGradient(0, py + size, 0, py + size - reach)
@@ -352,6 +495,17 @@ export function drawGroundLayer(
         grad.addColorStop(1, `rgba(${tint},0)`);
         ctx.fillStyle = grad;
         ctx.fillRect(px, py, size, size);
+      }
+    }
+  }
+  // Rounded coast corners, over everything: one at each grid point where the coast turns.
+  if (shore && pics) {
+    for (let j = 0; j <= rows; j++) {
+      const vy = y0 + j;
+      if (vy < 0 || vy > view.height) continue;
+      for (let i = 0; i <= cols; i++) {
+        const corner = coastCornerAt(at, x0 + i, vy);
+        if (corner) roundedCorner(ctx, shore, pics, at, view, cam, x0 + i, vy, corner);
       }
     }
   }
