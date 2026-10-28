@@ -67,7 +67,9 @@ let fogMask: HTMLCanvasElement | null = null;
 /**
  * The fog over squares that are known but not in sight, drawn softly: one pixel per square (dark for fog, clear for sight),
  * stretched over the screen with smoothing, so the dark fades in over about one square at the edge of sight, rounded at
- * the corners, instead of ending in straight lines. A square beside the edge of the map takes its nearest neighbour's value.
+ * the corners, instead of ending in straight lines. Unexplored squares are solid in the same mask, so the known ground fades
+ * out into them (coasts and all) instead of ending in a straight cut. A square beside the edge of the map takes its nearest
+ * neighbour's value.
  */
 function drawSoftFog(
   ctx: CanvasRenderingContext2D, view: PlayerView, visible: ReadonlySet<number>, cam: Camera,
@@ -89,8 +91,16 @@ function drawSoftFog(
       const rawX = x0 + i - 1;
       const mx = view.wrap ? mod(rawX, view.width) : Math.min(view.width - 1, Math.max(0, rawX));
       const idx = my * view.width + mx;
-      // Unexplored squares count as fog, so the edge of what is known is not bright against the black.
-      img.data[(j * w + i) * 4 + 3] = view.terrain[idx] !== null && visible.has(idx) ? 0 : dark;
+      const o = (j * w + i) * 4;
+      if (view.terrain[idx] === null) {
+        // Unexplored: the colour of the unexplored ground itself, so what is known fades out into it instead of being cut off.
+        img.data[o] = 14;
+        img.data[o + 1] = 17;
+        img.data[o + 2] = 22;
+        img.data[o + 3] = 255;
+      } else {
+        img.data[o + 3] = visible.has(idx) ? 0 : dark;
+      }
     }
   }
   g.putImageData(img, 0, 0);
