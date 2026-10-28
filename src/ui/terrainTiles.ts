@@ -206,7 +206,8 @@ function shoreBand(
   const edgeLen = k === 0 || k === 2 ? right - left : bottom - top;
   const keep = (edgeLen - trimStartPx - trimEndPx) / edgeLen;
   const trimStart = trimStartPx / edgeLen;
-  if (keep <= 0.02) return true;
+  // When both ends are corners the two arcs may leave a pixel or two of the edge between them, so even a thin band is drawn.
+  if (keep <= 0) return true;
   // Which way the sea lies from the foam line, as a side index: toward this square's inside when it is the sea.
   const water = sea ? (k + 2) % 4 : k;
   const picture = shore.byWater[water];
