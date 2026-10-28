@@ -46,6 +46,7 @@ Production sounds play as each new unit's production screen opens, one at a time
 | `alert` | One of your units sighted an enemy and stopped |
 | `unload` | Your transport unloaded troops |
 | `promote` | One of your ships is promoted (recorded, 1.45 s, a rank-up jingle; the synth two-note chime is the fallback) |
+| `promote-elite` | One of your ships reaches Elite, the top rank (recorded, 1.2 s, the Victory trumpets cut short; a bigger synth bell line is the fallback) |
 | `win` | You won the game |
 | `lose` | You lost the game |
 
@@ -104,3 +105,4 @@ The untrimmed originals are kept outside the project in `Documents\Claude\sound-
 | `win.mp3` | https://freesound.org/people/FunWithSound/sounds/456966/ (FunWithSound, Victory trumpets) | CC0 (checked on the Freesound page) | whole clip, 4.4 s, unedited; plays on the Victory screen (`OVERRIDES.win`) |
 | `lose.mp3` | https://freesound.org/people/kanaizo/sounds/731657/ (kanaizo, Piano Game Over Theme, 85 BPM, F minor) | CC0 (checked on the Freesound page) | whole clip, 11.3 s, converted from WAV to MP3 only; plays on the Defeated screen (`OVERRIDES.lose`) |
 | `produce-airfield.mp3` (level) | | | the air traffic control part is levelled 3 dB below the jet so it no longer outshouts it; total length 4.7 s |
+| `promote-elite.mp3` | the Victory trumpets, https://freesound.org/people/FunWithSound/sounds/456966/ (FunWithSound) | CC0 (checked on the Freesound page) | from `win.mp3`'s source: 0.27 s to 0.8 s, then 2.4 s to 3.1 s, joined with a 60 ms crossfade, the last 0.22 s faded out (the original's own fade is cut off for a sharper ending) (ffmpeg `atrim` and `acrossfade`) |

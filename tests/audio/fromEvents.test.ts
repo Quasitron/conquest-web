@@ -47,6 +47,14 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([combat, destroyed('combat'), taken], 1)).toEqual(['shot', 'explosion', 'capture']);
   });
 
+  it('your own promotion chimes, and reaching Elite has its own sound; the enemy\'s is silent', () => {
+    const promoted = (owner: number, rank: number) => ({ type: 'unitPromoted', unitId: 1, owner, rank }) as unknown as GameEvent;
+    expect(soundsForEvents([promoted(0, 1)], 0)).toEqual(['promote']);
+    expect(soundsForEvents([promoted(0, 2)], 0)).toEqual(['promote']);
+    expect(soundsForEvents([promoted(0, 3)], 0)).toEqual(['promote-elite']);
+    expect(soundsForEvents([promoted(1, 3)], 0)).toEqual([]);
+  });
+
   it('a crash is its own sound; disbanding is silent', () => {
     expect(soundsForEvents([destroyed('crashed')], 0)).toEqual(['crash']);
     expect(soundsForEvents([destroyed('disbanded')], 0)).toEqual([]);

@@ -529,7 +529,7 @@ export function GameScreen({ session, onQuit }: Props) {
     }, wideMs);
     const boom = window.setTimeout(() => { if (step.destroyed || step.captured) play('explosion'); }, wideMs + fxMs * SHOT_SHARE);
     // A promotion earned in this fight is announced once the result has landed.
-    const promo = window.setTimeout(() => { if (step.promoted) play('promote'); }, wideMs + fxMs * BURST_END + 250);
+    const promo = window.setTimeout(() => { if (step.promoted) play(step.promotedRank === 3 ? 'promote-elite' : 'promote'); }, wideMs + fxMs * BURST_END + 250);
     return () => { window.clearTimeout(zoom); window.clearTimeout(boom); window.clearTimeout(promo); };
   }, [replay?.index, replay !== null]);
   useEffect(() => {

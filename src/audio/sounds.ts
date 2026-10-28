@@ -1,11 +1,11 @@
 export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
-  | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'win' | 'lose'
+  | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'promote-elite' | 'win' | 'lose'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-bomber' | 'airbase' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
-  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'win', 'lose',
+  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'promote-elite', 'win', 'lose',
   'produce-army', 'produce-armor', 'produce-fighter', 'produce-bomber', 'airbase', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
 ];
@@ -45,6 +45,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   explosion: '/sounds/explosion.mp3',
   // A ship is promoted: a rank-up jingle (CC0, see docs/sounds.md), the first 1.45 s of the original, levelled to the other sounds.
   promote: '/sounds/promote.mp3',
+  // A ship reaches Elite: the Victory trumpets cut short (0.27 s to 0.8 s, then 2.4 s to 3.1 s of the original, joined and given a quick fade; see docs/sounds.md).
+  'promote-elite': '/sounds/promote-elite.mp3',
 };
 
 export type MusicName = 'title';
@@ -275,6 +277,11 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   promote: (c, o, t) => {
     tone(c, o, t, 784, 0.12, { type: 'triangle', gain: 0.18 });
     tone(c, o, t + 0.11, 1175, 0.22, { type: 'triangle', gain: 0.18 });
+  },
+  // An Elite promotion: a bigger rising bell line than the plain promotion, ending on a held chord.
+  'promote-elite': (c, o, t) => {
+    [784, 988, 1175].forEach((f, i) => tone(c, o, t + i * 0.11, f, 0.2, { type: 'triangle', gain: 0.18 }));
+    [1568, 1175, 988].forEach((f) => tone(c, o, t + 0.36, f, 0.55, { type: 'triangle', gain: 0.12 }));
   },
   // Troops off the boat: a short splash and a step.
   unload: (c, o, t) => {

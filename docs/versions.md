@@ -15,3 +15,4 @@ The title screen shows `Version X.Y.Z · build <hash> · <date>` (`src/ui/versio
 | 0.9 | 2026-10-28 | A Stats button on the Victory, Defeated and no-survivors cards opens the Status report straight away. |
 | 0.9.1 | 2026-10-28 | The Hard computer player uses the Advanced units: it builds Bombers (one at four cities, more later) that fly out to bomb the nearest enemy city and come home to refuel and repair, and it turns an idle Army into an Airbase near the front for them to land on. |
 | 0.9.2 | 2026-10-28 | Smooth, rounded coast corners (points of land, bays and one-square lakes) instead of square ones; faster drawing when zoomed out. |
+| 0.9.3 | 2026-10-28 | A ship reaching Elite gets its own sound (the Victory trumpets cut short) instead of the plain promotion jingle. |
