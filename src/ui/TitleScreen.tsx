@@ -69,7 +69,23 @@ const REGION_OPTIONS: { value: WorldOptions['nameRegion']; label: string }[] = [
 ];
 
 const randomSeed = () => Math.floor(Math.random() * 1_000_000_000);
+/**
+ * Whether the title picture can fill the space beside the menu (cropped) without cutting off its baked-in title: it can once
+ * that space is wide enough for its proportions (the title is under half the picture's width). Otherwise the whole picture
+ * is fitted in.
+ */
+function artFills(): boolean {
+  const menu = Math.min(420, window.innerWidth * 0.4);
+  return (window.innerWidth - menu) / window.innerHeight >= 0.95;
+}
+
 export function TitleScreen({ store, onStart }: Props) {
+  const [fill, setFill] = useState(artFills);
+  useEffect(() => {
+    const onResize = () => setFill(artFills());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   // The form starts from the last settings used (the seed is always fresh).
   const [remembered] = useState(() => loadNewGameSettings({ world: { ...DEFAULT_WORLD }, seats: defaultSeats(2, []), rules: { ...CLASSIC_RULES } }));
   const [world, setWorld] = useState<WorldOptions>(remembered.world);
@@ -145,7 +161,7 @@ export function TitleScreen({ store, onStart }: Props) {
   return (
     <main class="title">
       <h1 class="sr-only">Theater of Conquest: Global Command</h1>
-      <img class="title-art" src="/title.webp" alt="" width={1376} height={768} />
+      <img class={fill ? 'title-art fill' : 'title-art'} src="/title.webp" alt="" width={1376} height={768} />
       <div class="title-menu">
         {panel === 'menu' && (
           <section>

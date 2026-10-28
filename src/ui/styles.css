@@ -20,14 +20,15 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .title { --menu-w: min(420px, 40vw); position: relative; min-height: 100vh; isolation: isolate; display: flex; flex-direction: column; }
-/* Sharp art sits in the space right of the menu column so the baked-in title is never covered. */
+/* Sharp art sits in the space right of the menu column. When that space is wide enough (TitleScreen's ill class) the art fills it, cropped, keeping the bottom where its baked-in title is; otherwise it is fitted whole. */
 .title-art { position: absolute; top: 0; left: var(--menu-w); width: calc(100% - var(--menu-w)); height: 100%; object-fit: contain; object-position: top center; z-index: -1; }
+.title-art.fill { object-fit: cover; object-position: center bottom; }
 .title::before { content: ''; position: absolute; inset: 0; z-index: -2; background: url('/title.webp') center / cover no-repeat; filter: blur(24px) brightness(0.5); }
 .title-menu { width: var(--menu-w); min-height: 100vh; max-height: 100vh; overflow-y: auto; background: rgba(18,22,28,0.82); backdrop-filter: blur(6px); padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; align-self: flex-start; }
 /* Main menu: one full-width button per row. */
 .title-buttons { display: flex; flex-direction: column; gap: 10px; }
 .title-buttons button { width: 100%; padding: 10px 14px; font-size: 1rem; text-align: left; }
-.title-version { position: fixed; right: 12px; bottom: 8px; margin: 0; font-size: 0.75rem; color: var(--muted); opacity: 0.8; pointer-events: none; z-index: 1; }
+.title-version { position: fixed; left: 12px; bottom: 8px; max-width: calc(var(--menu-w) - 24px); margin: 0; font-size: 0.75rem; color: var(--muted); opacity: 0.8; pointer-events: none; z-index: 1; }
 .title section { background: var(--panel); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 799px), (orientation: portrait) {
   .title { background: var(--bg); }
