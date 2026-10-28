@@ -55,6 +55,11 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([promoted(1, 3)], 0)).toEqual([]);
   });
 
+  it('a bombed city explodes, even when only its production was lost', () => {
+    const bombed: GameEvent = { type: 'cityBombed', cityId: 1, by: 1, owner: 0, effect: 'production' };
+    expect(soundsForEvents([combat, bombed], 1)).toEqual(['shot', 'explosion']);
+  });
+
   it('a crash is its own sound; disbanding is silent', () => {
     expect(soundsForEvents([destroyed('crashed')], 0)).toEqual(['crash']);
     expect(soundsForEvents([destroyed('disbanded')], 0)).toEqual([]);

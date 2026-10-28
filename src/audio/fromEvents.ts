@@ -29,6 +29,7 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       if (e.reason === 'combat') return ['explosion'];
       if (e.reason === 'crashed') return ['crash'];
       return [];
+    case 'cityBombed': return ['explosion'];
     case 'cityCaptured':
       if (e.by === me) return ['capture'];
       if (e.from === me) return ['lost'];
@@ -51,7 +52,7 @@ export function soundsForEvents(events: readonly GameEvent[], me: PlayerId, opts
   // in the Combat report that opens by itself, so they are not also played as sounds.
   const newTurn = events.some((e) => e.type === 'turnStarted' && e.player === me);
   for (const e of events) {
-    if (newTurn && (e.type === 'combat' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
+    if (newTurn && (e.type === 'combat' || e.type === 'cityBombed' || (e.type === 'unitDestroyed' && e.reason === 'combat'))) continue;
     // A promotion earned in a battle fought while the others played: the turn-start replay plays its chime after the fight.
     if (newTurn && opts.promoteLater && e.type === 'unitPromoted') continue;
     // A city that falls to an assault goes up with a boom before the fanfare (the replay at turn start adds its own).
