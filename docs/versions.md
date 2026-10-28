@@ -14,3 +14,4 @@ build; **the version number is bumped by hand when a feature ships**, and each b
 | 0.6 | 2026-10-28 | Photo-real terrain: the sea, grass, rough ground, forest and mountains are drawn from pictures, blending into each other, with curving rivers. Used in every game, not only the Advanced rules. |
 | 0.7 | 2026-10-28 | Beaches: coasts have a strip of shallows, foam and sand from the Shore picture, replacing the plain tint. |
 | 0.8 | 2026-10-28 | Smoother coasts: soft patches of shallows and sand fill the notches where a coast turns, rounding points of land and the heads of bays. |
+| 0.9 | 2026-10-28 | A Stats button on the Victory, Defeated and no-survivors cards opens the Status report straight away. |

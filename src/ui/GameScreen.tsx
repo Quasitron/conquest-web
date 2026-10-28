@@ -1301,7 +1301,7 @@ export function GameScreen({ session, onQuit }: Props) {
       )}
       {reportTab !== null && (
         <Reports
-          view={view} colors={colors} tab={reportTab} battles={battles} sightings={sightings} onShow={showAt}
+          view={view} colors={colors} tab={reportTab} battles={battles} sightings={sightings} onShow={(p) => { if (session.phase === 'over') setRevealed(true); showAt(p); }}
           onClose={() => setReportTab(null)}
         />
       )}
@@ -1334,7 +1334,7 @@ export function GameScreen({ session, onQuit }: Props) {
           </div>
         </div>
       )}
-      {session.phase === 'over' && !revealed && view.winner !== null && (
+      {session.phase === 'over' && !revealed && reportTab === null && view.winner !== null && (
         // A human win shows the Victory card, a computer win the Defeated one.
         <div class="overlay victory">
           <img
@@ -1344,15 +1344,17 @@ export function GameScreen({ session, onQuit }: Props) {
           <div class="victory-bar">
             <h2>{names[view.winner]} wins!</h2>
             <button class="primary" onClick={onQuit}>New game</button>
+            <button onClick={() => setReportTab('status')}>Stats</button>
             <button onClick={() => setRevealed(true)}>View map</button>
           </div>
         </div>
       )}
-      {session.phase === 'over' && !revealed && view.winner === null && (
+      {session.phase === 'over' && !revealed && reportTab === null && view.winner === null && (
         <div class="overlay">
           <div class="card">
             <h2>Game over: no survivors</h2>
             <button class="primary" onClick={onQuit}>New game</button>
+            <button onClick={() => setReportTab('status')}>Stats</button>
             <button onClick={() => setRevealed(true)}>View map</button>
           </div>
         </div>
