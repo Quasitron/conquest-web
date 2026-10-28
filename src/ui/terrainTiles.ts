@@ -103,10 +103,11 @@ function cell(ctx: CanvasRenderingContext2D, img: HTMLImageElement, mx: number, 
   }
   // A period that is not a whole number of squares (wrapping maps, see below) can end part-way through a square: that
   // square's picture continues from the picture's left edge.
+  // The join falls on a whole pixel, so neither piece is left half-covered there (that showed as a thin dark line).
   const first = sw - u;
-  const firstW = (w * first) / cw;
-  ctx.drawImage(lv.src, u, v, first, ch, dx, dy, firstW, h);
-  ctx.drawImage(lv.src, 0, v, cw - first, ch, dx + firstW, dy, w - firstW, h);
+  const firstW = Math.min(w, Math.max(0, Math.round((w * first) / cw)));
+  if (firstW > 0) ctx.drawImage(lv.src, u, v, first, ch, dx, dy, firstW, h);
+  if (firstW < w) ctx.drawImage(lv.src, 0, v, cw - first, ch, dx + firstW, dy, w - firstW, h);
 }
 
 /**
