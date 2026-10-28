@@ -1305,7 +1305,7 @@ export function GameScreen({ session, onQuit }: Props) {
           onClose={() => setReportTab(null)}
         />
       )}
-      {eliminated.length > 0 && <EliminationNotice view={view} ids={eliminated} onOk={() => setEliminated([])} />}
+      {eliminated.length > 0 && <EliminationNotice view={view} colors={colors} ids={eliminated} onOk={() => setEliminated([])} />}
       {soundOpen && <SettingsDialog onClose={() => setSoundOpen(false)} />}
       {unitsOpen && (
         <UnitList
