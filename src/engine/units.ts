@@ -129,6 +129,14 @@ export function fightRatings(
   return { attack, defense };
 }
 
+/** Submarine strike rule: the ships a submarine can torpedo from the dark (none of them can see it coming). */
+export const STRIKE_TARGETS: readonly UnitType[] = ['transport', 'carrier', 'battleship'];
+/** The chance the opening torpedo salvo hits. A hit does the submarine's full shot in damage. */
+export const STRIKE_CHANCE = 0.7;
+export function isStrikeTarget(att: UnitType, def: UnitType): boolean {
+  return att === 'submarine' && STRIKE_TARGETS.includes(def);
+}
+
 export function cargoCapacity(u: Unit): number {
   const st = UNIT_STATS[u.type];
   return Math.max(0, st.capacity - st.capacityLossPerDamage * u.damage);

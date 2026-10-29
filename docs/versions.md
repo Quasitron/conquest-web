@@ -18,3 +18,4 @@ The title screen shows `Version X.Y.Z · build <hash> · <date>` (`src/ui/versio
 | 0.9.3 | 2026-10-28 | A ship reaching Elite gets its own sound (the Victory trumpets cut short) instead of the plain promotion jingle. |
 | 0.9.4 | 2026-10-28 | Soft fog of war: the dark over known-but-unseen squares fades in at the edge of sight instead of ending in straight lines. |
 | 0.9.5 | 2026-10-29 | Armor can be promoted under the Promotions rule (with Advanced units): Experienced, Veteran and Elite at 1, 3 and 5 wins, Elite taking a third hit. Older games saved with both rules on load from their saved position. |
+| 0.9.6 | 2026-10-29 | Submarine strike house rule: an unseen submarine opens on a Transport, Carrier or Battleship with a torpedo salvo (7 in 10), then slips one square away. Older games load as before. |
