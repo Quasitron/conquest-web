@@ -859,7 +859,7 @@ export function GameScreen({ session, onQuit }: Props) {
         const other = nextAfter(u.id, ready, readyNow(held, next));
         setSkipped(next);
         if (other) selectUnit(other);
-        else if (readyNow(held, next).length === 0) setSelection(null);
+        else setSelection(null); // the last ready unit: Standby puts it aside and deselects it
         return;
       }
       case 'hold': {
