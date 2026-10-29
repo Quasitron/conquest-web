@@ -573,7 +573,10 @@ export function GameScreen({ session, onQuit }: Props) {
     if (wantCombat && battlesAgainstMe(session.log(view.me), view.me, names, lookup).length > 0) setReportTab('combat');
     // Anyone knocked out while the others played is announced, so nobody has to find it in the Status report.
     const out = newEliminations(session.log(view.me), view.me);
-    if (out.length > 0 && !view.over) setEliminated(out);
+    if (out.length > 0 && !view.over) {
+      setEliminated(out);
+      play('news');
+    }
     // A player's very first turn (one city, no units): its production screen opens so the default can be changed,
     // as in the original. Last, so the city screen's focus wins over the camera moves above.
     if (view.turn === 1 && view.myUnits.length === 0 && view.myCities.length === 1) openCity(view.myCities[0].id);
