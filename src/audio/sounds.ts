@@ -1,11 +1,11 @@
 export type SoundName =
   | 'click' | 'turn' | 'chime' | 'shot' | 'explosion' | 'crash'
-  | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'promote-elite' | 'win' | 'lose'
+  | 'capture' | 'lost' | 'alert' | 'unload' | 'promote' | 'promote-elite' | 'win' | 'lose' | 'news'
   | 'produce-army' | 'produce-armor' | 'produce-fighter' | 'produce-bomber' | 'airbase' | 'produce-transport' | 'produce-destroyer'
   | 'produce-submarine' | 'produce-cruiser' | 'produce-battleship' | 'produce-carrier';
 
 export const SOUND_NAMES: SoundName[] = [
-  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'promote-elite', 'win', 'lose',
+  'click', 'turn', 'chime', 'shot', 'explosion', 'crash', 'capture', 'lost', 'alert', 'unload', 'promote', 'promote-elite', 'win', 'lose', 'news',
   'produce-army', 'produce-armor', 'produce-fighter', 'produce-bomber', 'airbase', 'produce-transport', 'produce-destroyer',
   'produce-submarine', 'produce-cruiser', 'produce-battleship', 'produce-carrier',
 ];
@@ -47,6 +47,8 @@ export const OVERRIDES: Partial<Record<SoundName, string>> = {
   promote: '/sounds/promote.mp3',
   // Troops unloaded: a rifle magazine being loaded (CC0, see docs/sounds.md), 0.8 s to 1.2 s of the original, pitched down and bassed so it is not tinny.
   unload: '/sounds/unload.mp3',
+  // News flash when a player is eliminated: 1.0 s to 3.4 s of a daisy-wheel printer recording (CC0, see docs/sounds.md).
+  news: '/sounds/news-flash.mp3',
   // A ship reaches Elite: the Victory trumpets cut short (0.27 s to 0.8 s, then 2.4 s to 3.1 s of the original, joined and given a quick fade; see docs/sounds.md).
   'promote-elite': '/sounds/promote-elite.mp3',
 };
@@ -289,6 +291,10 @@ export const SYNTH: Record<SoundName, SynthFn> = {
   unload: (c, o, t) => {
     noise(c, o, t, 0.25, { gain: 0.2, from: 2500, to: 400 });
     tone(c, o, t + 0.1, 300, 0.12, { type: 'triangle', gain: 0.2, endFreq: 200 });
+  },
+  // A player is knocked out (the news flash): a burst of typewriter-like ticks.
+  news: (c, o, t) => {
+    for (let i = 0; i < 12; i++) noise(c, o, t + i * 0.06, 0.03, { gain: 0.12, from: 4000, to: 1500 });
   },
   // Victory: a rising major arpeggio ending on a held chord.
   win: (c, o, t) => {
