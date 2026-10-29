@@ -22,13 +22,15 @@ interface Props {
   children: ComponentChildren;
   /** A wider dialog, for one that shows a card beside its list (narrow screens fall back to the usual width). */
   wide?: boolean;
+  /** A newspaper front page: the dialog is the picture, and its children are laid out on it (see .dialog-paper). */
+  paper?: boolean;
 }
 
 /**
  * A dialog that sits beside the city (or centered), joined to it by a leader line.
  * It listens for keys in the capture phase, so the map's own keys never see them.
  */
-export function PlacedDialog({ anchor, label, onKey, children, wide }: Props) {
+export function PlacedDialog({ anchor, label, onKey, children, wide, paper }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 380, h: 440 });
   const [, setResized] = useState(0);
@@ -83,7 +85,7 @@ export function PlacedDialog({ anchor, label, onKey, children, wide }: Props) {
   return (
     <>
       {edge && <LeaderLine from={edge} to={anchor} />}
-      <div ref={ref} class={wide ? 'card dialog dialog-wide' : 'card dialog'} role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+      <div ref={ref} class={paper ? 'card dialog dialog-paper' : wide ? 'card dialog dialog-wide' : 'card dialog'} role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         {children}
       </div>
