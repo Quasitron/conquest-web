@@ -198,6 +198,8 @@ export type GameEvent =
       x: number;
       y: number;
       attackerWon: boolean;
+      /** A submarine's torpedo salvo (strike rule): it hit and the target survived, so the attacker slips away unharmed. */
+      strike?: true;
       /** Promotion ranks of the two units before the fight (only set when above 0). */
       attackerRank?: number;
       defenderRank?: number;

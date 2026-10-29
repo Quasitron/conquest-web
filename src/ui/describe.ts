@@ -47,6 +47,7 @@ export function describeEvent(
         e.defender.kind === 'city'
           ? `${whose(e.defender.owner, false)} city`
           : `${whose(e.defender.owner, false)} ${rankPrefix(e.defenderRank)}${UNIT_STATS[e.defender.unitType].name}`;
+      if (e.strike) return `${whose(e.attackerOwner, true)} ${rankPrefix(e.attackerRank)}${UNIT_STATS[e.attackerType].name} torpedoed ${target} and slipped away.`;
       return `${whose(e.attackerOwner, true)} ${rankPrefix(e.attackerRank)}${UNIT_STATS[e.attackerType].name} attacked ${target} and ${e.attackerWon ? 'won' : 'lost'}.`;
     }
     case 'unitDestroyed': {

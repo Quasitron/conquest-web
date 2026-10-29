@@ -1,12 +1,12 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, fightRatings, garrisonBonus, hitsOf, isCrippled, rankOf } from './units';
-import { reliefAt, terrainAt } from './map';
-import { destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, STRIKE_CHANCE, UNIT_STATS, armorBlockedBy, fightRatings, garrisonBonus, hitsOf, isCrippled, isStrikeTarget, rankOf } from './units';
+import { chebyshev, normalize, reliefAt, terrainAt } from './map';
+import { cityAt, destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
 import { resolveCombat } from './combat';
 import { relocate, settleAircraft, slowArmor, spendMove } from './movement';
-import { reveal } from './fog';
+import { canPlayerSeeUnit, reveal } from './fog';
 import { WAR_TORN_MAX } from './production';
 
 /** Promotions rule: a sea unit that wins a fight gains a win; a new rank heals one hit and is announced. */
@@ -46,6 +46,27 @@ function canOccupy(s: GameState, att: Unit, target: { x: number; y: number }): b
   return true;
 }
 
+/**
+ * Where a submarine slips to after its salvo: an open sea square next to it that is two squares from the target
+ * (directly away, or alongside), preferring one with the fewest enemy units around it; null if there is none.
+ */
+function withdrawSquare(s: GameState, sub: Unit, foe: Unit): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null;
+  let bestScore = Infinity;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const p = normalize(s, sub.x + dx, sub.y + dy);
+      if (!p || terrainAt(s, p.x, p.y) !== 'water' || chebyshev(s, p, foe) < 2) continue;
+      if (topLevelUnitsAt(s, p.x, p.y).length > 0 || cityAt(s, p.x, p.y)) continue;
+      const near = s.units.filter((u) => u.carriedBy === null && !areFriendly(s, u.owner, sub.owner) && chebyshev(s, u, p) <= 1).length;
+      const score = near * 10 + (chebyshev(s, p, foe) === 2 && (p.x - foe.x) * (sub.x - foe.x) + (p.y - foe.y) * (sub.y - foe.y) > 0 ? 0 : 1);
+      if (score < bestScore) { bestScore = score; best = p; }
+    }
+  }
+  return best;
+}
+
 export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit, events: GameEvent[]): string | null {
   const restriction = attackRestriction(s, att, def);
   if (restriction) return restriction;
@@ -55,23 +76,42 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
   const rating = fightRatings(s.rules, att.type, def.type, reliefAt(s, def.x, def.y));
   const target = { x: def.x, y: def.y };
 
+  // Submarine strike rule: a sub the defender cannot see opens with a torpedo salvo (decided before the sub is revealed).
+  const strike = s.rules.submarineStrike && isStrikeTarget(att.type, def.type) && !canPlayerSeeUnit(s, def.owner, att);
   spendMove(att);
   reveal(s, att.owner, def);
   reveal(s, def.owner, att);
-  const r = resolveCombat(
-    { attack: rating.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
-    { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
-    rng,
-  );
+  let struck = false;
+  let r;
+  if (strike && rng.next() < STRIKE_CHANCE) {
+    const damage = Math.min(hitsOf(def), def.damage + a.shot);
+    r = { attackerWon: damage >= hitsOf(def), attackerDamage: att.damage, defenderDamage: damage };
+    struck = !r.attackerWon;
+  } else {
+    r = resolveCombat(
+      { attack: rating.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
+      { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
+      rng,
+    );
+  }
   att.damage = r.attackerDamage;
   def.damage = r.defenderDamage;
   events.push({
     type: 'combat', attackerId: att.id, attackerOwner: att.owner, attackerType: att.type, from: { x: att.x, y: att.y },
     defender: { kind: 'unit', unitId: def.id, owner: def.owner, unitType: def.type },
-    x: target.x, y: target.y, attackerWon: r.attackerWon,
+    x: target.x, y: target.y, attackerWon: r.attackerWon || struck, ...(struck ? { strike: true as const } : {}),
     ...(rankOf(att.wins) > 0 ? { attackerRank: rankOf(att.wins) } : {}), ...(rankOf(def.wins) > 0 ? { defenderRank: rankOf(def.wins) } : {}),
     attackerDamage: r.attackerDamage, defenderDamage: r.defenderDamage,
   });
+
+  if (struck) {
+    // The salvo hurt the target but did not sink it: the sub slips one square away and is done for the turn.
+    trimCargo(s, def, events);
+    att.movesLeft = 0;
+    const away = withdrawSquare(s, att, def);
+    if (away) relocate(s, att, away, events);
+    return null;
+  }
 
   if (r.attackerWon) {
     destroyUnit(s, def, 'combat', events, att.owner);

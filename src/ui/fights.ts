@@ -23,6 +23,8 @@ export interface Fight {
   destroyed: boolean;
   /** The attacker took a city. */
   captured: boolean;
+  /** A submarine's torpedo salvo: the target survived, damaged, and the sub slipped away. */
+  struck?: boolean;
   /** One of your ships was promoted for this fight (only your own promotions are in the log). */
   promoted?: boolean;
   /** The rank it reached (3 = Elite, which has its own sound). */
@@ -41,6 +43,7 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
   for (const e of events) {
     if (e.type === 'combat') {
       cur = {
+        ...(e.strike ? { struck: true } : {}),
         at: { x: e.x, y: e.y }, attackerId: e.attackerId, from: e.from ? { ...e.from } : null,
         attackerOwner: e.attackerOwner, defenderOwner: e.defender.owner, attackerType: e.attackerType,
         defenderType: e.defender.kind === 'unit' ? e.defender.unitType : null,
@@ -150,7 +153,7 @@ export function fightActors(f: Fight, fr: FightFrame): FightActor[] {
     out.push({ x, y, alpha: f.attackerWon ? 1 : loserAlpha, owner: f.attackerOwner, type: f.attackerType, faceLeft: f.at.x < f.from.x });
   }
   if (f.defenderType !== null && f.defenderOwner !== null) {
-    out.push({ x: f.at.x, y: f.at.y, alpha: f.attackerWon ? loserAlpha : 1, owner: f.defenderOwner, type: f.defenderType, faceLeft: f.from !== null && f.from.x < f.at.x });
+    out.push({ x: f.at.x, y: f.at.y, alpha: f.attackerWon && !f.struck ? loserAlpha : 1, owner: f.defenderOwner, type: f.defenderType, faceLeft: f.from !== null && f.from.x < f.at.x });
   }
   return out;
 }

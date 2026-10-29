@@ -52,6 +52,11 @@ const HOUSE_RULE_OPTIONS: { key: keyof HouseRules; label: string; hint: string }
     hint: 'Adds Armor (twice as fast and tough as an army, takes two places on a transport; an undamaged Armor that takes a city leaves an Army in it), Bombers (range 24; they bomb an enemy city to wipe its production or destroy a unit in it, fight poorly against fighters, and cannot land on carriers) and Airbases (an Army or Armor on open land can turn itself into one for good; it holds 8 aircraft and cannot move or attack). Ships other than carriers attack aircraft at 1. The map also gets terrain: mountains (Armor cannot enter), forest, rough ground and rivers (Armor can only move one square there), and land units defend at double in forests and on mountains against everything but Armies, and in rivers against Armor.',
   },
   {
+    key: 'submarineStrike',
+    label: 'Submarine strike',
+    hint: "A submarine the enemy cannot see opens its attack on a Transport, Carrier or Battleship with a torpedo salvo that hits 7 times in 10. It sinks a Transport outright; a Carrier or Battleship is damaged and the sub slips one square away unharmed. A miss is a normal fight. A Destroyer, Cruiser, submarine or city next to the sub sees it, and then there is no surprise.",
+  },
+  {
     key: 'cityStrength',
     label: 'City strength',
     hint: "A player's city takes 3 hits to fall and keeps its damage between attacks, healing 1 hit a turn, so groups can wear it down. Cruisers and Battleships can also bombard a player's city, down to its last hit, but cannot take it. Neutral cities stay easy.",
