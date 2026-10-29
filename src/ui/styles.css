@@ -206,3 +206,14 @@ svg.leader circle { fill: #ffd24a; }
 .panel h4 { margin: 8px 0 2px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.75; }
 .actions label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; }
 .actions select { width: 100%; font-size: 0.85rem; padding: 4px 8px; box-sizing: border-box; }
+/* The player-eliminated notice: a newspaper front page (public/art/news/newspaper.webp, 1000x881) with the text laid on its empty bands. */
+.dialog-paper { width: min(640px, calc(100vw - 16px), calc((100vh - 16px) * 1.135)); aspect-ratio: 1000 / 881; max-height: none; overflow: visible; padding: 0; min-width: 0; gap: 0; border: 0; border-radius: 0; background: transparent url('/art/news/newspaper.webp') center / 100% 100% no-repeat; box-shadow: none; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.6)); container-type: inline-size; color: #1d1a14; text-align: center; }
+.dialog-paper > * { position: absolute; left: 4%; width: 92%; box-sizing: border-box; font-family: Georgia, 'Times New Roman', serif; }
+.paper-masthead { top: 8.6%; height: 7.2%; display: flex; align-items: center; justify-content: center; font-size: 6.2cqw; font-weight: 900; letter-spacing: 0.12em; }
+.paper-dateline { top: 16.8%; height: 3%; display: flex; align-items: center; justify-content: center; font-size: 1.9cqw; letter-spacing: 0.16em; font-weight: 700; }
+.dialog-paper h2.paper-headline { top: 21%; height: 15%; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; white-space: nowrap; letter-spacing: -0.01em; cursor: grab; }
+.paper-subhead { top: 37.1%; height: 4.1%; display: flex; align-items: center; justify-content: center; font-size: 2.6cqw; font-style: italic; font-weight: 700; }
+.paper-box { top: 61%; left: 40%; width: 54%; bottom: 12%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6cqw; padding: 2cqw; background: #e8dcc0; border: 0.5cqw double #1d1a14; }
+.paper-text { font-size: 2.8cqw; line-height: 1.25; }
+.paper-box .swatch { width: 2.4cqw; height: 2.4cqw; }
+.paper-box button.primary { font-family: Georgia, 'Times New Roman', serif; font-size: 2.8cqw; padding: 0.5cqw 4cqw; border-radius: 0.6cqw; }
