@@ -129,6 +129,22 @@ export function fightRatings(
   return { attack, defense };
 }
 
+/** Why a unit of type `att` can never attack a unit of type `def` standing on `defTerrain`; null when it can. */
+export function attackBlockedReason(
+  att: UnitType, def: UnitType, defTerrain: string | null, attCarried = false,
+): string | null {
+  const a = UNIT_STATS[att];
+  const d = UNIT_STATS[def];
+  if ((att === 'submarine' && d.domain === 'land') || (a.domain === 'land' && def === 'submarine')) {
+    return 'submarines and land units cannot attack each other';
+  }
+  if (d.domain === 'air' && a.domain === 'sea' && defTerrain !== 'water') return 'ships cannot attack aircraft over land';
+  if (d.domain === 'air' && a.domain === 'land' && defTerrain === 'water') return 'land units cannot attack aircraft over water';
+  if (a.domain === 'sea' && d.domain === 'land' && !a.bombard) return 'only cruisers and battleships can bombard';
+  if (attCarried && a.domain === 'land' && defTerrain === 'water') return 'armies on a transport can only attack onto land';
+  return null;
+}
+
 /** Submarine strike rule: the ships a submarine can torpedo from the dark (none of them can see it coming). */
 export const STRIKE_TARGETS: readonly UnitType[] = ['transport', 'carrier', 'battleship'];
 /** The chance the opening torpedo salvo hits. A hit does the submarine's full shot in damage. */

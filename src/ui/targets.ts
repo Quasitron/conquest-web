@@ -1,4 +1,4 @@
-import { CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, hostHasRoom, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
+import { CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, attackBlockedReason, hostHasRoom, step, type Dir, type MapLike, type PlayerView, type Pos, type Unit } from '../engine';
 
 export interface StepTarget {
   x: number;
@@ -32,7 +32,9 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     }
     const city = v.knownCities.find((c) => c.x === p.x && c.y === p.y);
     const ownCity = city !== undefined && city.owner === v.me;
-    const enemyHere = v.enemies.some((e) => e.visibleNow && e.x === p.x && e.y === p.y);
+    // The first enemy seen on the square is the one that would defend; a pairing the rules forbid is no target.
+    const foe = v.enemies.find((e) => e.visibleNow && e.x === p.x && e.y === p.y);
+    const enemyHere = foe !== undefined;
     if (city && !ownCity) {
       if (domain === 'land') out.push({ ...p, dir: d as Dir, attack: true });
       // A Bomber can bomb a player's city (not a neutral one); it never takes it.
@@ -43,8 +45,8 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
       }
       continue;
     }
-    if (enemyHere) {
-      out.push({ ...p, dir: d as Dir, attack: true });
+    if (foe) {
+      if (attackBlockedReason(u.type, foe.type, terrain, u.carriedBy !== null) === null) out.push({ ...p, dir: d as Dir, attack: true });
       continue;
     }
     const friends = v.myUnits.filter((o) => o.x === p.x && o.y === p.y && o.carriedBy === null && o.id !== u.id);
