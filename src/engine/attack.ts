@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, STRIKE_CHANCE, UNIT_STATS, armorBlockedBy, fightRatings, garrisonBonus, hitsOf, isCrippled, isStrikeTarget, rankOf } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, STRIKE_CHANCE, UNIT_STATS, armorBlockedBy, attackBlockedReason, fightRatings, garrisonBonus, hitsOf, isCrippled, isStrikeTarget, rankOf } from './units';
 import { chebyshev, normalize, reliefAt, terrainAt } from './map';
 import { cityAt, destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -22,19 +22,7 @@ function recordWin(s: GameState, u: Unit, events: GameEvent[]): void {
 }
 
 export function attackRestriction(s: GameState, att: Unit, def: Unit): string | null {
-  const a = UNIT_STATS[att.type];
-  const d = UNIT_STATS[def.type];
-  const defTerrain = terrainAt(s, def.x, def.y);
-  if ((att.type === 'submarine' && d.domain === 'land') || (a.domain === 'land' && def.type === 'submarine')) {
-    return 'submarines and land units cannot attack each other';
-  }
-  if (d.domain === 'air' && a.domain === 'sea' && defTerrain !== 'water') return 'ships cannot attack aircraft over land';
-  if (d.domain === 'air' && a.domain === 'land' && defTerrain === 'water') return 'land units cannot attack aircraft over water';
-  if (a.domain === 'sea' && d.domain === 'land' && !a.bombard) return 'only cruisers and battleships can bombard';
-  if (att.carriedBy !== null && a.domain === 'land' && defTerrain === 'water') {
-    return 'armies on a transport can only attack onto land';
-  }
-  return null;
+  return attackBlockedReason(att.type, def.type, terrainAt(s, def.x, def.y), att.carriedBy !== null);
 }
 
 function canOccupy(s: GameState, att: Unit, target: { x: number; y: number }): boolean {

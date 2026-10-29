@@ -21,6 +21,17 @@ describe('stepTargets', () => {
     expect(at(0, 0)).toMatchObject({ attack: false });
   });
 
+  it('does not offer a submarine as a target to a land unit (it cannot attack one)', () => {
+    const s = makeGame(M);
+    s.cities[1].owner = 0;
+    const a = addUnit(s, 'army', 0, 6, 0);
+    addUnit(s, 'submarine', 1, 5, 0);
+    updateFog(s, 0);
+    const v = getPlayerView(s, 0);
+    expect(v.enemies.some((e) => e.x === 5 && e.y === 0 && e.visibleNow)).toBe(true);
+    expect(stepTargets(v, v.myUnits.find((u) => u.id === a.id)!).some((p) => p.x === 5 && p.y === 0)).toBe(false);
+  });
+
   it('offers nothing to a unit with no moves, and water only to ships', () => {
     const s = makeGame(M);
     addUnit(s, 'army', 0, 1, 1, { movesLeft: 0 });
