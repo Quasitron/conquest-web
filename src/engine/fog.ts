@@ -93,6 +93,9 @@ export function catchSpies(s: GameState, events: GameEvent[]): void {
   for (const spy of [...s.units]) {
     if (spy.type !== 'spy' || spy.carriedBy !== null || !cityAt(s, spy.x, spy.y)) continue;
     const watcher = spyWatchers(s, cityAt(s, spy.x, spy.y)!.owner ?? -1).find((w) => w.x === spy.x && w.y === spy.y && !areFriendly(s, w.owner, spy.owner));
-    if (watcher) destroyUnit(s, spy, 'caught', events, watcher.owner);
+    if (watcher) {
+      events.push({ type: 'spyFound', cityId: cityAt(s, spy.x, spy.y)!.id, owner: cityAt(s, spy.x, spy.y)!.owner!, by: spy.owner });
+      destroyUnit(s, spy, 'caught', events, watcher.owner);
+    }
   }
 }

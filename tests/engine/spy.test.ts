@@ -98,6 +98,7 @@ describe('Spy (Advanced units)', () => {
     const ev: GameEvent[] = [];
     catchSpies(s, ev);
     expect(s.units.some((u) => u.id === intruder.id)).toBe(false);
+    expect(ev.some((e) => e.type === 'spyFound' && e.owner === 1 && e.by === 0)).toBe(true);
   });
 
   it('sabotage wrecks production; a clean job earns a win, a discovered spy is shot', () => {
