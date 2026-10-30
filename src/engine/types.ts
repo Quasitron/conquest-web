@@ -220,6 +220,8 @@ export type GameEvent =
   /** A spy's sabotage: the city loses the production it had built up. caught: the spy was discovered and shot. */
   | { type: 'citySabotaged'; cityId: number; by: PlayerId; owner: PlayerId; caught: boolean }
   /** An Elite spy's attempt at a revolt; on success a cityCaptured event follows. */
+  /** A spy hiding in a city was discovered at the start of its owner's turn and shot. */
+  | { type: 'spyFound'; cityId: number; owner: PlayerId; by: PlayerId }
   | { type: 'cityIncited'; cityId: number; by: PlayerId; owner: PlayerId; success: boolean }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
   | { type: 'ordersEnded'; unitId: number; owner: PlayerId; reason: OrdersEndReason }

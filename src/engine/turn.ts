@@ -7,6 +7,7 @@ import { cityAt, destroyUnit, isAtRefuelPoint } from './query';
 import { areFriendly } from './relations';
 import { advanceProduction } from './production';
 import { catchSpies, updateFog } from './fog';
+import { discoverSpies } from './spy';
 import { inOwnCity, unloadCargo } from './cargo';
 
 function finishPlayerTurn(s: GameState, pid: PlayerId, events: GameEvent[]): void {
@@ -72,6 +73,7 @@ export function startTurn(s: GameState, events: GameEvent[], rng: RandomSource =
     if (inOwnCity(s, t) && t.orders === null) unloadCargo(s, t, null, events);
     t.unloadNextTurn = false;
   }
+  discoverSpies(s, rng, pid, events);
   catchSpies(s, events);
   updateFog(s, pid);
   runPlayerOrders(s, rng, pid, events);

@@ -92,10 +92,9 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
     return attackCity(s, rng, u, city, events);
   }
 
-  // An enemy spy hiding in a city is found out when a unit moves in.
-  if (city) for (const spy of topLevelUnitsAt(s, to.x, to.y).filter((o) => o.type === 'spy' && !areFriendly(s, o.owner, u.owner))) destroyUnit(s, spy, 'caught', events, u.owner);
   const occupants = topLevelUnitsAt(s, to.x, to.y);
-  const enemy = occupants.find((o) => !areFriendly(s, o.owner, u.owner));
+  // An enemy spy hiding in a city is no obstacle (the city's own units come and go); out in the open it is found by walking into it.
+  const enemy = occupants.find((o) => !areFriendly(s, o.owner, u.owner) && !(city && o.type === 'spy'));
   if (enemy) return attackUnit(s, rng, u, enemy, events);
 
   if (city) {

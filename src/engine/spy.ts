@@ -8,7 +8,12 @@ import { UNIT_STATS, rankOf } from './units';
 import { recordWin } from './attack';
 
 /** The chance a spy is discovered and shot each time it sabotages a city, by promotion rank (a seasoned spy is harder to catch). */
-export const SABOTAGE_CATCH_CHANCE = [0.33, 0.27, 0.2, 0.12] as const;
+export const SABOTAGE_CATCH_CHANCE = [0.3, 0.25, 0.2, 0.1] as const;
+/**
+ * A spy hiding in an enemy city may be found at the start of that city's owner's turn: a little chance in an empty city,
+ * more for every unit of the owner's standing in it, up to a limit.
+ */
+export const DISCOVERY = { base: 0.05, perUnit: 0.07, max: 0.6 } as const;
 /** The chance an Elite spy's attempt to incite a revolt succeeds; a failed attempt costs the spy its life. */
 export const REVOLT_CHANCE = 0.25;
 
@@ -74,14 +79,39 @@ export function incitePeople(s: GameState, rng: RandomSource, spy: Unit, events:
   return null;
 }
 
+/** The units of the city's own side standing in it (spies hiding there do not count). */
+export function garrisonOf(s: GameState, city: { x: number; y: number; owner: PlayerId | null }): Unit[] {
+  return s.units.filter((u) => u.x === city.x && u.y === city.y && u.carriedBy === null && u.type !== 'spy' && city.owner !== null && areFriendly(s, u.owner, city.owner));
+}
+
+/** The chance a spy hiding in this city is discovered at the start of its owner's turn. */
+export function discoveryChance(s: GameState, city: { x: number; y: number; owner: PlayerId | null }): number {
+  return Math.min(DISCOVERY.max, DISCOVERY.base + DISCOVERY.perUnit * garrisonOf(s, city).length);
+}
+
+/** At the start of `pid`'s turn, enemy spies hiding in their cities may be found and shot. */
+export function discoverSpies(s: GameState, rng: RandomSource, pid: PlayerId, events: GameEvent[]): void {
+  for (const spy of [...s.units]) {
+    if (spy.type !== 'spy' || spy.carriedBy !== null) continue;
+    const city = cityAt(s, spy.x, spy.y);
+    if (!city || city.owner !== pid || areFriendly(s, city.owner, spy.owner)) continue;
+    if (rng.next() >= discoveryChance(s, city)) continue;
+    events.push({ type: 'spyFound', cityId: city.id, owner: pid, by: spy.owner });
+    destroyUnit(s, spy, 'caught', events, pid);
+  }
+}
+
 /** What `pid`'s spies standing in or beside an enemy city can read of its production (null when none is near). */
 export function cityIntel(
   s: GameState, pid: PlayerId, city: { id: number; x: number; y: number; owner: PlayerId | null },
-): { production: UnitType | null; turnsLeft: number | null } | null {
+): { production: UnitType | null; turnsLeft: number | null; garrison: { type: UnitType; count: number }[] } | null {
   if (city.owner === null || areFriendly(s, city.owner, pid)) return null;
   const near = s.units.some((u) => u.type === 'spy' && u.carriedBy === null && areFriendly(s, u.owner, pid) && chebyshev(s, u, city) <= 1);
   if (!near) return null;
   const c = s.cities.find((x) => x.id === city.id)!;
-  if (c.production === null) return { production: null, turnsLeft: null };
-  return { production: c.production, turnsLeft: Math.max(1, buildTime(c, c.production) - c.progress) };
+  const counts = new Map<UnitType, number>();
+  for (const u of garrisonOf(s, c)) counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
+  const garrison = [...counts].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+  if (c.production === null) return { production: null, turnsLeft: null, garrison };
+  return { production: c.production, turnsLeft: Math.max(1, buildTime(c, c.production) - c.progress), garrison };
 }

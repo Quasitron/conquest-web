@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { apply, getPlayerView, UNIT_STATS, type GameEvent } from '../../src/engine';
 import { canPlayerSeeUnit, catchSpies, updateFog } from '../../src/engine/fog';
 import { moveUnit } from '../../src/engine/movement';
-import { incitePeople, sabotageCity } from '../../src/engine/spy';
+import { DISCOVERY, discoverSpies, discoveryChance, incitePeople, sabotageCity } from '../../src/engine/spy';
 import { addUnit, fixedRng, makeGame } from '../helpers';
 
 const M = ['*.........', '..........', '..........', '.........*'];
@@ -59,16 +59,38 @@ describe('Spy (Advanced units)', () => {
     expect(s.units.some((u) => u.id === spy.id)).toBe(false);
   });
 
-  it('is caught when an enemy unit moves into the city it hides in', () => {
+  it('can hide in an occupied city: the owner units come and go without finding it', () => {
     const { s, enemyCity } = setup();
     const spy = addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y);
     const guard = addUnit(s, 'army', 1, enemyCity.x - 1, enemyCity.y);
-    const ev: GameEvent[] = [];
-    expect(moveUnit(s, fixedRng(0), guard, 2, ev)).toBeNull();
-    expect(s.units.some((u) => u.id === spy.id)).toBe(false);
-    expect(ev.some((e) => e.type === 'unitDestroyed' && e.reason === 'caught')).toBe(true);
+    addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    expect(moveUnit(s, fixedRng(0), guard, 2, [])).toBeNull();
+    expect(guard.x).toBe(enemyCity.x);
+    expect(s.units.some((u) => u.id === spy.id)).toBe(true);
   });
 
+  it('may be discovered at the start of the owner turn: a little chance in an empty city, more for each unit in it', () => {
+    const { s, enemyCity } = setup();
+    expect(discoveryChance(s, enemyCity)).toBeCloseTo(DISCOVERY.base);
+    addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    addUnit(s, 'fighter', 1, enemyCity.x, enemyCity.y);
+    addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y); // spies do not count as a garrison
+    expect(discoveryChance(s, enemyCity)).toBeCloseTo(DISCOVERY.base + 2 * DISCOVERY.perUnit);
+    for (let i = 0; i < 20; i++) addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    expect(discoveryChance(s, enemyCity)).toBe(DISCOVERY.max);
+  });
+
+  it('is found and shot when the roll falls under that chance, and the city owner is told', () => {
+    const { s, enemyCity } = setup();
+    addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    const hidden = addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y);
+    const ev: GameEvent[] = [];
+    discoverSpies(s, fixedRng(0.99), 1, ev);
+    expect(s.units.some((u) => u.id === hidden.id)).toBe(true);
+    discoverSpies(s, fixedRng(0), 1, ev);
+    expect(s.units.some((u) => u.id === hidden.id)).toBe(false);
+    expect(ev.some((e) => e.type === 'spyFound' && e.owner === 1)).toBe(true);
+  });
   it('an enemy spy in a city is caught when the city holds a spy of its owner', () => {
     const { s, enemyCity } = setup();
     const intruder = addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y);
@@ -131,7 +153,11 @@ describe('Spy (Advanced units)', () => {
     addUnit(s, 'spy', 0, enemyCity.x - 1, enemyCity.y);
     updateFog(s, 0);
     const intel = getPlayerView(s, 0).knownCities.find((c) => c.id === enemyCity.id)?.intel;
-    expect(intel).toMatchObject({ production: 'cruiser', turnsLeft: 32 });
+    expect(intel).toMatchObject({ production: 'cruiser', turnsLeft: 32, garrison: [] });
+    addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    addUnit(s, 'fighter', 1, enemyCity.x, enemyCity.y);
+    expect(getPlayerView(s, 0).knownCities.find((c) => c.id === enemyCity.id)?.intel?.garrison).toEqual([{ type: 'army', count: 2 }, { type: 'fighter', count: 1 }]);
   });
 
   it('is accepted as a command and does not count as an army that could take a city', () => {

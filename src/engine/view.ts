@@ -44,7 +44,7 @@ export interface PlayerView {
   myUnits: Unit[];
   myCities: City[];
   /** `damage` is the city's hits taken (city strength rule only; 0 otherwise). */
-  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null; damage: number; /** An own spy is in or beside this enemy city: what it is building and the turns left. */ intel?: { production: UnitType | null; turnsLeft: number | null } }[];
+  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null; damage: number; /** An own spy is in or beside this enemy city: what it is building and the turns left. */ intel?: { production: UnitType | null; turnsLeft: number | null; garrison: { type: UnitType; count: number }[] } }[];
   enemies: EnemyMarker[];
   /** This player's own kill and loss totals. */
   stats: PlayerStats;
@@ -70,7 +70,7 @@ function riverNetView(s: GameState, explored: ArrayLike<unknown>): Pick<PlayerVi
 }
 
 /** What a spy beside an enemy city reads of its production. */
-function spyReport(s: GameState, me: PlayerId, c: { id: number; x: number; y: number; owner: PlayerId | null }): { intel?: { production: UnitType | null; turnsLeft: number | null } } {
+function spyReport(s: GameState, me: PlayerId, c: { id: number; x: number; y: number; owner: PlayerId | null }): { intel?: { production: UnitType | null; turnsLeft: number | null; garrison: { type: UnitType; count: number }[] } } {
   const intel = cityIntel(s, me, c);
   return intel ? { intel } : {};
 }
