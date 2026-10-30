@@ -158,9 +158,10 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     if (mouth) tb = unit(s.seaDir![0], s.seaDir![1]); // enters the shore straight on
     else if (target && feeder.get(keyOfSq(target)) === s) tb = headingAt(target);
     else if (target && target.to !== null) {
-      // A tributary arrives bending toward the main stream's direction.
-      const after = target.to === 'sea' ? endOf(target) : endOf(target);
-      tb = unit(after.x - a.x, after.y - a.y);
+      // A tributary arrives bending into the main stream's direction, and ends on its line, not beyond it.
+      const main = headingAt(target);
+      const own = unit(b.x - a.x, b.y - a.y);
+      tb = unit(main.x * 0.7 + own.x * 0.3, main.y * 0.7 + own.y * 0.3);
     } else tb = unit(b.x - a.x, b.y - a.y);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     // A bend of its own, to one side or the other, so the line is not a string of straight steps (zero slope at the ends, so reaches join smoothly).
