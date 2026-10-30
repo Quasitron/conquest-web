@@ -15,17 +15,16 @@ const hash2 = (x: number, y: number, k: number): number => {
 
 /** How wide a river is, in squares, for the number of squares draining through it: a trickle grows to a wide stream. */
 export function riverWidth(flow: number): number {
-  return Math.min(0.46, 0.1 + 0.055 * Math.sqrt(flow));
+  return Math.min(0.23, 0.05 + 0.0275 * Math.sqrt(flow));
 }
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
 const LAYERS = [
-  { scale: 2.9, plus: 3, style: 'rgba(70, 60, 36, 0.17)' },
-  { scale: 1.8, plus: 2.5, style: 'rgba(206, 190, 142, 0.5)' },
-  { scale: 1.16, plus: 1.2, style: 'rgba(22, 44, 46, 0.62)' },
+  { scale: 2.9, plus: 1.5, style: 'rgba(70, 60, 36, 0.17)' },
+  { scale: 1.8, plus: 1.25, style: 'rgba(206, 190, 142, 0.5)' },
+  { scale: 1.16, plus: 0.6, style: 'rgba(22, 44, 46, 0.62)' },
   { scale: 1.0, plus: 0, style: 'water' },
   { scale: 1.0, plus: 0, style: 'rgba(76, 156, 164, 0.3)' },
-  { scale: 0.3, plus: 0, style: 'rgba(210, 234, 236, 0.14)' },
 ] as const;
 
 interface Pt { x: number; y: number }
@@ -34,6 +33,8 @@ interface Pt { x: number; y: number }
 interface Reach { pts: Pt[]; normals: Pt[]; half: number[]; mouth: boolean }
 
 const SAMPLES = 9;
+/** A mouth starts to fade out at this sample of its last reach. */
+const FADE_FROM = 3;
 /** How strongly a reach keeps the heading it arrives with: below 1 it cannot overshoot and curl at a sharp turn. */
 const TENSION = 0.7;
 
@@ -118,7 +119,7 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     return d;
   };
   /** A spring starts as a hair and takes three squares to grow into the stream its flow makes, as in nature. */
-  const widthOf = (s: Square) => riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.3 * depthOf(s));
+  const widthOf = (s: Square) => Math.max(1.4, riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.3 * depthOf(s)));
   /** A one-square side branch that joins a stream fed more strongly by another: it only clutters the junction, so it is left out. */
   const isSpur = (s: Square): boolean => {
     if (feeder.has(keyOfSq(s)) || typeof s.to !== 'object' || s.to === null) return false;
@@ -153,7 +154,6 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
 
   const reaches: Reach[] = [];
   const nodes: { p: Pt; half: number }[] = [];
-  const mouths: { p: Pt; dir: readonly [number, number]; half: number }[] = [];
   for (const s of squares.values()) {
     if (s.to === null || isSpur(s)) continue;
     const a = nodeAt(s.rawX, s.y);
@@ -200,85 +200,89 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     const half = pts.map((_, k) => { const u = k / SAMPLES; return (wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2; });
     reaches.push({ pts, normals, half, mouth });
     if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
-    if (mouth) mouths.push({ p: b, dir: s.seaDir!, half: wb / 2 });
-  }  if (reaches.length === 0) return;
+    if (target && !mouth && feeder.get(keyOfSq(target)) !== s) nodes.push({ p: b, half: wb / 2 }); // and the end of a tributary, which melts into the stream it joins
+  }
+  if (reaches.length === 0) return;
 
-  let pattern: CanvasPattern | null = null;
-  if (water) {
-    pattern = ctx.createPattern(water, 'repeat');
-    // The picture is laid on the map, not on the screen, so the water does not swim when the map is moved.
+  /** The picture of the sea laid on the map (not on the screen), so the water does not swim when the map is moved. */
+  const waterPattern = (c: CanvasRenderingContext2D): CanvasPattern | null => {
+    if (!water) return null;
+    const pattern = c.createPattern(water, 'repeat');
     pattern?.setTransform(new DOMMatrix().translate(-cam.x * t, -cam.y * t).scale(t / (water.naturalWidth / PERIOD_X)));
-  }
-  for (const layer of LAYERS) {
-    const path = new Path2D();
-    for (const r of reaches) {
-      const left: Pt[] = [];
-      const right: Pt[] = [];
-      r.pts.forEach((p, k) => {
-        const thin = Math.min(1, (r.half[k] * 2) / (0.12 * t)); // near a spring the bank is as slight as the thread of water
-        const h = Math.max(0.4, r.half[k] * layer.scale + (layer.plus / 2) * Math.max(0.15, thin));
-        left.push({ x: p.x + r.normals[k].x * h, y: p.y + r.normals[k].y * h });
-        right.push({ x: p.x - r.normals[k].x * h, y: p.y - r.normals[k].y * h });
-      });
-      path.moveTo(left[0].x, left[0].y);
-      for (let k = 1; k < left.length; k++) path.lineTo(left[k].x, left[k].y);
-      for (let k = right.length - 1; k >= 0; k--) path.lineTo(right[k].x, right[k].y);
-      path.closePath();
+    return pattern;
+  };
+  /** Fills each layer once from all the given reaches together (so the translucent layers do not double up where they overlap). */
+  const paintLayers = (c: CanvasRenderingContext2D, rs: Reach[], discs: { p: Pt; half: number }[]) => {
+    const pattern = waterPattern(c);
+    for (const layer of LAYERS) {
+      const path = new Path2D();
+      for (const r of rs) {
+        const left: Pt[] = [];
+        const right: Pt[] = [];
+        r.pts.forEach((p, k) => {
+          const thin = Math.min(1, (r.half[k] * 2) / (0.06 * t)); // near a spring the bank is as slight as the thread of water
+          const h = Math.max(0.4, r.half[k] * layer.scale + (layer.plus / 2) * Math.max(0.15, thin));
+          left.push({ x: p.x + r.normals[k].x * h, y: p.y + r.normals[k].y * h });
+          right.push({ x: p.x - r.normals[k].x * h, y: p.y - r.normals[k].y * h });
+        });
+        path.moveTo(left[0].x, left[0].y);
+        for (let k = 1; k < left.length; k++) path.lineTo(left[k].x, left[k].y);
+        for (let k = right.length - 1; k >= 0; k--) path.lineTo(right[k].x, right[k].y);
+        path.closePath();
+      }
+      // Round the tip of a spring with a disc, drawn the way round the bands go so they merge.
+      for (const n of discs) {
+        const r = Math.max(0.8, n.half * layer.scale + layer.plus / 2);
+        path.moveTo(n.p.x + r, n.p.y); // each disc starts its own piece of the path, or a line would be drawn to it from the last one
+        path.arc(n.p.x, n.p.y, r, 0, Math.PI * 2, true);
+        path.closePath();
+      }
+      c.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
+      c.fill(path, 'nonzero');
     }
-    // Round the joints between reaches (and the sources) with a disc, drawn the way round the bands go so they merge.
-    for (const n of nodes) {
-      const r = Math.max(1, n.half * layer.scale + layer.plus / 2);
-      path.moveTo(n.p.x + r, n.p.y); // each disc starts its own piece of the path, or a line would be drawn to it from the last one
-      path.arc(n.p.x, n.p.y, r, 0, Math.PI * 2, true);
-      path.closePath();
-    }
-    ctx.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
-    ctx.fill(path, 'nonzero');
-  }
-  // The last stretch before the shore melts into the shallows: the water, its bank and the ground beside it fade to the
-  // light blue of the shallows (more and more toward the shore), so the river does not end in a cut.
+  };
+
+  // Where a river meets the sea or a lake its last stretch dissolves into the shallows: drawn on a canvas of its own and
+  // faded out toward the shore, so the water, its bank and the ground beside it melt away with no edge to be seen.
+  const canFade = typeof document !== 'undefined';
+  const slice = (r: Reach, from: number, to: number): Reach => ({
+    pts: r.pts.slice(from, to + 1), normals: r.normals.slice(from, to + 1), half: r.half.slice(from, to + 1), mouth: false,
+  });
+  const body: Reach[] = [];
+  const tails: Reach[] = [];
   for (const r of reaches) {
-    if (!r.mouth) continue;
-    const from = 2;
-    const left: Pt[] = [];
-    const right: Pt[] = [];
-    for (let k = from; k < r.pts.length; k++) {
-      const h = r.half[k] * 1.55 + 0.02 * t; // no wider than the bank, or its end would show
-      left.push({ x: r.pts[k].x + r.normals[k].x * h, y: r.pts[k].y + r.normals[k].y * h });
-      right.push({ x: r.pts[k].x - r.normals[k].x * h, y: r.pts[k].y - r.normals[k].y * h });
-    }
-    const fade = new Path2D();
-    fade.moveTo(left[0].x, left[0].y);
-    for (let k = 1; k < left.length; k++) fade.lineTo(left[k].x, left[k].y);
-    for (let k = right.length - 1; k >= 0; k--) fade.lineTo(right[k].x, right[k].y);
-    fade.closePath();
-    const a = r.pts[from];
-    const b = r.pts[r.pts.length - 1];
-    const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-    g.addColorStop(0, 'rgba(122, 188, 202, 0)');
-    g.addColorStop(0.6, 'rgba(122, 188, 202, 0.26)');
-    g.addColorStop(1, 'rgba(122, 188, 202, 0.5)');
-    ctx.fillStyle = g;
-    ctx.fill(fade, 'nonzero');
+    if (r.mouth && canFade) {
+      body.push(slice(r, 0, FADE_FROM));
+      tails.push(slice(r, FADE_FROM, r.pts.length - 1));
+    } else body.push(r);
   }
-  // Where a river meets the sea or a lake it ends at the shore and melts into the shallows: a soft light-blue glow.
-  for (const m of mouths) {
-    const cx = m.p.x + m.dir[0] * 0.1 * t;
-    const cy = m.p.y + m.dir[1] * 0.1 * t;
-    const r = Math.max(4, m.half * 2.6 + 0.1 * t);
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    glow.addColorStop(0, 'rgba(120, 186, 200, 0.55)');
-    glow.addColorStop(0.55, 'rgba(120, 186, 200, 0.22)');
-    glow.addColorStop(1, 'rgba(120, 186, 200, 0)');
-    // Only the water side of the shore gets it, so the bank on land stays clean.
-    const pad = 0.04 * t;
-    ctx.save();
-    ctx.beginPath();
-    if (m.dir[0] !== 0) ctx.rect(m.dir[0] > 0 ? m.p.x - pad : m.p.x + pad - r * 2, cy - r, r * 2, r * 2);
-    else ctx.rect(cx - r, m.dir[1] > 0 ? m.p.y - pad : m.p.y + pad - r * 2, r * 2, r * 2);
-    ctx.clip();
-    ctx.fillStyle = glow;
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    ctx.restore();
+  paintLayers(ctx, body, nodes);
+  for (const r of tails) {
+    const reach = r.half.reduce((m, h) => Math.max(m, h), 0) * 3 + 6;
+    const xs = r.pts.map((p) => p.x);
+    const ys = r.pts.map((p) => p.y);
+    const ox = Math.floor(Math.min(...xs) - reach);
+    const oy = Math.floor(Math.min(...ys) - reach);
+    const w = Math.ceil(Math.max(...xs) + reach) - ox;
+    const h = Math.ceil(Math.max(...ys) + reach) - oy;
+    if (w <= 0 || h <= 0 || w > 1500 || h > 1500) continue;
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const c = off.getContext('2d');
+    if (!c) continue;
+    c.translate(-ox, -oy);
+    paintLayers(c, [r], []);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = 'destination-in';
+    const a = r.pts[0];
+    const b = r.pts[r.pts.length - 1];
+    const g = c.createLinearGradient(a.x - ox, a.y - oy, b.x - ox, b.y - oy);
+    g.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    g.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, w, h);
+    ctx.drawImage(off, ox, oy);
   }
 }
