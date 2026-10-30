@@ -7,8 +7,10 @@ const MOUNTAIN_SHARE = 0.07;
 const ROUGH_SHARE = 0.1;
 const FOREST_SHARE = 0.22;
 /** Rivers cover about this share of the land squares, the ones with the biggest catchments (at least MIN_CATCHMENT squares drain through). */
-const RIVER_SHARE = 0.07;
-const MIN_CATCHMENT = 4;
+const RIVER_SHARE = 0.1;
+const MIN_CATCHMENT = 3;
+/** Outlets for the water are at least this many squares apart along a coast. */
+const OUTLET_SPACING = 14;
 /** A river is at least this many squares long (shorter ones are dropped). */
 const MIN_RIVER_LENGTH = 3;
 const ORTHO: ReadonlyArray<readonly [number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -91,19 +93,56 @@ export function generateRelief(
     return top;
   };
   const ground = (i: number) => height[i] + (i % 7) * 0.0005 + rng.next() * 0.01;
-  for (const i of squares) {
+  // Where the water leaves the land: a few outlets along the coast, low ground first and kept apart, with at least one
+  // on every landmass. All the other shore squares drain inland and along the coast to an outlet, so the streams of
+  // a region gather into a few big rivers with many small ones feeding them, not a short stream at every beach.
+  const coast = squares.filter((i) => {
     const x = i % width;
     const y = (i - x) / width;
-    if (ORTHO.some(([dx, dy]) => { const m = at(x + dx, y + dy); return m !== null && !land[m]; })) {
-      seen[i] = true;
-      level[i] = ground(i);
-      push(i);
+    return ORTHO.some(([dx, dy]) => { const m = at(x + dx, y + dy); return m !== null && !land[m]; });
+  });
+  const lowFirst = coast.map((i) => ({ i, k: height[i] + rng.next() * 0.25 })).sort((p, q) => p.k - q.k).map((e) => e.i);
+  const distance = (a: number, b: number) => {
+    const ax = a % width;
+    const bx = b % width;
+    let dx = Math.abs(ax - bx);
+    if (wrap) dx = Math.min(dx, width - dx);
+    return Math.max(dx, Math.abs((a - ax) / width - (b - bx) / width));
+  };
+  const landmass = new Array<number>(n).fill(-1);
+  let landmasses = 0;
+  for (let i = 0; i < n; i++) {
+    if (!land[i] || landmass[i] >= 0) continue;
+    const stack = [i];
+    landmass[i] = landmasses;
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      const x = cur % width;
+      const y = (cur - x) / width;
+      for (const [dx, dy] of ORTHO) {
+        const m = at(x + dx, y + dy);
+        if (m !== null && land[m] && landmass[m] < 0) { landmass[m] = landmasses; stack.push(m); }
+      }
     }
+    landmasses++;
   }
-  const order: number[] = []; // squares from the coast inland
+  const outlets: number[] = [];
+  const served = new Set<number>();
+  for (const i of lowFirst) {
+    if (outlets.every((o) => distance(o, i) >= OUTLET_SPACING)) { outlets.push(i); served.add(landmass[i]); }
+  }
+  for (const i of lowFirst) if (!served.has(landmass[i])) { outlets.push(i); served.add(landmass[i]); }
+  for (const i of outlets) {
+    seen[i] = true;
+    level[i] = ground(i);
+    push(i);
+  }  const order: number[] = []; // squares from the coast inland
+  const isOutlet = new Set(outlets);
+  const shore = new Set(coast);
   while (frontier.length > 0) {
     const i = pop();
     order.push(i);
+    if (shore.has(i) && !isOutlet.has(i)) continue; // a beach that is not an outlet is a dead end: no stream runs along the shore through it
     const x = i % width;
     const y = (i - x) / width;
     for (const [dx, dy] of ORTHO) {
@@ -122,9 +161,29 @@ export function generateRelief(
     if (parent[i] >= 0) catchment[parent[i]] += catchment[i];
   }
   // The biggest catchments are rivers: as many squares as the share allows, but never a catchment smaller than a few squares.
-  const ranked = order.filter((i) => catchment[i] >= MIN_CATCHMENT && relief[i] !== 'mountain').sort((a, b) => catchment[b] - catchment[a] || a - b);
+  const outletSet = new Set(outlets);
+  const coastSet = new Set(coast);
+  const ranked = order.filter((i) => catchment[i] >= MIN_CATCHMENT && relief[i] !== 'mountain' && (!coastSet.has(i) || outletSet.has(i))).sort((a, b) => catchment[b] - catchment[a] || a - b);
   const cap = Math.max(4, Math.round(squares.length * RIVER_SHARE));
   const chosen = new Set(ranked.slice(0, cap));
+  // Keep only what runs all the way down to an outlet (a stretch cut off from it by the shore squares is dropped).
+  const reaches = new Map<number, boolean>();
+  for (const i of chosen) {
+    const trail: number[] = [];
+    let j = i;
+    let result = false;
+    for (;;) {
+      const known = reaches.get(j);
+      if (known !== undefined) { result = known; break; }
+      trail.push(j);
+      if (outletSet.has(j)) { result = true; break; }
+      const up = parent[j];
+      if (up < 0 || !chosen.has(up)) break;
+      j = up;
+    }
+    for (const k of trail) reaches.set(k, result);
+  }
+  for (const i of [...chosen]) if (!reaches.get(i)) chosen.delete(i);
   // A one-square side branch hanging off a junction is clutter, not a tributary: drop it.
   const kids = new Map<number, number>();
   for (const i of chosen) if (parent[i] >= 0 && chosen.has(parent[i])) kids.set(parent[i], (kids.get(parent[i]) ?? 0) + 1);
