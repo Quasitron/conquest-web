@@ -107,19 +107,8 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   const keyOfSq = (s: Square) => keyOf(s.rawX, s.y);
   const nextOf = (s: Square): Square | null => (typeof s.to === 'object' && s.to !== null ? squares.get(keyOf(s.to.rawX, s.to.y)) ?? null : null);
   /** The width at a river square's point: a spring is a thread, and a river widens as the streams join it. */
-  const depths = new Map<string, number>();
-  /** How many squares of river lie upstream of this one along the main stream (0 at a spring). */
-  const depthOf = (s: Square): number => {
-    const k = keyOfSq(s);
-    const known = depths.get(k);
-    if (known !== undefined) return known;
-    const f = feeder.get(k);
-    const d = f ? depthOf(f) + 1 : 0;
-    depths.set(k, d);
-    return d;
-  };
-  /** A spring starts as a hair and takes three squares to grow into the stream its flow makes, as in nature. */
-  const widthOf = (s: Square) => Math.max(1.4, riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.3 * depthOf(s)));
+  /** A spring starts as a hair and grows into the stream its flow makes, as in nature. It goes by the flow (not by how much of the river is in view), so exploring does not change it. */
+  const widthOf = (s: Square) => Math.max(1.4, riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.2 * s.flow));
   /** A one-square side branch that joins a stream fed more strongly by another: it only clutters the junction, so it is left out. */
   const isSpur = (s: Square): boolean => {
     if (feeder.has(keyOfSq(s)) || typeof s.to !== 'object' || s.to === null) return false;
