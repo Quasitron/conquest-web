@@ -126,6 +126,7 @@ describe('fightFrame', () => {
     const at = FIGHT_MS * 0.7;
     expect(fightFrame(at, base)!.outcome).toBe('hit');
     expect(fightFrame(at, { ...base, destroyed: true })!.outcome).toBe('explosion');
+    expect(fightFrame(at, { ...base, struck: true })!.outcome).toBe('explosion'); // a torpedo hit that leaves the target afloat
     expect(fightFrame(at, { ...base, destroyed: true, captured: true })!.outcome).toBe('capture');
   });
 
