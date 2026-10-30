@@ -18,6 +18,7 @@ export { combatWinChance } from './combat';
 export { areFriendly } from './relations';
 export { Rng } from './rng';
 export type { RandomSource } from './rng';
+export { computeRiverNet, riverNetOf, SEA, NONE, type RiverNet } from './rivers';
 export { DIRS, step, normalize, neighbors, chebyshev, isCoastal, index, terrainAt, reliefAt } from './map';
 export type { MapLike } from './map';
 export { eventsFor } from './events';

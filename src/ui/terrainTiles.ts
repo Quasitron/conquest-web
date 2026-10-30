@@ -16,7 +16,7 @@ const PICTURE: Record<Surface, string> = {
 };
 
 /** A picture covers this many squares across and down before it repeats. */
-const PERIOD_X = 12;
+export const PERIOD_X = 12;
 const PERIOD_Y = 8;
 /** Smaller than this (in pixels per square) the picture is just its flat colour: the detail cannot be seen anyway. */
 export const TEXTURE_MIN_TILE = 12;
@@ -546,84 +546,3 @@ export function drawGroundLayer(
   }
   return true;
 }
-
-/**
- * Rivers: from the middle of each river square to every side that holds more river or the sea, drawn as a line of the
- * sea's picture with a darker bank round it. Smaller than TEXTURE_MIN_TILE they are plain blue lines.
- */
-export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam: Camera, width: number, height: number): void {
-  if (!view.relief) return;
-  const t = cam.tile;
-  const water = t >= TEXTURE_MIN_TILE ? loaded(PICTURE.water) : null;
-  const pattern = water ? ctx.createPattern(water, 'repeat') : null;
-  if (pattern && water) pattern.setTransform(new DOMMatrix().scale(t / (water.naturalWidth / PERIOD_X)));
-  const x0 = Math.floor(cam.x);
-  const y0 = Math.max(0, Math.floor(cam.y));
-  const cols = Math.ceil(width / t) + 1;
-  const rows = Math.ceil(height / t) + 1;
-  const kind = (x: number, y: number): Surface | null => {
-    if (y < 0 || y >= view.height) return null;
-    if (view.wrap) x = mod(x, view.width);
-    else if (x < 0 || x >= view.width) return null;
-    return surfaceAt(view, x, y);
-  };
-  // Where a river crosses the edge between two squares, nudged along the edge (the same for both squares), so it bends.
-  const edgeSpot = (rawX: number, my: number, k: number): [number, number] => {
-    const [dx, dy] = SIDES[k];
-    // The edge is named by the square on its north/west side and its direction, so both squares agree.
-    const ex = dx < 0 ? rawX - 1 : rawX;
-    const ey = dy < 0 ? my - 1 : my;
-    const horizontal = dx !== 0 ? 0 : 1;
-    const jitter = (hash2(mod(ex, view.width), ey, horizontal) - 0.5) * 0.36;
-    const mx = (rawX - cam.x + 0.5 + dx / 2 + (dx === 0 ? jitter : 0)) * t;
-    const my2 = (my - cam.y + 0.5 + dy / 2 + (dy === 0 ? jitter : 0)) * t;
-    return [mx, my2];
-  };
-  type Piece = { from: [number, number]; via: [number, number]; to: [number, number] | null };
-  const pieces: Piece[] = [];
-  for (let j = 0; j < rows; j++) {
-    const my = y0 + j;
-    if (my >= view.height) break;
-    for (let i = 0; i < cols; i++) {
-      const rawX = x0 + i;
-      if (!view.wrap && (rawX < 0 || rawX >= view.width)) continue;
-      if (kind(rawX, my) !== 'river') continue;
-      const centre: [number, number] = [(rawX - cam.x + 0.5) * t, (my - cam.y + 0.5) * t];
-      const spots: [number, number][] = [];
-      SIDES.forEach(([dx, dy], k) => {
-        const n = kind(rawX + dx, my + dy);
-        if (n === 'river' || n === 'water') spots.push(edgeSpot(rawX, my, k));
-      });
-      if (spots.length === 0) spots.push([centre[0], centre[1] + t / 2]);
-      if (spots.length === 2) pieces.push({ from: spots[0], via: centre, to: spots[1] });
-      else for (const sp of spots) pieces.push({ from: sp, via: centre, to: null });
-    }
-  }
-  if (pieces.length === 0) return;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const stroke = (style: string | CanvasPattern, w: number) => {
-    ctx.strokeStyle = style;
-    ctx.lineWidth = w;
-    ctx.beginPath();
-    for (const p of pieces) {
-      ctx.moveTo(p.from[0], p.from[1]);
-      if (p.to) ctx.quadraticCurveTo(p.via[0], p.via[1], p.to[0], p.to[1]);
-      else ctx.lineTo(p.via[0], p.via[1]);
-    }
-    ctx.stroke();
-  };
-  if (pattern) {
-    stroke('rgba(24,56,64,0.5)', Math.max(3, t * 0.25));
-    stroke(pattern, Math.max(2, t * 0.18));
-  } else {
-    stroke('#2f6fa8', Math.max(2, t * 0.16));
-  }
-  ctx.lineCap = 'butt';
-}
-
-const hash2 = (x: number, y: number, k: number): number => {
-  let h = (x * 374761393 + y * 668265263 + k * 2147483647) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-};
