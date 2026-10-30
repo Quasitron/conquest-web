@@ -36,7 +36,7 @@ export interface PlayerView {
    * How the known rivers run (see RiverNet): flow and outlet per explored river square, null where unexplored. The
    * numbers come from the whole map, so a river is drawn the same width however much of it has been found.
    */
-  riverNet?: { flow: (number | null)[]; down: (number | null)[] };
+  riverNet?: { flow: (number | null)[]; down: (number | null)[]; up: (number | null)[] };
   /** Indices (y * width + x) of squares currently in sight, ascending. */
   visibleSquares: number[];
   players: { id: PlayerId; name: string; eliminated: boolean }[];
@@ -53,7 +53,19 @@ export interface PlayerView {
 
 function riverNetView(s: GameState, explored: ArrayLike<unknown>): Pick<PlayerView, 'riverNet'> {
   const net = riverNetOf(s);
-  return net ? { riverNet: { flow: net.flow.map((f, i) => (explored[i] ? f : null)), down: net.down.map((d, i) => (explored[i] ? d : null)) } } : {};
+  if (!net) return {};
+  // The strongest stream feeding each square; `up` keeps it only where that square is still unexplored, so the river can run on to the edge of the known ground.
+  const feeder = new Array<number>(net.flow.length).fill(-1);
+  net.down.forEach((d, j) => {
+    if (d >= 0 && (feeder[d] < 0 || net.flow[j] > net.flow[feeder[d]])) feeder[d] = j;
+  });
+  return {
+    riverNet: {
+      flow: net.flow.map((f, i) => (explored[i] ? f : null)),
+      down: net.down.map((d, i) => (explored[i] ? d : null)),
+      up: feeder.map((f, i) => (explored[i] && f >= 0 && !explored[f] ? f : null)),
+    },
+  };
 }
 
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
