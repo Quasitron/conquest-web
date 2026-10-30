@@ -18,6 +18,12 @@ describe('spyHeadlines', () => {
     expect(spyHeadlines([sabotaged(true)], 1, name)[0].headline).toBe('OUR AGENT CAUGHT IN PORTLAND!');
   });
 
+  it('reports damage to the garrison to both sides', () => {
+    const hurt: GameEvent = { type: 'garrisonHurt', cityId: 7, by: 1, owner: 0, unitType: 'armor', caught: false };
+    expect(spyHeadlines([hurt], 0, name)[0].headline).toBe('GARRISON SABOTAGED IN PORTLAND!');
+    expect(spyHeadlines([hurt], 1, name)[0].headline).toBe('GARRISON HIT IN PORTLAND!');
+  });
+
   it('reports an operative found hiding, to both sides', () => {
     const found: GameEvent = { type: 'spyFound', cityId: 7, owner: 0, by: 1 };
     expect(spyHeadlines([found], 0, name)[0].headline).toBe('ENEMY OPERATIVE FOUND IN PORTLAND!');

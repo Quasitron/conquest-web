@@ -13,6 +13,7 @@ export const ACTION_LABELS: Record<ActionId, { label: string; key: string }> = {
   escort: { label: 'Escort', key: 'E' },
   airbase: { label: 'Build Airbase', key: 'B' },
   sabotage: { label: 'Sabotage', key: 'G' },
+  hurt: { label: 'Damage Garrison', key: 'M' },
   incite: { label: 'Incite Revolt', key: 'V' },
   patrol: { label: 'Patrol', key: 'P' },
   goHome: { label: 'Go Home', key: 'H' },

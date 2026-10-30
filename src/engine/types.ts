@@ -176,6 +176,8 @@ export type Command =
   | { type: 'sabotage'; player: PlayerId; unitId: number }
   /** An Elite spy inside an enemy city tries to turn it against its owner (modest chance; a failed try costs the spy). */
   | { type: 'incite'; player: PlayerId; unitId: number }
+  /** A spy inside an enemy city damages one of the units there by a hit (never destroying it). */
+  | { type: 'hurtGarrison'; player: PlayerId; unitId: number }
   | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
   | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }
   | { type: 'endTurn'; player: PlayerId }
@@ -221,6 +223,8 @@ export type GameEvent =
   | { type: 'citySabotaged'; cityId: number; by: PlayerId; owner: PlayerId; caught: boolean }
   /** An Elite spy's attempt at a revolt; on success a cityCaptured event follows. */
   /** A spy hiding in a city was discovered at the start of its owner's turn and shot. */
+  /** A spy damaged a unit in a city by a hit. */
+  | { type: 'garrisonHurt'; cityId: number; by: PlayerId; owner: PlayerId; unitType: UnitType; caught: boolean }
   | { type: 'spyFound'; cityId: number; owner: PlayerId; by: PlayerId }
   | { type: 'cityIncited'; cityId: number; by: PlayerId; owner: PlayerId; success: boolean }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }

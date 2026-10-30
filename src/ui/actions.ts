@@ -18,7 +18,7 @@ export function escortable(view: PlayerView, u: Unit): Unit[] {
 }
 
 export const UNIT_BUTTONS: ActionId[] = [
-  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'sabotage', 'incite', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'sabotage', 'hurt', 'incite', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
@@ -51,6 +51,7 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     airbase: view.rules.advancedUnits && canBecomeAirbase(u.type) && u.carriedBy === null && !inCity
       && view.terrain[u.y * view.width + u.x] === 'land',
     sabotage: view.rules.advancedUnits && inEnemyCity,
+    hurt: view.rules.advancedUnits && inEnemyCity,
     incite: view.rules.advancedUnits && inEnemyCity && rankOf(u.wins) === 3,
     clearOrders: u.orders !== null,
     // Damaged: in a city of ours it sits there until repaired, elsewhere it first goes to the nearest suitable city.

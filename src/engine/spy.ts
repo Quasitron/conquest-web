@@ -4,7 +4,7 @@ import { chebyshev } from './map';
 import { cityAt, destroyUnit } from './query';
 import { areFriendly } from './relations';
 import { WAR_TORN_MAX, buildTime } from './production';
-import { UNIT_STATS, rankOf } from './units';
+import { hitsOf, rankOf } from './units';
 import { recordWin } from './attack';
 
 /** The chance a spy is discovered and shot each time it sabotages a city, by promotion rank (a seasoned spy is harder to catch). */
@@ -37,6 +37,31 @@ export function sabotageCity(s: GameState, rng: RandomSource, spy: Unit, events:
   events.push({ type: 'citySabotaged', cityId: city.id, by: spy.owner, owner: city.owner, caught });
   if (caught) destroyUnit(s, spy, 'caught', events, city.owner);
   else recordWin(s, spy, events); // a clean job counts towards promotion
+  return null;
+}
+
+/**
+ * A spy inside an enemy city damages one of the units there by a hit (picked at random among those with more than one hit
+ * left; it is never destroyed). Like sabotage it uses the spy's move and risks the spy being caught.
+ */
+export function hurtGarrison(s: GameState, rng: RandomSource, spy: Unit, events: GameEvent[]): string | null {
+  if (spy.type !== 'spy') return 'only a spy can do that';
+  if (spy.movesLeft <= 0) return 'unit has no moves left';
+  const city = cityAt(s, spy.x, spy.y);
+  if (spy.carriedBy !== null || !city || city.owner === null || areFriendly(s, city.owner, spy.owner)) {
+    return 'a spy can only harm the garrison of an enemy city it is inside';
+  }
+  const targets = garrisonOf(s, city).filter((u) => hitsOf(u) - u.damage > 1);
+  if (targets.length === 0) return 'nothing in the city can be harmed (units with a single hit left are safe)';
+  const victim = targets[Math.floor(rng.next() * targets.length)];
+  victim.damage += 1;
+  spy.movesLeft = 0;
+  spy.movedThisTurn = true;
+  spy.orders = null;
+  const caught = rng.next() < SABOTAGE_CATCH_CHANCE[rankOf(spy.wins)];
+  events.push({ type: 'garrisonHurt', cityId: city.id, by: spy.owner, owner: city.owner, unitType: victim.type, caught });
+  if (caught) destroyUnit(s, spy, 'caught', events, city.owner);
+  else recordWin(s, spy, events);
   return null;
 }
 

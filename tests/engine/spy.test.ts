@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { apply, getPlayerView, UNIT_STATS, type GameEvent } from '../../src/engine';
 import { canPlayerSeeUnit, catchSpies, updateFog } from '../../src/engine/fog';
 import { moveUnit } from '../../src/engine/movement';
-import { DISCOVERY, discoverSpies, discoveryChance, incitePeople, sabotageCity } from '../../src/engine/spy';
+import { DISCOVERY, discoverSpies, discoveryChance, hurtGarrison, incitePeople, sabotageCity } from '../../src/engine/spy';
 import { addUnit, fixedRng, makeGame } from '../helpers';
 
 const M = ['*.........', '..........', '..........', '.........*'];
@@ -117,6 +117,32 @@ describe('Spy (Advanced units)', () => {
     sabotageCity(s, fixedRng(0), second, ev);
     expect(ev.find((e) => e.type === 'citySabotaged')).toMatchObject({ caught: true });
     expect(s.units.some((u) => u.id === second.id)).toBe(false);
+  });
+
+  it('damages one unit in the city by a hit but never destroys it, and units with one hit left are safe', () => {
+    const { s, enemyCity } = setup();
+    const spy = addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y);
+    const army = addUnit(s, 'army', 1, enemyCity.x, enemyCity.y);
+    expect(hurtGarrison(s, fixedRng(0.5), spy, [])).toMatch(/nothing in the city/);
+    const armor = addUnit(s, 'armor', 1, enemyCity.x, enemyCity.y);
+    const ev: GameEvent[] = [];
+    expect(hurtGarrison(s, fixedRng(0.5, 0.99), spy, ev)).toBeNull();
+    expect(armor.damage).toBe(1);
+    expect(army.damage).toBe(0);
+    expect(spy.movesLeft).toBe(0);
+    expect(spy.wins).toBe(1);
+    expect(ev.find((e) => e.type === 'garrisonHurt')).toMatchObject({ unitType: 'armor', caught: false });
+    // Armor now has a single hit left: nothing more can be harmed.
+    spy.movesLeft = 1;
+    expect(hurtGarrison(s, fixedRng(0.5), spy, [])).toMatch(/nothing in the city/);
+  });
+
+  it('a spy caught while harming the garrison is shot', () => {
+    const { s, enemyCity } = setup();
+    const spy = addUnit(s, 'spy', 0, enemyCity.x, enemyCity.y);
+    addUnit(s, 'armor', 1, enemyCity.x, enemyCity.y);
+    hurtGarrison(s, fixedRng(0.5, 0), spy, []);
+    expect(s.units.some((u) => u.id === spy.id)).toBe(false);
   });
 
   it('refuses to sabotage with nothing to wreck, or outside an enemy city', () => {

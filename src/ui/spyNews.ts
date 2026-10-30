@@ -1,4 +1,4 @@
-import type { GameEvent, PlayerId } from '../engine';
+import { UNIT_STATS, type GameEvent, type PlayerId } from '../engine';
 
 /** One newspaper front page: a headline in capitals, a line under it, and the story. */
 export interface NewsItem {
@@ -14,7 +14,7 @@ export interface NewsItem {
 export function spyHeadlines(events: readonly GameEvent[], me: PlayerId, cityName: (id: number) => string | undefined): NewsItem[] {
   const out: NewsItem[] = [];
   for (const e of events) {
-    const city = cityName(e.type === 'citySabotaged' || e.type === 'spyFound' || e.type === 'cityIncited' ? e.cityId : -1) ?? 'the city';
+    const city = cityName(e.type === 'citySabotaged' || e.type === 'garrisonHurt' || e.type === 'spyFound' || e.type === 'cityIncited' ? e.cityId : -1) ?? 'the city';
     const place = city.toUpperCase();
     if (e.type === 'citySabotaged') {
       if (e.owner === me) {
@@ -27,6 +27,15 @@ export function spyHeadlines(events: readonly GameEvent[], me: PlayerId, cityNam
         out.push(e.caught
           ? { headline: `OUR AGENT CAUGHT IN ${place}!`, subhead: 'The mission succeeded, at a price', text: `Production in ${city} was wrecked, but our agent was discovered and shot.` }
           : { headline: `SABOTAGE IN ${place}!`, subhead: 'Our agent strikes unseen', text: `Production in ${city} is wrecked, and our agent remains in place.` });
+      }
+    } else if (e.type === 'garrisonHurt') {
+      const unit = UNIT_STATS[e.unitType].name;
+      if (e.owner === me) {
+        out.push({ headline: `GARRISON SABOTAGED IN ${place}!`, subhead: 'Saboteurs strike the defenders', text: `The ${unit} in ${city} was damaged in the night. ${e.caught ? 'The saboteur was caught and shot.' : 'The saboteur slipped away.'}` });
+      } else if (e.by === me) {
+        out.push(e.caught
+          ? { headline: `OUR AGENT CAUGHT IN ${place}!`, subhead: 'The mission succeeded, at a price', text: `The ${unit} in ${city} was damaged, but our agent was discovered and shot.` }
+          : { headline: `GARRISON HIT IN ${place}!`, subhead: 'Our agent strikes unseen', text: `The ${unit} in ${city} was damaged, and our agent remains in place.` });
       }
     } else if (e.type === 'spyFound') {
       if (e.owner === me) {

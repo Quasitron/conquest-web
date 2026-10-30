@@ -73,6 +73,12 @@ export function describeEvent(
       if (e.by === me) return `Your spy wrecked production in ${city}${e.caught ? ', but was caught and shot' : ''}.`;
       return `Sabotage! ${city} lost its production${e.caught ? ', but the spy was caught' : ''}.`;
     }
+    case 'garrisonHurt': {
+      const city = lookup?.city(e.cityId) ?? 'a city';
+      const unit = UNIT_STATS[e.unitType].name;
+      if (e.by === me) return `Your spy damaged ${withArticle(unit)} in ${city}${e.caught ? ', but was caught and shot' : ''}.`;
+      return `Sabotage! ${withArticle(unit)} in ${city} was damaged${e.caught ? ', but the spy was caught' : ''}.`;
+    }
     case 'spyFound': {
       const city = lookup?.city(e.cityId) ?? 'a city';
       return e.owner === me ? `A spy was found hiding in ${city} and shot.` : null; // the spy's own owner gets the 'caught and shot' line

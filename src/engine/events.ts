@@ -53,6 +53,7 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
       case 'citySabotaged':
       case 'cityIncited':
       case 'spyFound':
+      case 'garrisonHurt':
         if (mine(e.by) || mine(e.owner)) out.push(e);
         break;
       case 'cityBombed': {

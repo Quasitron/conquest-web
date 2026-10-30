@@ -7,7 +7,7 @@ import { terrainAt } from './map';
 import { setProduction } from './production';
 import { endTurn, resign } from './turn';
 import { catchSpies, updateFog } from './fog';
-import { incitePeople, sabotageCity } from './spy';
+import { hurtGarrison, incitePeople, sabotageCity } from './spy';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders, runEscorts } from './orders';
 import { cleanName } from './names';
@@ -76,6 +76,13 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
       if (!u) error = 'no such unit';
       else if (u.owner !== actor) error = 'not your unit';
       else error = sabotageCity(s, rng, u, events);
+      break;
+    }
+    case 'hurtGarrison': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else error = hurtGarrison(s, rng, u, events);
       break;
     }
     case 'incite': {
@@ -187,7 +194,7 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
   if (error) return { ok: false, error };
   catchSpies(s, events);
   s.rngState = rng.state;
-  const fogCommands = ['buildAirbase', 'sabotage', 'incite', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
+  const fogCommands = ['buildAirbase', 'sabotage', 'hurtGarrison', 'incite', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
   if (fogCommands.includes(cmd.type)) updateFog(s, actor);
   return { ok: true, state: s, events };
 }
