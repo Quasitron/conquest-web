@@ -59,15 +59,18 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   const flowAt = (rawX: number, y: number): number | null => (inMap(rawX, y) ? net.flow[idxOf(rawX, y)] : null);
 
   // The point of a river square: near its middle, shifted by a fixed amount of chance (the same wherever it is drawn).
-  const nodeAt = (rawX: number, y: number): Pt => {
+  const rawNode = (rawX: number, y: number): Pt => {
     const gx = mod(rawX, W);
     return {
       x: (rawX - cam.x + 0.5 + (hash2(gx, y, 11) - 0.5) * 0.5) * t,
       y: (y - cam.y + 0.5 + (hash2(gx, y, 12) - 0.5) * 0.5) * t,
     };
   };
+  // Where the points of the river squares end up after the river has been smoothed along its length (see below).
+  const smoothed = new Map<string, Pt>();
+  const nodeAt = (rawX: number, y: number): Pt => smoothed.get(`${rawX},${y}`) ?? rawNode(rawX, y);
 
-  interface Square { rawX: number; y: number; idx: number; flow: number; to: { rawX: number; y: number } | 'sea' | null; seaDir: readonly [number, number] | null }
+  interface Square { rawX: number; y: number; idx: number; flow: number; to: { rawX: number; y: number } | 'sea' | null; seaDir: readonly [number, number] | null; hidden: readonly [number, number] | null }
   const squares = new Map<string, Square>();
   const keyOf = (rawX: number, y: number) => `${rawX},${y}`;
   for (let j = 0; j < rows; j++) {
@@ -89,7 +92,9 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
         const dir = ORTHO.find(([dx, dy]) => idxOf(rawX + dx, y + dy) === down);
         if (dir) to = { rawX: rawX + dir[0], y: y + dir[1] };
       }
-      squares.set(keyOf(rawX, y), { rawX, y, idx, flow, to, seaDir });
+      const upIdx = net.up[idx];
+      const hidden = upIdx === null || upIdx === undefined ? null : ORTHO.find(([dx, dy]) => idxOf(rawX + dx, y + dy) === upIdx) ?? null;
+      squares.set(keyOf(rawX, y), { rawX, y, idx, flow, to, seaDir, hidden });
     }
   }
   if (squares.size === 0) return;
@@ -106,6 +111,23 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   const unit = (dx: number, dy: number): Pt => { const l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; };
   const keyOfSq = (s: Square) => keyOf(s.rawX, s.y);
   const nextOf = (s: Square): Square | null => (typeof s.to === 'object' && s.to !== null ? squares.get(keyOf(s.to.rawX, s.to.y)) ?? null : null);
+
+  // Smooth the line: each point moves toward the middle of its two neighbours along the main stream, a few times over, so
+  // the river flows in long even curves instead of wobbling from square to square. The ends stay where they are.
+  for (const s of squares.values()) smoothed.set(keyOfSq(s), rawNode(s.rawX, s.y));
+  for (let pass = 0; pass < 4; pass++) {
+    const next = new Map<string, Pt>();
+    for (const s of squares.values()) {
+      const f = feeder.get(keyOfSq(s));
+      const n = nextOf(s);
+      const p = smoothed.get(keyOfSq(s))!;
+      if (!f || !n) { next.set(keyOfSq(s), p); continue; }
+      const a = smoothed.get(keyOfSq(f))!;
+      const b = smoothed.get(keyOfSq(n))!;
+      next.set(keyOfSq(s), { x: 0.5 * p.x + 0.25 * (a.x + b.x), y: 0.5 * p.y + 0.25 * (a.y + b.y) });
+    }
+    next.forEach((p, k) => smoothed.set(k, p));
+  }
   /** The width at a river square's point: a spring is a thread, and a river widens as the streams join it. */
   /** A spring starts as a hair and grows into the stream its flow makes, as in nature. It goes by the flow (not by how much of the river is in view), so exploring does not change it. */
   const widthOf = (s: Square) => Math.max(1.4, riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.2 * s.flow));
@@ -165,7 +187,7 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     } else tb = unit(b.x - a.x, b.y - a.y);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     // A bend of its own, to one side or the other, so the line is not a string of straight steps (zero slope at the ends, so reaches join smoothly).
-    const bend = (hash2(mod(s.rawX, W), s.y, 13) - 0.5) * 0.4 * len;
+    const bend = (hash2(mod(s.rawX, W), s.y, 13) - 0.5) * 0.15 * len;
     const pts: Pt[] = [];
     for (let k = 0; k <= SAMPLES; k++) {
       const u = k / SAMPLES;
@@ -189,7 +211,28 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     });
     const half = pts.map((_, k) => { const u = k / SAMPLES; return (wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2; });
     reaches.push({ pts, normals, half, mouth });
-    if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
+    if (s.hidden && !feeder.has(keyOfSq(s))) {
+      // The stream comes from ground not yet explored: run it right up to the edge of the square, where the fog begins.
+      const e = { x: (s.rawX - cam.x + 0.5 + s.hidden[0] * 0.5) * t, y: (s.y - cam.y + 0.5 + s.hidden[1] * 0.5) * t };
+      const dir = unit(a.x - e.x, a.y - e.y);
+      const sl = Math.hypot(a.x - e.x, a.y - e.y);
+      const spts: Pt[] = [];
+      const snorm: Pt[] = [];
+      for (let k = 0; k <= SAMPLES; k++) {
+        const u = k / SAMPLES;
+        const h00 = 2 * u ** 3 - 3 * u ** 2 + 1;
+        const h10 = u ** 3 - 2 * u ** 2 + u;
+        const h01 = -2 * u ** 3 + 3 * u ** 2;
+        const h11 = u ** 3 - u ** 2;
+        spts.push({
+          x: h00 * e.x + h10 * dir.x * sl * TENSION + h01 * a.x + h11 * ta.x * sl * TENSION,
+          y: h00 * e.y + h10 * dir.y * sl * TENSION + h01 * a.y + h11 * ta.y * sl * TENSION,
+        });
+        const d = unit(dir.x + (ta.x - dir.x) * u, dir.y + (ta.y - dir.y) * u);
+        snorm.push({ x: -d.y, y: d.x });
+      }
+      reaches.push({ pts: spts, normals: snorm, half: spts.map(() => wa / 2), mouth: false });
+    } else if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
     if (target && !mouth && feeder.get(keyOfSq(target)) !== s) nodes.push({ p: b, half: wb / 2 }); // and the end of a tributary, which melts into the stream it joins
   }
   if (reaches.length === 0) return;
