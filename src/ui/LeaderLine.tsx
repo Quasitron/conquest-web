@@ -39,8 +39,9 @@ export function PlacedDialog({ anchor, label, onKey, children, wide, paper }: Pr
 
   // Measure after each render so the position and the line use the real size.
   useLayoutEffect(() => {
-    const r = ref.current?.getBoundingClientRect();
-    if (r && (Math.abs(r.width - size.w) > 0.5 || Math.abs(r.height - size.h) > 0.5)) setSize({ w: r.width, h: r.height });
+    // The layout size, not the drawn one: a dialog that spins or scales in (the newspaper) must not be measured mid-turn.
+    const el = ref.current;
+    if (el && (Math.abs(el.offsetWidth - size.w) > 0.5 || Math.abs(el.offsetHeight - size.h) > 0.5)) setSize({ w: el.offsetWidth, h: el.offsetHeight });
   });
   useEffect(() => {
     ref.current?.focus({ preventScroll: true });
