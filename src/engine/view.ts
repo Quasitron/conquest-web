@@ -3,6 +3,7 @@ import { emptyStats } from './stats';
 import type { HouseRules } from './rules';
 import { index } from './map';
 import { canPlayerSeeUnit, visibleSquares } from './fog';
+import { riverNetOf } from './rivers';
 
 export interface EnemyMarker {
   /** View-local id; not the engine's unit id. */
@@ -31,6 +32,11 @@ export interface PlayerView {
   terrain: (Terrain | null)[];
   /** The known ground on land squares (null = unexplored); absent on a map without terrain. */
   relief?: (Relief | null)[];
+  /**
+   * How the known rivers run (see RiverNet): flow and outlet per explored river square, null where unexplored. The
+   * numbers come from the whole map, so a river is drawn the same width however much of it has been found.
+   */
+  riverNet?: { flow: (number | null)[]; down: (number | null)[] };
   /** Indices (y * width + x) of squares currently in sight, ascending. */
   visibleSquares: number[];
   players: { id: PlayerId; name: string; eliminated: boolean }[];
@@ -43,6 +49,11 @@ export interface PlayerView {
   stats: PlayerStats;
   /** Other players still in the game that hold no city any more, with how many units they have left (just the count). */
   cityless: { id: PlayerId; name: string; units: number }[];
+}
+
+function riverNetView(s: GameState, explored: ArrayLike<unknown>): Pick<PlayerView, 'riverNet'> {
+  const net = riverNetOf(s);
+  return net ? { riverNet: { flow: net.flow.map((f, i) => (explored[i] ? f : null)), down: net.down.map((d, i) => (explored[i] ? d : null)) } } : {};
 }
 
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
@@ -59,6 +70,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     wrap: s.wrap,
     terrain: s.terrain.map((t, i) => (fog.explored[i] ? t : null)),
     ...(s.relief ? { relief: s.relief.map((r, i) => (fog.explored[i] ? r : null)) } : {}),
+    ...riverNetView(s, fog.explored),
     visibleSquares: [...visibleSquares(s, me)].sort((a, b) => a - b),
     players: s.players.map((p) => ({ id: p.id, name: p.name, eliminated: p.eliminated })),
     myUnits: structuredClone(s.units.filter((u) => u.owner === me)),

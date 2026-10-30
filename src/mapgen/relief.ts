@@ -6,10 +6,11 @@ import { heightField } from './noise';
 const MOUNTAIN_SHARE = 0.07;
 const ROUGH_SHARE = 0.1;
 const FOREST_SHARE = 0.22;
-/** One river source for about this many land squares; a river runs downhill to the sea or is dropped. */
-const LAND_PER_RIVER = 110;
-const MAX_RIVER = 45;
-
+/** Rivers cover about this share of the land squares, the ones with the biggest catchments (at least MIN_CATCHMENT squares drain through). */
+const RIVER_SHARE = 0.07;
+const MIN_CATCHMENT = 4;
+/** A river is at least this many squares long (shorter ones are dropped). */
+const MIN_RIVER_LENGTH = 3;
 const ORTHO: ReadonlyArray<readonly [number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
 /** The value below which the lowest `share` of `values` fall (the (1 - share) quantile from the top). */
@@ -49,53 +50,85 @@ export function generateRelief(
     else if (x < 0 || x >= width) return null;
     return y * width + x;
   };
-  // Distance over land to the nearest water, by steps along the four sides: a river always runs down this field, so it
-  // is sure to reach the sea, and it follows the lower ground where it has a choice.
-  const toSea = new Array<number>(land.length).fill(-1);
-  let level: number[] = [];
-  land.forEach((l, i) => { if (!l) { toSea[i] = 0; level.push(i); } });
-  while (level.length > 0) {
-    const next: number[] = [];
-    for (const i of level) {
-      const x = i % width;
-      const y = (i - x) / width;
-      for (const [dx, dy] of ORTHO) {
-        const n = at(x + dx, y + dy);
-        if (n === null || toSea[n] >= 0) continue;
-        toSea[n] = toSea[i] + 1;
-        next.push(n);
+  // Rivers by flow over the land, as in nature. Water drains from every land square toward the sea by way of the lowest
+  // ground (a flood outward from the coast, always taking the lowest square next, so every square learns which neighbour
+  // it drains into). Each square then adds up the squares that drain through it; the squares with the biggest catchments
+  // become the rivers, so they run through the valleys, grow wider toward the sea and gain tributaries where two
+  // streams meet, with no river drawn by hand. Cities are left out of the drainage, so no river runs through one.
+  const n = land.length;
+  const parent = new Array<number>(n).fill(-1);
+  const seen = new Array<boolean>(n).fill(false);
+  const level = new Array<number>(n).fill(0);
+  const frontier: number[] = []; // a binary heap (the frontier of the flood) of square indices ordered by `level`
+  const less = (a: number, b: number) => level[a] < level[b] || (level[a] === level[b] && a < b);
+  const push = (i: number) => {
+    frontier.push(i);
+    let k = frontier.length - 1;
+    while (k > 0) {
+      const up = (k - 1) >> 1;
+      if (!less(frontier[k], frontier[up])) break;
+      [frontier[k], frontier[up]] = [frontier[up], frontier[k]];
+      k = up;
+    }
+  };
+  const pop = (): number => {
+    const top = frontier[0];
+    const last = frontier.pop()!;
+    if (frontier.length > 0) {
+      frontier[0] = last;
+      let k = 0;
+      for (;;) {
+        const l = 2 * k + 1;
+        const r = l + 1;
+        let m = k;
+        if (l < frontier.length && less(frontier[l], frontier[m])) m = l;
+        if (r < frontier.length && less(frontier[r], frontier[m])) m = r;
+        if (m === k) break;
+        [frontier[k], frontier[m]] = [frontier[m], frontier[k]];
+        k = m;
       }
     }
-    level = next;
-  }
-  const highest = squares.filter((i) => (relief[i] === 'mountain' || relief[i] === 'rough') && toSea[i] >= 5 && toSea[i] <= MAX_RIVER);
-  const sources = Math.min(highest.length, Math.max(1, Math.round(squares.length / LAND_PER_RIVER)));
-  for (let k = 0; k < sources; k++) {
-    let cur = highest[Math.floor(rng.next() * highest.length)];
-    const run: number[] = [];
-    let done = false;
-    if (relief[cur] === 'river') continue;
-    while (toSea[cur] > 1) {
-      run.push(cur);
-      const x = cur % width;
-      const y = (cur - x) / width;
-      let next = -1;
-      let best = Infinity;
-      for (const [dx, dy] of ORTHO) {
-        const n = at(x + dx, y + dy);
-        if (n === null || toSea[n] !== toSea[cur] - 1 || isCity.has(n)) continue;
-        // Keep clear of other rivers (parallel rivers look like a ladder); a river that meets one joins it.
-        const nx = n % width;
-        const ny = (n - nx) / width;
-        const crowd = relief[n] === 'river' ? -10 : ORTHO.some(([ex, ey]) => { const m = at(nx + ex, ny + ey); return m !== null && m !== cur && relief[m] === 'river'; }) ? 10 : 0;
-        if (height[n] + crowd < best) { best = height[n] + crowd; next = n; }
-      }
-      if (next < 0) { run.length = 0; break; }
-      cur = next;
-      if (relief[cur] === 'river') { done = true; break; }
+    return top;
+  };
+  const ground = (i: number) => height[i] + (i % 7) * 0.0005 + rng.next() * 0.01;
+  for (const i of squares) {
+    const x = i % width;
+    const y = (i - x) / width;
+    if (ORTHO.some(([dx, dy]) => { const m = at(x + dx, y + dy); return m !== null && !land[m]; })) {
+      seen[i] = true;
+      level[i] = ground(i);
+      push(i);
     }
-    if (!done && toSea[cur] === 1 && !isCity.has(cur)) run.push(cur);
-    for (const i of run) if (relief[i] !== 'mountain') relief[i] = 'river';
   }
+  const order: number[] = []; // squares from the coast inland
+  while (frontier.length > 0) {
+    const i = pop();
+    order.push(i);
+    const x = i % width;
+    const y = (i - x) / width;
+    for (const [dx, dy] of ORTHO) {
+      const m = at(x + dx, y + dy);
+      if (m === null || !land[m] || isCity.has(m) || seen[m]) continue;
+      seen[m] = true;
+      parent[m] = i;
+      level[m] = Math.max(ground(m), level[i]);
+      push(m);
+    }
+  }
+  const catchment = new Array<number>(n).fill(0);
+  for (const i of order) catchment[i] = 1;
+  for (let k = order.length - 1; k >= 0; k--) {
+    const i = order[k];
+    if (parent[i] >= 0) catchment[parent[i]] += catchment[i];
+  }
+  // The biggest catchments are rivers: as many squares as the share allows, but never a catchment smaller than a few squares.
+  const ranked = order.filter((i) => catchment[i] >= MIN_CATCHMENT && relief[i] !== 'mountain').sort((a, b) => catchment[b] - catchment[a] || a - b);
+  const cap = Math.max(4, Math.round(squares.length * RIVER_SHARE));
+  const chosen = new Set(ranked.slice(0, cap));
+  // A river of one or two squares is a stub, not a river: drop it.
+  const rootOf = (i: number): number => { let r = i; while (parent[r] >= 0 && chosen.has(parent[r])) r = parent[r]; return r; };
+  const length = new Map<number, number>();
+  for (const i of chosen) length.set(rootOf(i), (length.get(rootOf(i)) ?? 0) + 1);
+  for (const i of chosen) if ((length.get(rootOf(i)) ?? 0) >= MIN_RIVER_LENGTH) relief[i] = 'river';
   return relief;
 }
