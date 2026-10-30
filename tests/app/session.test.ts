@@ -304,3 +304,23 @@ describe('cargo seen after a transport with orders leaves a city', () => {
     expect([cargo[0].x, cargo[0].y]).toEqual([tr.x, tr.y]);
   });
 });
+
+describe('computer player aircraft left on a shared square', () => {
+  it('moves the aircraft to a free square instead of resigning the player', () => {
+    const s = GameSession.create({ world: { ...world, players: 2 }, seed: 5, seats: [human('Ann'), idle('Bot')] }, null);
+    const st = s.state;
+    const sq = { x: 0, y: 0 };
+    const spot = st.terrain.findIndex((t, i) => t === 'land' && !st.cities.some((c) => c.x === i % st.width && c.y === Math.floor(i / st.width)));
+    sq.x = spot % st.width;
+    sq.y = Math.floor(spot / st.width);
+    addUnit(st, 'army', 1, sq.x, sq.y);
+    const bomber = addUnit(st, 'bomber', 1, sq.x, sq.y);
+    bomber.movesLeft = 1;
+    st.currentPlayer = 1;
+    (s as unknown as { clearStuckAircraft(p: number): void }).clearStuckAircraft(1);
+    expect(s.state.units.find((u) => u.id === bomber.id)).toBeDefined();
+    const moved = s.state.units.find((u) => u.id === bomber.id)!;
+    expect(s.state.units.filter((u) => u.carriedBy === null && u.x === moved.x && u.y === moved.y)).toHaveLength(1);
+    expect(s.state.players[1].eliminated).toBe(false);
+  });
+});
