@@ -7,8 +7,8 @@ function unit(type: UnitType, damage = 0): Unit {
 }
 
 describe('unit stats', () => {
-  it('defines all eleven unit types', () => {
-    expect(UNIT_TYPES).toHaveLength(11);
+  it('defines all twelve unit types', () => {
+    expect(UNIT_TYPES).toHaveLength(12);
     for (const t of UNIT_TYPES) expect(UNIT_STATS[t]).toBeDefined();
   });
 

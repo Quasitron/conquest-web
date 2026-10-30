@@ -20,6 +20,8 @@ import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId
 import { Reports, type ReportTab } from './Reports';
 import { battlesAgainstMe, newEliminations, recentSightings } from './reportLines';
 import { EliminationNotice } from './EliminationNotice';
+import { NewsNotice } from './NewsNotice';
+import { spyHeadlines, type NewsItem } from './spyNews';
 import { unitsHeadingLeft } from './unitIcons';
 import { builtThisTurn, nextReadyAfter, readyUnits, reportQueue, type ProductionReportItem } from './cycle';
 import { describeEvent } from './describe';
@@ -138,6 +140,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const [reportTab, setReportTab] = useState<ReportTab | null>(null);
   // Players knocked out since your last turn, announced once at the start of the turn.
   const [eliminated, setEliminated] = useState<number[]>([]);
+  // Front pages about spies (sabotage, a spy found, a revolt), shown one after another once nothing else is open.
+  const [news, setNews] = useState<NewsItem[]>([]);
   // A square flashing on the map after a report line's Show button.
   const [flash, setFlash] = useState<Pos | null>(null);
   const flashTimer = useRef<number | undefined>(undefined);
@@ -240,6 +244,10 @@ export function GameScreen({ session, onQuit }: Props) {
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
   const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen || replay !== null;
+  // The next spy story shows once nothing else is open, with the newspaper sound.
+  const newsShown = news.length > 0 && eliminated.length === 0 && !dialogOpen;
+  const newsKey = newsShown ? `:` : '';
+  useEffect(() => { if (newsKey) play('news'); }, [newsKey]);
   // A dialog error belongs to one dialog: clear it whenever a dialog opens, changes or closes.
   const dialogKey = `${openCityObj?.id ?? ''}:${report?.unitId ?? ''}`;
   useEffect(() => setDialogError(null), [dialogKey]);
@@ -419,6 +427,8 @@ export function GameScreen({ session, onQuit }: Props) {
         // They are shown (camera, flash, alert sound) as the turn begins, before the replay and any production report.
         if (fresh.length > 0) pendingSights.current = fresh.map((e) => ({ x: e.x, y: e.y }));
       }
+      const stories = spyHeadlines(log.slice(seen.count).map((l) => l.event), view.me, lookup.city);
+      if (stories.length > 0) setNews((q) => [...q, ...stories]);
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
     }
@@ -883,6 +893,11 @@ export function GameScreen({ session, onQuit }: Props) {
       case 'airbase':
         if (window.confirm('Turn this unit into an Airbase? It cannot move again or change back.')) order(u, { type: 'buildAirbase', unitId: u.id });
         return;
+      case 'sabotage': return order(u, { type: 'sabotage', unitId: u.id });
+      case 'hurt': return order(u, { type: 'hurtGarrison', unitId: u.id });
+      case 'incite':
+        if (window.confirm('Try to incite a revolt? It succeeds only about one time in four, and a failed attempt costs you the spy.')) order(u, { type: 'incite', unitId: u.id });
+        return;
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':
         if (window.confirm('Disband this unit?')) order(u, { type: 'disband', unitId: u.id });
@@ -1326,6 +1341,9 @@ export function GameScreen({ session, onQuit }: Props) {
           view={view} colors={colors} tab={reportTab} battles={battles} sightings={sightings} onShow={(p) => { if (session.phase === 'over') setRevealed(true); showAt(p); }}
           onClose={() => setReportTab(null)}
         />
+      )}
+      {newsShown && (
+        <NewsNotice key={news[0].headline + news.length} item={news[0]} turn={view.turn} more={news.length - 1} onOk={() => setNews((q) => q.slice(1))} />
       )}
       {eliminated.length > 0 && <EliminationNotice view={view} colors={colors} ids={eliminated} onOk={() => setEliminated([])} />}
       {soundOpen && <SettingsDialog onClose={() => setSoundOpen(false)} />}

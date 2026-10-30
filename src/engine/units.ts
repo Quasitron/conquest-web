@@ -28,7 +28,7 @@ export interface UnitStats {
 }
 
 export const UNIT_TYPES: readonly UnitType[] = [
-  'army', 'armor', 'fighter', 'bomber', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier', 'airbase',
+  'army', 'armor', 'fighter', 'bomber', 'transport', 'destroyer', 'submarine', 'cruiser', 'battleship', 'carrier', 'airbase', 'spy',
 ];
 
 const base = { range: null, carries: [] as readonly UnitType[], capacity: 0, slots: 1, advanced: false, producible: true, capacityLossPerDamage: 0, bombard: false, seesSubs: false, promotes: false };
@@ -38,7 +38,7 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   armor:      { ...base, advanced: true, promotes: true, slots: 2, name: 'Armor', domain: 'land', move: 2, hits: 2,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10 },
   fighter:    { ...base, name: 'Fighter',    domain: 'air',  move: 5, hits: 1,  attack: 2, defense: 2, shot: 1, build: 12, buildRepeat: 10, range: 20 },
   bomber:     { ...base, advanced: true, name: 'Bomber', domain: 'air', move: 4, hits: 1, attack: 2, defense: 2, shot: 2, build: 12, buildRepeat: 10, range: 24 },
-  transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: ['army', 'armor'], capacity: 6, capacityLossPerDamage: 2 },
+  transport:  { ...base, promotes: true, name: 'Transport',  domain: 'sea',  move: 2, hits: 3,  attack: 1, defense: 1, shot: 1, build: 30, buildRepeat: 25, carries: ['army', 'armor', 'spy'], capacity: 6, capacityLossPerDamage: 2 },
   destroyer:  { ...base, promotes: true, name: 'Destroyer',  domain: 'sea',  move: 3, hits: 3,  attack: 2, defense: 2, shot: 1, build: 24, buildRepeat: 20, seesSubs: true },
   submarine:  { ...base, promotes: true, name: 'Submarine',  domain: 'sea',  move: 2, hits: 2,  attack: 2, defense: 1, shot: 3, build: 24, buildRepeat: 20, seesSubs: true },
   cruiser:    { ...base, promotes: true, name: 'Cruiser',    domain: 'sea',  move: 2, hits: 8,  attack: 2, defense: 2, shot: 2, build: 42, buildRepeat: 35, bombard: true, seesSubs: true },
@@ -46,6 +46,8 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   carrier:    { ...base, promotes: true, name: 'Carrier',    domain: 'sea',  move: 2, hits: 8,  attack: 1, defense: 2, shot: 1, build: 48, buildRepeat: 40, carries: ['fighter'], capacity: 8, capacityLossPerDamage: 1 },
   /** Made from an Army or Armor on open land; never moves or attacks, and holds up to eight aircraft of either kind. */
   airbase:    { ...base, advanced: true, producible: false, name: 'Airbase', domain: 'land', move: 0, hits: 1, attack: 0, defense: 2, shot: 1, build: 0, buildRepeat: 0, carries: ['fighter', 'bomber'], capacity: 8 },
+  /** Slips into enemy cities unseen to read and sabotage their production; no defence at all. Visible to the enemy only when uncovered (see fog.ts). */
+  spy:        { ...base, advanced: true, promotes: true, name: 'Spy', domain: 'land', move: 1, hits: 1, attack: 0, defense: 0, shot: 1, build: 14, buildRepeat: 12 },
 };
 
 /** Cities defend like an army and never attack. */
@@ -135,6 +137,7 @@ export function attackBlockedReason(
 ): string | null {
   const a = UNIT_STATS[att];
   const d = UNIT_STATS[def];
+  if (att === 'spy') return 'a spy cannot attack';
   if ((att === 'submarine' && d.domain === 'land') || (a.domain === 'land' && def === 'submarine')) {
     return 'submarines and land units cannot attack each other';
   }

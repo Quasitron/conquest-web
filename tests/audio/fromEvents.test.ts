@@ -69,6 +69,11 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([strike], 1)).toEqual(['shot', 'explosion']);
   });
 
+  it('a sabotaged city explodes', () => {
+    const sabotaged: GameEvent = { type: 'citySabotaged', cityId: 1, by: 1, owner: 0, caught: false };
+    expect(soundsForEvents([sabotaged], 0)).toEqual(['explosion']);
+  });
+
   it('a bombed city explodes, even when only its production was lost', () => {
     const bombed: GameEvent = { type: 'cityBombed', cityId: 1, by: 1, owner: 0, effect: 'production' };
     expect(soundsForEvents([combat, bombed], 1)).toEqual(['shot', 'explosion']);

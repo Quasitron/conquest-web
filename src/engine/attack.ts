@@ -10,7 +10,7 @@ import { canPlayerSeeUnit, reveal } from './fog';
 import { WAR_TORN_MAX } from './production';
 
 /** Promotions rule: a sea unit that wins a fight gains a win; a new rank heals one hit and is announced. */
-function recordWin(s: GameState, u: Unit, events: GameEvent[]): void {
+export function recordWin(s: GameState, u: Unit, events: GameEvent[]): void {
   if (!s.rules.promotions || !UNIT_STATS[u.type].promotes) return;
   const before = rankOf(u.wins);
   u.wins = (u.wins ?? 0) + 1;
