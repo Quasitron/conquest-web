@@ -1,7 +1,7 @@
 import {
   apply, createGame, eventsFor, getPlayerView,
-  RULES_VERSION, unitDisplayName,
-  type Command, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView, type UnitType,
+  RULES_VERSION, UNIT_STATS, unitDisplayName,
+  type Command, type Dir, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView, type UnitType,
 } from '../engine';
 import { playAiTurn } from '../ai/play';
 import { generateWorld, type WorldOptions } from '../mapgen';
@@ -185,6 +185,7 @@ export class GameSession {
       const pid = this.state.currentPlayer;
       if (this.seats[pid].kind === 'ai') this.runAi(pid);
       if (this.state.over) break;
+      this.clearStuckAircraft(pid);
       const r = this.applyCommand({ type: 'endTurn', player: pid });
       if (typeof r === 'string') this.applyCommand({ type: 'resign', player: pid });
       if (++guard > IDLE_GUARD) throw new Error('idle players did not finish');
@@ -205,6 +206,33 @@ export class GameSession {
   }
 
   /** Lets the computer player `pid` make all its moves for the turn (the caller then ends the turn). */
+  /**
+   * A computer player's aircraft may be left sharing a square outside a city (say a Bomber on its way to an Airbase), which
+   * the engine will not let a turn end on. Moves such a unit to a free neighbouring square, so the player does not have to
+   * resign for it.
+   */
+  private clearStuckAircraft(pid: PlayerId): void {
+    for (let guard = 0; guard < 16; guard++) {
+      const s = this.state;
+      const stuck = s.units.find((u) =>
+        u.owner === pid && UNIT_STATS[u.type].domain === 'air' && u.carriedBy === null
+        && !s.cities.some((c) => c.x === u.x && c.y === u.y)
+        && s.units.some((o) => o !== u && o.carriedBy === null && o.x === u.x && o.y === u.y));
+      if (!stuck) return;
+      let best: { dir: Dir; free: boolean } | null = null;
+      for (const dir of [0, 1, 2, 3, 4, 5, 6, 7] as const) {
+        const r = apply(s, { type: 'move', unitId: stuck.id, dir, player: pid });
+        if (!r.ok) continue;
+        const moved = r.state.units.find((u) => u.id === stuck.id);
+        const free = !!moved && (r.state.cities.some((c) => c.x === moved.x && c.y === moved.y)
+          || !r.state.units.some((o) => o !== moved && o.carriedBy === null && o.x === moved.x && o.y === moved.y));
+        if (!best || (free && !best.free)) best = { dir, free };
+        if (free) break;
+      }
+      if (!best || typeof this.applyCommand({ type: 'move', unitId: stuck.id, dir: best.dir, player: pid } as Command) === 'string') return;
+    }
+  }
+
   private runAi(pid: PlayerId): void {
     try {
       playAiTurn({
