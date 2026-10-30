@@ -125,6 +125,10 @@ export function generateRelief(
   const ranked = order.filter((i) => catchment[i] >= MIN_CATCHMENT && relief[i] !== 'mountain').sort((a, b) => catchment[b] - catchment[a] || a - b);
   const cap = Math.max(4, Math.round(squares.length * RIVER_SHARE));
   const chosen = new Set(ranked.slice(0, cap));
+  // A one-square side branch hanging off a junction is clutter, not a tributary: drop it.
+  const kids = new Map<number, number>();
+  for (const i of chosen) if (parent[i] >= 0 && chosen.has(parent[i])) kids.set(parent[i], (kids.get(parent[i]) ?? 0) + 1);
+  for (const i of [...chosen]) if (!kids.has(i) && parent[i] >= 0 && (kids.get(parent[i]) ?? 0) >= 2) chosen.delete(i);
   // A river of one or two squares is a stub, not a river: drop it.
   const rootOf = (i: number): number => { let r = i; while (parent[r] >= 0 && chosen.has(parent[r])) r = parent[r]; return r; };
   const length = new Map<number, number>();

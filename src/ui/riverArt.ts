@@ -103,58 +103,68 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   }
 
   const unit = (dx: number, dy: number): Pt => { const l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; };
+  const keyOfSq = (s: Square) => keyOf(s.rawX, s.y);
+  const nextOf = (s: Square): Square | null => (typeof s.to === 'object' && s.to !== null ? squares.get(keyOf(s.to.rawX, s.to.y)) ?? null : null);
+  /** The width at a river square's point: a spring is a thread, and a river widens as the streams join it. */
+  const widthOf = (s: Square) => riverWidth(s.flow) * t * (feeder.has(keyOfSq(s)) ? 1 : 0.55);
+  /** A one-square side branch that joins a stream fed more strongly by another: it only clutters the junction, so it is left out. */
+  const isSpur = (s: Square): boolean => {
+    if (feeder.has(keyOfSq(s)) || typeof s.to !== 'object' || s.to === null) return false;
+    const f = feeder.get(keyOf(s.to.rawX, s.to.y));
+    return !!f && f !== s;
+  };
+  /** Where a river ends: the shore (the edge of the sea or lake square it flows into), the point of the next river square, or the edge of unexplored ground. */
+  const endOf = (s: Square): Pt => {
+    if (s.to === 'sea') {
+      const [dx, dy] = s.seaDir!;
+      return { x: (s.rawX - cam.x + 0.5 + dx * 0.5) * t, y: (s.y - cam.y + 0.5 + dy * 0.5) * t };
+    }
+    const to = s.to as { rawX: number; y: number };
+    const known = flowAt(to.rawX, to.y);
+    if (known && known > 0) return nodeAt(to.rawX, to.y);
+    return { x: (s.rawX - cam.x + 0.5 + (to.rawX - s.rawX) * 0.5) * t, y: (s.y - cam.y + 0.5 + (to.y - s.y) * 0.5) * t };
+  };
+  /**
+   * The heading of the main stream through a river square: from the square that feeds it to the one it feeds, so the
+   * line flows smoothly round a corner of the grid instead of turning at a right angle. Each reach starts with the
+   * heading of its own square and ends with that of the square it flows into, so reaches join without a kink.
+   */
+  const headingAt = (s: Square): Pt => {
+    const p = nodeAt(s.rawX, s.y);
+    const f = feeder.get(keyOfSq(s));
+    const from = f ? nodeAt(f.rawX, f.y) : p;
+    const nx = nextOf(s);
+    const to = s.to === 'sea' ? endOf(s) : nx ? nodeAt(nx.rawX, nx.y) : s.to === null ? p : endOf(s);
+    if (s.to === 'sea') return unit(...(((): [number, number] => [s.seaDir![0], s.seaDir![1]])()));
+    return unit(to.x - from.x, to.y - from.y);
+  };
+
   const reaches: Reach[] = [];
   const nodes: { p: Pt; half: number }[] = [];
+  const mouths: { p: Pt; dir: readonly [number, number]; half: number }[] = [];
   for (const s of squares.values()) {
-    if (s.to === null) continue;
+    if (s.to === null || isSpur(s)) continue;
     const a = nodeAt(s.rawX, s.y);
-    const up = feeder.get(keyOf(s.rawX, s.y));
-    // A spring is a thread that widens into a stream.
-    const wa = riverWidth(s.flow) * t * (up ? 1 : 0.55);
-    let b: Pt;
-    let wb: number;
-    let mouth = false;
-    if (s.to === 'sea') {
-      // The river runs on past the shore into the sea and opens out there.
-      const [dx, dy] = s.seaDir!;
-      const edge = { x: (s.rawX - cam.x + 0.5 + dx * 0.5) * t, y: (s.y - cam.y + 0.5 + dy * 0.5) * t };
-      b = { x: edge.x + dx * 0.3 * t, y: edge.y + dy * 0.3 * t };
-      wb = wa * 1.7;
-      mouth = true;
-    } else {
-      const known = flowAt(s.to.rawX, s.to.y);
-      if (known && known > 0) {
-        b = nodeAt(s.to.rawX, s.to.y);
-        wb = wa + (riverWidth(known) * t - wa) * 0.6;
-      } else {
-        // The next square is not explored yet: stop at the edge between them.
-        b = { x: (s.rawX - cam.x + 0.5 + (s.to.rawX - s.rawX) * 0.5) * t, y: (s.y - cam.y + 0.5 + (s.to.y - s.y) * 0.5) * t };
-        wb = wa;
-      }
-    }
-    // Directions at the two ends: the stream's own, so a river flows smoothly through a square and a tributary
-    // arrives at an angle to the main stream.
-    const own = unit(b.x - a.x, b.y - a.y);
-    const upNode = up ? nodeAt(up.rawX, up.y) : null;
-    const taRaw = upNode ? unit(b.x - upNode.x, b.y - upNode.y) : own;
-    const ta = taRaw.x * own.x + taRaw.y * own.y < 0.3 ? own : taRaw;
-    let tb = own;
-    if (!mouth && typeof s.to === 'object') {
-      const next = squares.get(keyOf(s.to.rawX, s.to.y));
-      const nextTo = next && typeof next.to === 'object' && next.to !== null ? nodeAt(next.to.rawX, next.to.y) : null;
-      if (nextTo) {
-        const mainDir = unit(nextTo.x - a.x, nextTo.y - a.y);
-        const joinsMain = !feeder.get(keyOf(s.to.rawX, s.to.y)) || feeder.get(keyOf(s.to.rawX, s.to.y)) === s;
-        const turn = mainDir.x * own.x + mainDir.y * own.y; // a sharp turn at the next square keeps the stream's own heading, or the curve would loop
-        tb = turn < 0.3 ? own : joinsMain ? mainDir : unit(own.x + mainDir.x * 0.5, own.y + mainDir.y * 0.5);
-      }
-    }
+    const b = endOf(s);
+    const wa = widthOf(s);
+    const target = nextOf(s);
+    const mouth = s.to === 'sea';
+    let wb = wa;
+    if (mouth) wb = wa * 1.3; // opens out a little where it meets the sea
+    else if (target && feeder.get(keyOfSq(target)) === s) wb = widthOf(target); // the main stream: the same width on both sides of the point
+    const ta = headingAt(s);
+    let tb: Pt;
+    if (mouth) tb = unit(s.seaDir![0], s.seaDir![1]); // enters the shore straight on
+    else if (target && feeder.get(keyOfSq(target)) === s) tb = headingAt(target);
+    else if (target && target.to !== null) {
+      // A tributary arrives bending toward the main stream's direction.
+      const after = target.to === 'sea' ? endOf(target) : endOf(target);
+      tb = unit(after.x - a.x, after.y - a.y);
+    } else tb = unit(b.x - a.x, b.y - a.y);
     const len = Math.hypot(b.x - a.x, b.y - a.y);
-    // A bend of its own, to one side or the other, so the line is not a string of straight steps.
-    const bend = (hash2(mod(s.rawX, W), s.y, 13) - 0.5) * 0.5 * len;
+    // A bend of its own, to one side or the other, so the line is not a string of straight steps (zero slope at the ends, so reaches join smoothly).
+    const bend = (hash2(mod(s.rawX, W), s.y, 13) - 0.5) * 0.4 * len;
     const pts: Pt[] = [];
-    const normals: Pt[] = [];
-    const half: number[] = [];
     for (let k = 0; k <= SAMPLES; k++) {
       const u = k / SAMPLES;
       const h00 = 2 * u ** 3 - 3 * u ** 2 + 1;
@@ -166,17 +176,20 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
       const dx = (6 * u ** 2 - 6 * u) * a.x + (3 * u ** 2 - 4 * u + 1) * ta.x * len * TENSION + (-6 * u ** 2 + 6 * u) * b.x + (3 * u ** 2 - 2 * u) * tb.x * len * TENSION;
       const dy = (6 * u ** 2 - 6 * u) * a.y + (3 * u ** 2 - 4 * u + 1) * ta.y * len * TENSION + (-6 * u ** 2 + 6 * u) * b.y + (3 * u ** 2 - 2 * u) * tb.y * len * TENSION;
       const dir = unit(dx, dy);
-      const n = { x: -dir.y, y: dir.x };
-      const swing = Math.sin(Math.PI * u) * bend;
-      pts.push({ x: x + n.x * swing, y: y + n.y * swing });
-      normals.push(n);
-      half.push((wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2);
+      const swing = Math.sin(Math.PI * u) ** 2 * bend;
+      pts.push({ x: x - dir.y * swing, y: y + dir.x * swing });
     }
+    // The sides of the band stand square to the line: from the stream's own heading at the two ends (the same as the
+    // next reach's, so the joint is clean), and from the neighbouring points in between.
+    const normals = pts.map((_, k) => {
+      const d = k === 0 ? ta : k === SAMPLES ? tb : unit(pts[k + 1].x - pts[k - 1].x, pts[k + 1].y - pts[k - 1].y);
+      return { x: -d.y, y: d.x };
+    });
+    const half = pts.map((_, k) => { const u = k / SAMPLES; return (wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2; });
     reaches.push({ pts, normals, half });
-    if (!up) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
-    if (mouth) nodes.push({ p: b, half: wb / 2 }); // and the open end of a mouth
-  }
-  if (reaches.length === 0) return;
+    if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
+    if (mouth) mouths.push({ p: b, dir: s.seaDir!, half: wb / 2 });
+  }  if (reaches.length === 0) return;
 
   let pattern: CanvasPattern | null = null;
   if (water) {
@@ -208,5 +221,25 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     }
     ctx.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
     ctx.fill(path, 'nonzero');
+  }
+  // Where a river meets the sea or a lake it ends at the shore and melts into the shallows: a soft light-blue glow.
+  for (const m of mouths) {
+    const cx = m.p.x + m.dir[0] * 0.1 * t;
+    const cy = m.p.y + m.dir[1] * 0.1 * t;
+    const r = Math.max(4, m.half * 2.6 + 0.1 * t);
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    glow.addColorStop(0, 'rgba(120, 186, 200, 0.55)');
+    glow.addColorStop(0.55, 'rgba(120, 186, 200, 0.22)');
+    glow.addColorStop(1, 'rgba(120, 186, 200, 0)');
+    // Only the water side of the shore gets it, so the bank on land stays clean.
+    const pad = 0.04 * t;
+    ctx.save();
+    ctx.beginPath();
+    if (m.dir[0] !== 0) ctx.rect(m.dir[0] > 0 ? m.p.x - pad : m.p.x + pad - r * 2, cy - r, r * 2, r * 2);
+    else ctx.rect(cx - r, m.dir[1] > 0 ? m.p.y - pad : m.p.y + pad - r * 2, r * 2, r * 2);
+    ctx.clip();
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
   }
 }
