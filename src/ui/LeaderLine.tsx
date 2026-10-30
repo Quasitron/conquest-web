@@ -24,13 +24,15 @@ interface Props {
   wide?: boolean;
   /** A newspaper front page: the dialog is the picture, and its children are laid out on it (see .dialog-paper). */
   paper?: boolean;
+  /** A different picture on the page: the spy news has its own (see .dialog-paper-spy). */
+  paperClass?: string;
 }
 
 /**
  * A dialog that sits beside the city (or centered), joined to it by a leader line.
  * It listens for keys in the capture phase, so the map's own keys never see them.
  */
-export function PlacedDialog({ anchor, label, onKey, children, wide, paper }: Props) {
+export function PlacedDialog({ anchor, label, onKey, children, wide, paper, paperClass }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 380, h: 440 });
   const [, setResized] = useState(0);
@@ -86,7 +88,7 @@ export function PlacedDialog({ anchor, label, onKey, children, wide, paper }: Pr
   return (
     <>
       {edge && <LeaderLine from={edge} to={anchor} />}
-      <div ref={ref} class={paper ? 'card dialog dialog-paper' : wide ? 'card dialog dialog-wide' : 'card dialog'} role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+      <div ref={ref} class={paper ? (paperClass ? `card dialog dialog-paper ${paperClass}` : 'card dialog dialog-paper') : wide ? 'card dialog dialog-wide' : 'card dialog'} role="dialog" aria-label={label} tabIndex={-1} style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         {children}
       </div>

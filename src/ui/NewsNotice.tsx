@@ -8,7 +8,7 @@ export function NewsNotice({ item, turn, more, onOk }: { item: NewsItem; turn: n
   const headlineSize = Math.min(9.5, 88 / (item.headline.length * 0.74));
   return (
     <PlacedDialog
-      anchor={null} label="News" paper
+      anchor={null} label="News" paper paperClass="dialog-paper-spy"
       onKey={(e) => {
         if (e.key !== 'Escape' && e.key !== 'Enter' && e.key !== ' ') return false;
         onOk();
