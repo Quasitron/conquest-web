@@ -6,7 +6,8 @@ import { moveUnit } from './movement';
 import { terrainAt } from './map';
 import { setProduction } from './production';
 import { endTurn, resign } from './turn';
-import { updateFog } from './fog';
+import { catchSpies, updateFog } from './fog';
+import { incitePeople, sabotageCity } from './spy';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders, runEscorts } from './orders';
 import { cleanName } from './names';
@@ -68,6 +69,20 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
         u.blockedTurns = 0;
         events.push({ type: 'airbaseBuilt', unitId: u.id, owner: u.owner, x: u.x, y: u.y });
       }
+      break;
+    }
+    case 'sabotage': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else error = sabotageCity(s, rng, u, events);
+      break;
+    }
+    case 'incite': {
+      const u = unitById(s, cmd.unitId);
+      if (!u) error = 'no such unit';
+      else if (u.owner !== actor) error = 'not your unit';
+      else error = incitePeople(s, rng, u, events);
       break;
     }
     case 'setOrders': {
@@ -170,8 +185,9 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
   // Escorts follow their transports (a move, a Go-to or an unload may have moved one).
   if (!error && cmd.type !== 'endTurn' && cmd.type !== 'resign') runEscorts(s, rng, actor, events);
   if (error) return { ok: false, error };
+  catchSpies(s, events);
   s.rngState = rng.state;
-  const fogCommands = ['buildAirbase', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
+  const fogCommands = ['buildAirbase', 'sabotage', 'incite', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
   if (fogCommands.includes(cmd.type)) updateFog(s, actor);
   return { ok: true, state: s, events };
 }

@@ -883,6 +883,10 @@ export function GameScreen({ session, onQuit }: Props) {
       case 'airbase':
         if (window.confirm('Turn this unit into an Airbase? It cannot move again or change back.')) order(u, { type: 'buildAirbase', unitId: u.id });
         return;
+      case 'sabotage': return order(u, { type: 'sabotage', unitId: u.id });
+      case 'incite':
+        if (window.confirm('Try to incite a revolt? It succeeds only about one time in four, and a failed attempt costs you the spy.')) order(u, { type: 'incite', unitId: u.id });
+        return;
       case 'goHome': return order(u, { type: 'goHome', unitId: u.id });
       case 'disband':
         if (window.confirm('Disband this unit?')) order(u, { type: 'disband', unitId: u.id });

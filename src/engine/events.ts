@@ -50,6 +50,10 @@ export function eventsFor(s: GameState, events: readonly GameEvent[], pid: Playe
       case 'airbaseBuilt':
         if (mine(e.owner) || seen(e.x, e.y)) out.push(e);
         break;
+      case 'citySabotaged':
+      case 'cityIncited':
+        if (mine(e.by) || mine(e.owner)) out.push(e);
+        break;
       case 'cityBombed': {
         const c = s.cities.find((x) => x.id === e.cityId);
         if (mine(e.by) || mine(e.owner) || (c !== undefined && seen(c.x, c.y))) out.push(e);

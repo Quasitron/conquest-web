@@ -77,6 +77,14 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   const st = UNIT_STATS[u.type];
 
   const city = cityAt(s, to.x, to.y);
+  if (u.type === 'spy' && city && !areFriendly(s, city.owner, u.owner)) {
+    // A spy slips into an enemy city without a fight, and unseen.
+    if (city.owner === null) return 'a spy has no business in a neutral city';
+    spendMove(u);
+    u.carriedBy = null;
+    relocate(s, u, to, events);
+    return null;
+  }
   if (city && !areFriendly(s, city.owner, u.owner)) {
     if (st.domain === 'sea' && st.bombard && s.rules.cityStrength && city.owner !== null) return bombardCity(s, rng, u, city, events);
     if (st.domain === 'air' && u.type === 'bomber' && s.rules.advancedUnits) return bombCity(s, rng, u, city, events);
@@ -84,6 +92,8 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
     return attackCity(s, rng, u, city, events);
   }
 
+  // An enemy spy hiding in a city is found out when a unit moves in.
+  if (city) for (const spy of topLevelUnitsAt(s, to.x, to.y).filter((o) => o.type === 'spy' && !areFriendly(s, o.owner, u.owner))) destroyUnit(s, spy, 'caught', events, u.owner);
   const occupants = topLevelUnitsAt(s, to.x, to.y);
   const enemy = occupants.find((o) => !areFriendly(s, o.owner, u.owner));
   if (enemy) return attackUnit(s, rng, u, enemy, events);

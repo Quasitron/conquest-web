@@ -36,7 +36,10 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     const foe = v.enemies.find((e) => e.visibleNow && e.x === p.x && e.y === p.y);
     const enemyHere = foe !== undefined;
     if (city && !ownCity) {
-      if (domain === 'land') out.push({ ...p, dir: d as Dir, attack: true });
+      // A spy slips into a player's city without a fight (a neutral city is no use to it).
+      if (u.type === 'spy') {
+        if (city.owner !== null) out.push({ ...p, dir: d as Dir, attack: false });
+      } else if (domain === 'land') out.push({ ...p, dir: d as Dir, attack: true });
       // A Bomber can bomb a player's city (not a neutral one); it never takes it.
       else if (u.type === 'bomber' && v.rules.advancedUnits && city.owner !== null) out.push({ ...p, dir: d as Dir, attack: true });
       // With city strength on, a bombarding ship can fire on a player's city (not a neutral one) until it is nearly spent.

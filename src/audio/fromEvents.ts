@@ -30,6 +30,8 @@ function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
       if (e.reason === 'crashed') return ['crash'];
       return [];
     case 'cityBombed': return ['explosion'];
+    case 'citySabotaged': return ['explosion']; // production wrecked
+
     case 'cityCaptured':
       if (e.by === me) return ['capture'];
       if (e.from === me) return ['lost'];

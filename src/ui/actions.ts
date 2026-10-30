@@ -1,4 +1,4 @@
-import { UNIT_STATS, canBecomeAirbase, canCarry, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
+import { UNIT_STATS, canBecomeAirbase, canCarry, rankOf, unitDisplayName, type Orders, type PlayerView, type Unit } from '../engine';
 import type { ActionId } from './keys';
 
 const inOwnCity = (v: PlayerView, u: Pick<Unit, 'x' | 'y'>) => v.myCities.some((c) => c.x === u.x && c.y === u.y);
@@ -18,7 +18,7 @@ export function escortable(view: PlayerView, u: Unit): Unit[] {
 }
 
 export const UNIT_BUTTONS: ActionId[] = [
-  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+  'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'sabotage', 'incite', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
@@ -27,6 +27,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
   const inCity = inOwnCity(view, u);
   const hasCargo = view.myUnits.some((c) => c.carriedBy === u.id);
   const fixed = u.type === 'airbase'; // an Airbase never moves
+  // A spy inside an enemy city (not a neutral one) can sabotage it, and an Elite one can try to turn it.
+  const inEnemyCity = u.type === 'spy' && u.carriedBy === null && u.movesLeft > 0 && view.knownCities.some((c) => c.x === u.x && c.y === u.y && c.owner !== null && c.owner !== view.me);
   return {
     next: true,
     skip: !fixed,
@@ -48,6 +50,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     // An Army or Armor on open land can turn itself into an Airbase (Advanced units rule); it is for good.
     airbase: view.rules.advancedUnits && canBecomeAirbase(u.type) && u.carriedBy === null && !inCity
       && view.terrain[u.y * view.width + u.x] === 'land',
+    sabotage: view.rules.advancedUnits && inEnemyCity,
+    incite: view.rules.advancedUnits && inEnemyCity && rankOf(u.wins) === 3,
     clearOrders: u.orders !== null,
     // Damaged: in a city of ours it sits there until repaired, elsewhere it first goes to the nearest suitable city.
     repair: !fixed && u.damage > 0 && u.carriedBy === null && u.orders?.kind !== 'repair' && (inCity || view.myCities.length > 0),

@@ -25,5 +25,5 @@ export const TERRAIN_COLORS = {
 
 export const UNIT_GLYPH: Record<UnitType, string> = {
   army: 'A', armor: 'M', fighter: 'F', bomber: 'R', transport: 'T', destroyer: 'D',
-  submarine: 'S', cruiser: 'C', battleship: 'B', carrier: 'K', airbase: 'H',
+  submarine: 'S', cruiser: 'C', battleship: 'B', carrier: 'K', airbase: 'H', spy: 'Y',
 };

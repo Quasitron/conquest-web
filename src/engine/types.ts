@@ -2,7 +2,7 @@ import type { HouseRules } from './rules';
 
 export type UnitType =
   | 'army' | 'armor' | 'fighter' | 'bomber' | 'transport' | 'destroyer'
-  | 'submarine' | 'cruiser' | 'battleship' | 'carrier' | 'airbase';
+  | 'submarine' | 'cruiser' | 'battleship' | 'carrier' | 'airbase' | 'spy';
 export type Domain = 'land' | 'sea' | 'air';
 export type Terrain = 'water' | 'land' | 'city';
 /**
@@ -172,6 +172,10 @@ export type Command =
   | { type: 'setRoute'; player: PlayerId; cityId: number; route: Omit<CityRoute, 'by'> | null }
   /** Turns an Army or Armor into an Airbase where it stands (Advanced units rule); it cannot change back. */
   | { type: 'buildAirbase'; player: PlayerId; unitId: number }
+  /** A Spy inside an enemy city wrecks its production (Advanced units rule); it may be caught doing it. */
+  | { type: 'sabotage'; player: PlayerId; unitId: number }
+  /** An Elite spy inside an enemy city tries to turn it against its owner (modest chance; a failed try costs the spy). */
+  | { type: 'incite'; player: PlayerId; unitId: number }
   | { type: 'renameCity'; player: PlayerId; cityId: number; name: string }
   | { type: 'renameUnit'; player: PlayerId; unitId: number; name: string | null }
   | { type: 'endTurn'; player: PlayerId }
@@ -179,7 +183,7 @@ export type Command =
 
 export type DestroyReason =
   | 'combat' | 'cargoLost' | 'crashed' | 'cityCaptured'
-  | 'garrison' | 'disbanded' | 'resigned';
+  | 'garrison' | 'disbanded' | 'resigned' | 'caught';
 
 export type CombatDefender =
   | { kind: 'unit'; unitId: number; owner: PlayerId; unitType: UnitType }
@@ -213,6 +217,10 @@ export type GameEvent =
   | { type: 'airbaseBuilt'; unitId: number; owner: PlayerId; x: number; y: number }
   /** A bomber's hit on a city: its production so far is lost, or one of the units in it is destroyed. */
   | { type: 'cityBombed'; cityId: number; by: PlayerId; owner: PlayerId; effect: 'production' | 'unit'; unitType?: UnitType }
+  /** A spy's sabotage: the city loses the production it had built up. caught: the spy was discovered and shot. */
+  | { type: 'citySabotaged'; cityId: number; by: PlayerId; owner: PlayerId; caught: boolean }
+  /** An Elite spy's attempt at a revolt; on success a cityCaptured event follows. */
+  | { type: 'cityIncited'; cityId: number; by: PlayerId; owner: PlayerId; success: boolean }
   | { type: 'cargoUnloaded'; transportId: number; owner: PlayerId; unitIds: number[] }
   | { type: 'ordersEnded'; unitId: number; owner: PlayerId; reason: OrdersEndReason }
   | { type: 'turnStarted'; player: PlayerId; turn: number }

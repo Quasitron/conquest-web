@@ -1,7 +1,7 @@
-import type { GameState, PlayerId, Unit, UnitType } from './types';
+import type { GameEvent, GameState, PlayerId, Unit, UnitType } from './types';
 import { UNIT_STATS, rankOf } from './units';
 import { chebyshev, index, normalize } from './map';
-import { cityAt } from './query';
+import { cityAt, destroyUnit } from './query';
 import { areFriendly } from './relations';
 
 const SIGHT = 1;
@@ -40,7 +40,21 @@ export function visibleSquares(s: GameState, pid: PlayerId): Set<number> {
   return vis;
 }
 
+/** A spy standing in a city of pid's side: it uncovers enemy spies in and beside that city. */
+function spyWatchers(s: GameState, pid: PlayerId): Unit[] {
+  return s.units.filter((u) => {
+    if (u.type !== 'spy' || u.carriedBy !== null || !areFriendly(s, u.owner, pid)) return false;
+    const c = cityAt(s, u.x, u.y);
+    return !!c && areFriendly(s, c.owner, pid);
+  });
+}
+
+/** Spies are unseen by ordinary sight; one is seen only while it stands beside a city of the other side that holds a spy of its own. */
 export function canPlayerSeeUnit(s: GameState, pid: PlayerId, target: Unit): boolean {
+  if (target.type === 'spy') {
+    if (target.carriedBy !== null || cityAt(s, target.x, target.y)) return false;
+    return spyWatchers(s, pid).some((w) => chebyshev(s, w, target) <= 1);
+  }
   if (target.carriedBy !== null) return false;
   if (cityAt(s, target.x, target.y)) return false;
   return observersOf(s, pid).some((o) => observerSees(s, o, target));
@@ -71,5 +85,14 @@ export function updateFog(s: GameState, pid: PlayerId): void {
     if (seenNow.has(e.unitId)) continue;
     const couldSeeIt = observers.some((o) => observerSees(s, o, e));
     if (couldSeeIt || s.turn - e.turnSeen >= MARKER_LIFETIME) delete fog.lastSeen[Number(key)];
+  }
+}
+
+/** An enemy spy inside a city that holds a spy of the city's owner is discovered and shot. */
+export function catchSpies(s: GameState, events: GameEvent[]): void {
+  for (const spy of [...s.units]) {
+    if (spy.type !== 'spy' || spy.carriedBy !== null || !cityAt(s, spy.x, spy.y)) continue;
+    const watcher = spyWatchers(s, cityAt(s, spy.x, spy.y)!.owner ?? -1).find((w) => w.x === spy.x && w.y === spy.y && !areFriendly(s, w.owner, spy.owner));
+    if (watcher) destroyUnit(s, spy, 'caught', events, watcher.owner);
   }
 }

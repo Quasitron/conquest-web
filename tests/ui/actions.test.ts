@@ -119,7 +119,7 @@ describe('describeOrders', () => {
 describe('UNIT_BUTTONS and the new actions', () => {
   it('lists the unit buttons in order', () => {
     expect(UNIT_BUTTONS).toEqual([
-      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'goHome', 'clearOrders', 'center', 'info', 'disband',
+      'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'sabotage', 'incite', 'goHome', 'clearOrders', 'center', 'info', 'disband',
     ]);
   });
 
@@ -160,5 +160,18 @@ describe('Build Airbase action', () => {
     const a = addUnit(off, 'army', 0, 1, 0);
     const { v, u } = viewOf(off, a.id);
     expect(availableActions(v, u).airbase).toBe(false);
+  });
+});
+describe('spy actions', () => {
+  it('Sabotage in an enemy city, Incite Revolt only for an Elite spy', () => {
+    const s = makeGame(M, { rules: { advancedUnits: true, promotions: true } });
+    const green = addUnit(s, 'spy', 0, 6, 0);
+    const elite = addUnit(s, 'spy', 0, 6, 0, { wins: 5 });
+    const home = addUnit(s, 'spy', 0, 0, 0, { wins: 5 });
+    const can = (id: number) => { const { v, u } = viewOf(s, id); const a = availableActions(v, u); return [a.sabotage, a.incite]; };
+    updateFog(s, 0);
+    expect(can(green.id)).toEqual([true, false]);
+    expect(can(elite.id)).toEqual([true, true]);
+    expect(can(home.id)).toEqual([false, false]);
   });
 });

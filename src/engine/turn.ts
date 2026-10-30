@@ -6,7 +6,7 @@ import { UNIT_STATS, effectiveMove } from './units';
 import { cityAt, destroyUnit, isAtRefuelPoint } from './query';
 import { areFriendly } from './relations';
 import { advanceProduction } from './production';
-import { updateFog } from './fog';
+import { catchSpies, updateFog } from './fog';
 import { inOwnCity, unloadCargo } from './cargo';
 
 function finishPlayerTurn(s: GameState, pid: PlayerId, events: GameEvent[]): void {
@@ -32,7 +32,7 @@ export function checkElimination(s: GameState, pid: PlayerId, events: GameEvent[
   const p = s.players[pid];
   if (p.eliminated) return;
   const hasCity = s.cities.some((c) => c.owner === pid);
-  const canTakeCity = s.units.some((u) => u.owner === pid && UNIT_STATS[u.type].domain === 'land' && u.type !== 'airbase');
+  const canTakeCity = s.units.some((u) => u.owner === pid && UNIT_STATS[u.type].domain === 'land' && u.type !== 'airbase' && u.type !== 'spy');
   if (!hasCity && !canTakeCity) {
     for (const u of s.units.filter((x) => x.owner === pid)) destroyUnit(s, u, 'resigned', events);
     p.eliminated = true;
@@ -72,6 +72,7 @@ export function startTurn(s: GameState, events: GameEvent[], rng: RandomSource =
     if (inOwnCity(s, t) && t.orders === null) unloadCargo(s, t, null, events);
     t.unloadNextTurn = false;
   }
+  catchSpies(s, events);
   updateFog(s, pid);
   runPlayerOrders(s, rng, pid, events);
   events.push({ type: 'turnStarted', player: pid, turn: s.turn });

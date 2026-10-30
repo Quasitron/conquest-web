@@ -186,6 +186,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
       <h3>{known?.name ?? `City #${selection.id}`}</h3>
       <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
       {view.rules.cityStrength && known && known.owner !== null && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
+      {known?.intel && <p>Spy report: {known.intel.production === null ? 'building nothing' : `building ${UNIT_STATS[known.intel.production].name}, ${known.intel.turnsLeft} turn${known.intel.turnsLeft === 1 ? '' : 's'} to go`}</p>}
       <NextBar readyCount={readyCount} onAction={onAction} />
     </aside>
   );

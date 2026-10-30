@@ -4,6 +4,7 @@ import type { HouseRules } from './rules';
 import { index } from './map';
 import { canPlayerSeeUnit, visibleSquares } from './fog';
 import { riverNetOf } from './rivers';
+import { cityIntel } from './spy';
 
 export interface EnemyMarker {
   /** View-local id; not the engine's unit id. */
@@ -43,7 +44,7 @@ export interface PlayerView {
   myUnits: Unit[];
   myCities: City[];
   /** `damage` is the city's hits taken (city strength rule only; 0 otherwise). */
-  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null; damage: number }[];
+  knownCities: { id: number; name: string; x: number; y: number; owner: PlayerId | null; damage: number; /** An own spy is in or beside this enemy city: what it is building and the turns left. */ intel?: { production: UnitType | null; turnsLeft: number | null } }[];
   enemies: EnemyMarker[];
   /** This player's own kill and loss totals. */
   stats: PlayerStats;
@@ -68,6 +69,12 @@ function riverNetView(s: GameState, explored: ArrayLike<unknown>): Pick<PlayerVi
   };
 }
 
+/** What a spy beside an enemy city reads of its production. */
+function spyReport(s: GameState, me: PlayerId, c: { id: number; x: number; y: number; owner: PlayerId | null }): { intel?: { production: UnitType | null; turnsLeft: number | null } } {
+  const intel = cityIntel(s, me, c);
+  return intel ? { intel } : {};
+}
+
 export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
   const fog = s.fog[me];
   return {
@@ -89,7 +96,7 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     myCities: structuredClone(s.cities.filter((c) => c.owner === me)),
     knownCities: s.cities
       .filter((c) => fog.explored[index(s, c.x, c.y)])
-      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null), damage: c.damage ?? 0 })),
+      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null), damage: c.damage ?? 0, ...spyReport(s, me, c) })),
     enemies: Object.values(fog.lastSeen)
       .sort((a, b) => a.y - b.y || a.x - b.x || a.turnSeen - b.turnSeen || a.type.localeCompare(b.type))
       .map((e, markerId) => {
