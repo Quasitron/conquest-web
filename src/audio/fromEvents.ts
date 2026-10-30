@@ -12,7 +12,7 @@ export const LONG_GAP_MS: Partial<Record<SoundName, number>> = { explosion: 500 
 const PRIORITY: Record<SoundName, number> = {
   win: 10, lose: 10, lost: 9, capture: 8, alert: 7, explosion: 6, crash: 6, shot: 5, promote: 5, 'promote-elite': 6, news: 6, unload: 4, chime: 3, turn: 2, click: 1,
   'produce-army': 3, 'produce-armor': 3, 'produce-fighter': 3, 'produce-bomber': 3, airbase: 4, 'produce-transport': 3, 'produce-destroyer': 3,
-  'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3,
+  'produce-submarine': 3, 'produce-cruiser': 3, 'produce-battleship': 3, 'produce-carrier': 3, 'produce-spy': 3,
 };
 
 /** The sound for a newly built unit of this type; 'chime' for an unknown type. */
