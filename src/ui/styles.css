@@ -217,3 +217,11 @@ svg.leader circle { fill: #ffd24a; }
 .paper-text { font-size: 2.8cqw; line-height: 1.25; }
 .paper-box .swatch { width: 2.4cqw; height: 2.4cqw; }
 .paper-box button.primary { font-family: Georgia, 'Times New Roman', serif; font-size: 2.8cqw; padding: 0.5cqw 4cqw; border-radius: 0.6cqw; }
+/* The front page spins in from nowhere, as in the old newsreels. */
+@keyframes paper-spin {
+  0% { transform: scale(0.04) rotate(-1080deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.dialog-paper { animation: paper-spin 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .dialog-paper { animation: none; } }
