@@ -7,8 +7,8 @@ const MOUNTAIN_SHARE = 0.07;
 const ROUGH_SHARE = 0.1;
 const FOREST_SHARE = 0.22;
 /** Rivers cover about this share of the land squares, the ones with the biggest catchments (at least MIN_CATCHMENT squares drain through). */
-const RIVER_SHARE = 0.1;
-const MIN_CATCHMENT = 3;
+const RIVER_SHARE = 0.15;
+const MIN_CATCHMENT = 2;
 /** Outlets for the water are at least this many squares apart along a coast. */
 const OUTLET_SPACING = 14;
 /** A river is at least this many squares long (shorter ones are dropped). */

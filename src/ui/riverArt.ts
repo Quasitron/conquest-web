@@ -15,7 +15,7 @@ const hash2 = (x: number, y: number, k: number): number => {
 
 /** How wide a river is, in squares, for the number of squares draining through it: a trickle grows to a wide stream. */
 export function riverWidth(flow: number): number {
-  return Math.min(0.22, 0.03 + 0.016 * flow ** 0.7);
+  return Math.min(0.085, 0.03 + 0.016 * flow ** 0.7);
 }
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
