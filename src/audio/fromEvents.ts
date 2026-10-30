@@ -24,7 +24,7 @@ export function produceSound(unitType: string): SoundName {
 function soundFor(e: GameEvent, me: PlayerId): SoundName[] {
   switch (e.type) {
     // The log only holds events the player could see, so every combat in it counts.
-    case 'combat': return ['shot'];
+    case 'combat': return e.defender.kind === 'city' && e.attackerWon ? ['shot', 'explosion'] : ['shot'];
     case 'unitDestroyed':
       if (e.reason === 'combat') return ['explosion'];
       if (e.reason === 'crashed') return ['crash'];

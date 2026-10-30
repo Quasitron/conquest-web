@@ -47,7 +47,9 @@ export function fightsFromEvents(events: readonly GameEvent[], describe: (e: Gam
         at: { x: e.x, y: e.y }, attackerId: e.attackerId, from: e.from ? { ...e.from } : null,
         attackerOwner: e.attackerOwner, defenderOwner: e.defender.owner, attackerType: e.attackerType,
         defenderType: e.defender.kind === 'unit' ? e.defender.unitType : null,
-        attackerWon: e.attackerWon, moved: false, destroyed: false, captured: false, text: describe(e) ?? '',
+        attackerWon: e.attackerWon, moved: false,
+        destroyed: e.defender.kind === 'city' && e.attackerWon, // a city that was hit and won against (bombarded or captured) goes up too
+        captured: false, text: describe(e) ?? '',
       };
       out.push(cur);
     } else if (cur && ((e.type === 'unitDestroyed' && e.reason === 'combat') || e.type === 'cityBombed')) {

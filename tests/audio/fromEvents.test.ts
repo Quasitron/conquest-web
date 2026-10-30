@@ -55,6 +55,15 @@ describe('soundsForEvents', () => {
     expect(soundsForEvents([promoted(1, 3)], 0)).toEqual([]);
   });
 
+  it('a ship wearing a city down by bombardment gets an explosion; a repelled shore attack does not add one', () => {
+    const shell = (attackerWon: boolean): GameEvent => ({
+      type: 'combat', attackerId: 1, attackerOwner: 1, attackerType: 'cruiser', defender: { kind: 'city', cityId: 3, owner: 0 },
+      x: 1, y: 1, attackerWon, attackerDamage: 0, defenderDamage: 1,
+    });
+    expect(soundsForEvents([shell(true)], 1)).toEqual(['shot', 'explosion']);
+    expect(soundsForEvents([shell(false)], 1)).toEqual(['shot']);
+  });
+
   it('a bombed city explodes, even when only its production was lost', () => {
     const bombed: GameEvent = { type: 'cityBombed', cityId: 1, by: 1, owner: 0, effect: 'production' };
     expect(soundsForEvents([combat, bombed], 1)).toEqual(['shot', 'explosion']);
