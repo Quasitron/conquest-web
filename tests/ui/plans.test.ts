@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerView } from '../../src/engine/view';
 import { updateFog } from '../../src/engine/fog';
-import { approachSquare, attackLabel, cityAttackChance, landingPlan, unitAttackChance } from '../../src/ui/plans';
+import { approachSquare, attackLabel, cityAttackChance, landingPlan, strikeIsSurprise, strikeLabel, unitAttackChance } from '../../src/ui/plans';
 import { addUnit, makeGame } from '../helpers';
 
 function viewOf(s: ReturnType<typeof makeGame>) {
@@ -131,5 +131,37 @@ describe('attackLabel and cityAttackChance', () => {
     const ub = ve.myUnits.find((x) => x.id === b.id)!;
     expect(cityAttackChance(ve, ub, null)).toBeCloseTo(2 / 3, 3);
     expect(cityAttackChance(ve, ub, 1)).toBeCloseTo(0.5, 6);
+  });
+});
+
+describe('submarine strike label', () => {
+  const SEA = ['*.........', '..........', '..........', '.........*'];
+  const setup = (extra?: (s: ReturnType<typeof makeGame>) => void) => {
+    const s = makeGame(SEA, { rules: { submarineStrike: true } });
+    const sub = addUnit(s, 'submarine', 0, 4, 2);
+    addUnit(s, 'battleship', 1, 5, 2);
+    extra?.(s);
+    updateFog(s, 0);
+    const v = getPlayerView(s, 0);
+    return { v, sub: v.myUnits.find((u) => u.id === sub.id)! };
+  };
+
+  it('is a surprise when nothing that sees submarines stands next to the sub', () => {
+    const { v, sub } = setup();
+    expect(strikeIsSurprise(v, sub, { type: 'battleship', owner: 1 })).toBe(true);
+    expect(unitAttackChance(sub, 'battleship', 0, v.rules)).toBeGreaterThan(0.7);
+    expect(strikeLabel(0.97)).toBe('Strike (~97%)');
+  });
+
+  it('is spoiled by an escorting cruiser (or destroyer or submarine) next to the sub, but not by one two squares off', () => {
+    const near = setup((s) => { addUnit(s, 'cruiser', 1, 3, 2); });
+    expect(strikeIsSurprise(near.v, near.sub, { type: 'battleship', owner: 1 })).toBe(false);
+    const far = setup((s) => { addUnit(s, 'cruiser', 1, 6, 3); });
+    expect(strikeIsSurprise(far.v, far.sub, { type: 'battleship', owner: 1 })).toBe(true);
+  });
+  it('applies only to the chosen targets and only with the rule on', () => {
+    const { v, sub } = setup();
+    expect(strikeIsSurprise(v, sub, { type: 'destroyer', owner: 1 })).toBe(false);
+    expect(strikeIsSurprise({ ...v, rules: { ...v.rules, submarineStrike: false } }, sub, { type: 'battleship', owner: 1 })).toBe(false);
   });
 });

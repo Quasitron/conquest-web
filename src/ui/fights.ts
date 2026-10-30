@@ -121,7 +121,7 @@ export function fightFrame(ageMs: number, f: Fight, durationMs = FIGHT_MS): Figh
     shots: Math.min(1, p / SHOT_SHARE),
     burst: p <= SHOT_SHARE ? 0 : Math.min(1, (p - SHOT_SHARE) / (BURST_END - SHOT_SHARE)),
     slide: p <= BURST_END ? 0 : (p - BURST_END) / (1 - BURST_END),
-    outcome: f.captured ? 'capture' : f.destroyed ? 'explosion' : 'hit',
+    outcome: f.captured ? 'capture' : f.destroyed || f.struck ? 'explosion' : 'hit', // a torpedo hit that does not sink its target still blows up
   };
 }
 
