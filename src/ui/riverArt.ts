@@ -13,10 +13,8 @@ const hash2 = (x: number, y: number, k: number): number => {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 };
 
-/** How wide a river is, in squares, for the number of squares draining through it: a trickle grows to a wide stream. */
-export function riverWidth(flow: number): number {
-  return Math.min(0.085, 0.03 + 0.016 * flow ** 0.7);
-}
+/** How wide every river is, in squares. */
+export const RIVER_WIDTH = 0.075;
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
 const LAYERS = [
@@ -121,16 +119,16 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
       const f = feeder.get(keyOfSq(s));
       const n = nextOf(s);
       const p = smoothed.get(keyOfSq(s))!;
-      if (!f || !n) { next.set(keyOfSq(s), p); continue; }
+      const shore = s.to === 'sea' ? { x: (s.rawX - cam.x + 0.5 + s.seaDir![0] * 0.5) * t, y: (s.y - cam.y + 0.5 + s.seaDir![1] * 0.5) * t } : null;
+      if (!f || (!n && !shore)) { next.set(keyOfSq(s), p); continue; }
       const a = smoothed.get(keyOfSq(f))!;
-      const b = smoothed.get(keyOfSq(n))!;
+      const b = n ? smoothed.get(keyOfSq(n))! : shore!;
       next.set(keyOfSq(s), { x: 0.5 * p.x + 0.25 * (a.x + b.x), y: 0.5 * p.y + 0.25 * (a.y + b.y) });
     }
     next.forEach((p, k) => smoothed.set(k, p));
   }
-  /** The width at a river square's point: a spring is a thread, and a river widens as the streams join it. */
-  /** A spring starts as a hair and grows into the stream its flow makes, as in nature. It goes by the flow (not by how much of the river is in view), so exploring does not change it. */
-  const widthOf = (s: Square) => Math.max(1.4, riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.2 * s.flow));
+  /** Every river is the same width from its rounded start to the sea: clean on a tactical map, as in the old games. */
+  const widthOf = (_s: Square) => Math.max(1.4, RIVER_WIDTH * t);
   /** A one-square side branch that joins a stream fed more strongly by another: it only clutters the junction, so it is left out. */
   const isSpur = (s: Square): boolean => {
     if (feeder.has(keyOfSq(s)) || typeof s.to !== 'object' || s.to === null) return false;
@@ -159,7 +157,11 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     const from = f ? nodeAt(f.rawX, f.y) : p;
     const nx = nextOf(s);
     const to = s.to === 'sea' ? endOf(s) : nx ? nodeAt(nx.rawX, nx.y) : s.to === null ? p : endOf(s);
-    if (s.to === 'sea') return unit(...(((): [number, number] => [s.seaDir![0], s.seaDir![1]])()));
+    // A mouth runs on toward the shore in a long curve, leaning only a little toward the way the shore faces, so there is no corner.
+    if (s.to === 'sea') {
+      const chord = unit(to.x - from.x, to.y - from.y);
+      return unit(chord.x * 0.75 + s.seaDir![0] * 0.25, chord.y * 0.75 + s.seaDir![1] * 0.25);
+    }
     return unit(to.x - from.x, to.y - from.y);
   };
 
@@ -173,11 +175,10 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     const target = nextOf(s);
     const mouth = s.to === 'sea';
     let wb = wa;
-    if (mouth) wb = wa * 1.5; // opens out where it meets the sea
-    else if (target && feeder.get(keyOfSq(target)) === s) wb = widthOf(target); // the main stream: the same width on both sides of the point
+    if (target && feeder.get(keyOfSq(target)) === s) wb = widthOf(target); // the main stream: the same width on both sides of the point
     const ta = headingAt(s);
     let tb: Pt;
-    if (mouth) tb = unit(s.seaDir![0], s.seaDir![1]); // enters the shore straight on
+    if (mouth) tb = ta; // runs on into the shore along the same curve
     else if (target && feeder.get(keyOfSq(target)) === s) tb = headingAt(target);
     else if (target && target.to !== null) {
       // A tributary arrives bending into the main stream's direction, and ends on its line, not beyond it.
