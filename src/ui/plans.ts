@@ -134,6 +134,22 @@ export function bombardLabel(chance: number): string {
   return `Bombard (${Math.round(chance * 100)}%)`;
 }
 
+/**
+ * Submarine strike rule: would u attacking oe come as a surprise? Only if the foe's side has nothing that sees submarines (a Destroyer,
+ * Cruiser or submarine, or a city) next to the sub, which is just what the player can see from where the sub lies.
+ */
+export function strikeIsSurprise(view: PlayerView, u: Unit, foe: { type: UnitType; owner: PlayerId }): boolean {
+  if (!view.rules.submarineStrike || !isStrikeTarget(u.type, foe.type)) return false;
+  const geometry = geo(view);
+  if (view.enemies.some((e) => e.visibleNow && e.owner === foe.owner && UNIT_STATS[e.type].seesSubs && chebyshev(geometry, u, e) <= 1)) return false;
+  return !view.knownCities.some((c) => c.owner === foe.owner && chebyshev(geometry, u, c) <= 1);
+}
+
+/** "Strike (~97%)": a submarine's torpedo attack from the dark. */
+export function strikeLabel(chance: number): string {
+  return `Strike (~${Math.round(chance * 100)}%)`;
+}
+
 /** "Attack (62%)", or "Attack (~62%)" when the odds are an estimate (the defender's damage is unknown). */
 export function attackLabel(chance: number | null, estimate = false): string {
   return chance === null ? 'Attack' : `Attack (${estimate ? '~' : ''}${Math.round(chance * 100)}%)`;
