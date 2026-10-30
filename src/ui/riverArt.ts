@@ -31,7 +31,7 @@ const LAYERS = [
 interface Pt { x: number; y: number }
 
 /** One stretch of river, from the middle of a square to the next one down: points along its centre line, with a half width at each. */
-interface Reach { pts: Pt[]; normals: Pt[]; half: number[] }
+interface Reach { pts: Pt[]; normals: Pt[]; half: number[]; mouth: boolean }
 
 const SAMPLES = 9;
 /** How strongly a reach keeps the heading it arrives with: below 1 it cannot overshoot and curl at a sharp turn. */
@@ -106,7 +106,19 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   const keyOfSq = (s: Square) => keyOf(s.rawX, s.y);
   const nextOf = (s: Square): Square | null => (typeof s.to === 'object' && s.to !== null ? squares.get(keyOf(s.to.rawX, s.to.y)) ?? null : null);
   /** The width at a river square's point: a spring is a thread, and a river widens as the streams join it. */
-  const widthOf = (s: Square) => riverWidth(s.flow) * t * (feeder.has(keyOfSq(s)) ? 1 : 0.55);
+  const depths = new Map<string, number>();
+  /** How many squares of river lie upstream of this one along the main stream (0 at a spring). */
+  const depthOf = (s: Square): number => {
+    const k = keyOfSq(s);
+    const known = depths.get(k);
+    if (known !== undefined) return known;
+    const f = feeder.get(k);
+    const d = f ? depthOf(f) + 1 : 0;
+    depths.set(k, d);
+    return d;
+  };
+  /** A spring starts as a hair and takes three squares to grow into the stream its flow makes, as in nature. */
+  const widthOf = (s: Square) => riverWidth(s.flow) * t * Math.min(1, 0.12 + 0.3 * depthOf(s));
   /** A one-square side branch that joins a stream fed more strongly by another: it only clutters the junction, so it is left out. */
   const isSpur = (s: Square): boolean => {
     if (feeder.has(keyOfSq(s)) || typeof s.to !== 'object' || s.to === null) return false;
@@ -150,7 +162,7 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     const target = nextOf(s);
     const mouth = s.to === 'sea';
     let wb = wa;
-    if (mouth) wb = wa * 1.3; // opens out a little where it meets the sea
+    if (mouth) wb = wa * 1.5; // opens out where it meets the sea
     else if (target && feeder.get(keyOfSq(target)) === s) wb = widthOf(target); // the main stream: the same width on both sides of the point
     const ta = headingAt(s);
     let tb: Pt;
@@ -186,7 +198,7 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
       return { x: -d.y, y: d.x };
     });
     const half = pts.map((_, k) => { const u = k / SAMPLES; return (wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2; });
-    reaches.push({ pts, normals, half });
+    reaches.push({ pts, normals, half, mouth });
     if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
     if (mouth) mouths.push({ p: b, dir: s.seaDir!, half: wb / 2 });
   }  if (reaches.length === 0) return;
@@ -203,7 +215,8 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
       const left: Pt[] = [];
       const right: Pt[] = [];
       r.pts.forEach((p, k) => {
-        const h = Math.max(0.5, r.half[k] * layer.scale + layer.plus / 2);
+        const thin = Math.min(1, (r.half[k] * 2) / (0.12 * t)); // near a spring the bank is as slight as the thread of water
+        const h = Math.max(0.4, r.half[k] * layer.scale + (layer.plus / 2) * Math.max(0.15, thin));
         left.push({ x: p.x + r.normals[k].x * h, y: p.y + r.normals[k].y * h });
         right.push({ x: p.x - r.normals[k].x * h, y: p.y - r.normals[k].y * h });
       });
@@ -221,6 +234,32 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     }
     ctx.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
     ctx.fill(path, 'nonzero');
+  }
+  // The last stretch before the shore melts into the shallows: the water, its bank and the ground beside it fade to the
+  // light blue of the shallows (more and more toward the shore), so the river does not end in a cut.
+  for (const r of reaches) {
+    if (!r.mouth) continue;
+    const from = 2;
+    const left: Pt[] = [];
+    const right: Pt[] = [];
+    for (let k = from; k < r.pts.length; k++) {
+      const h = r.half[k] * 1.55 + 0.02 * t; // no wider than the bank, or its end would show
+      left.push({ x: r.pts[k].x + r.normals[k].x * h, y: r.pts[k].y + r.normals[k].y * h });
+      right.push({ x: r.pts[k].x - r.normals[k].x * h, y: r.pts[k].y - r.normals[k].y * h });
+    }
+    const fade = new Path2D();
+    fade.moveTo(left[0].x, left[0].y);
+    for (let k = 1; k < left.length; k++) fade.lineTo(left[k].x, left[k].y);
+    for (let k = right.length - 1; k >= 0; k--) fade.lineTo(right[k].x, right[k].y);
+    fade.closePath();
+    const a = r.pts[from];
+    const b = r.pts[r.pts.length - 1];
+    const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+    g.addColorStop(0, 'rgba(122, 188, 202, 0)');
+    g.addColorStop(0.6, 'rgba(122, 188, 202, 0.26)');
+    g.addColorStop(1, 'rgba(122, 188, 202, 0.5)');
+    ctx.fillStyle = g;
+    ctx.fill(fade, 'nonzero');
   }
   // Where a river meets the sea or a lake it ends at the shore and melts into the shallows: a soft light-blue glow.
   for (const m of mouths) {
