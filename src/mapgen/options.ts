@@ -3,6 +3,8 @@ import type { NameRegion } from '../data/cityNames';
 export type SizePreset = 'small' | 'medium' | 'large' | 'huge';
 export type Landmass = 'islands' | 'mixed' | 'continents';
 export type CityDensity = 'low' | 'normal' | 'high';
+/** The kind of land a random map has (with the Advanced units rule, which has terrain): Temperate is the plain map, Arid adds deserts, Wet adds forest. */
+export type Climate = 'temperate' | 'arid' | 'wet';
 /** Where the players start: Auto keeps them apart when the map allows, Separate puts each on its own landmass, Together puts them all on one. */
 export type StartMode = 'auto' | 'separate' | 'together';
 
@@ -21,6 +23,7 @@ export interface WorldOptions {
   waterPercent: number;
   landmass: Landmass;
   cityDensity: CityDensity;
+  climate: Climate;
   /** 2..6 */
   players: number;
   starts: StartMode;
@@ -34,6 +37,7 @@ export const DEFAULT_WORLD: WorldOptions = {
   waterPercent: 70,
   landmass: 'mixed',
   cityDensity: 'normal',
+  climate: 'temperate',
   players: 2,
   starts: 'auto',
   nameRegion: 'world',
