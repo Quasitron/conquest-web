@@ -9,6 +9,7 @@ import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatCo
 import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
 import { pickFileText } from './exportFile';
 import { VERSION_LABEL } from './version';
+import { THEATERS, loadTheater, maxTheaterPlayers, theaterById, theaterWorld } from '../theaters';
 
 interface Props {
   store: SaveStore;
@@ -101,6 +102,10 @@ export function TitleScreen({ store, onStart }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [panel, setPanel] = useState<'menu' | 'new' | 'load'>('menu');
   const [soundOpen, setSoundOpen] = useState(false);
+  const [mapKind, setMapKind] = useState<'random' | 'theater'>('random');
+  const [theaterId, setTheaterId] = useState(THEATERS[0]?.id ?? '');
+  const theater = mapKind === 'theater' ? theaterById(theaterId) : undefined;
+  const mostPlayers = theater ? maxTheaterPlayers(theater) : 6;
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -112,11 +117,25 @@ export function TitleScreen({ store, onStart }: Props) {
   };
   const updateSeat = (i: number, patch: Partial<SeatConfig>) =>
     setSeats(seats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const chooseTheater = (id: string) => {
+    setTheaterId(id);
+    const t = theaterById(id);
+    if (t && world.players > maxTheaterPlayers(t)) setPlayers(maxTheaterPlayers(t));
+  };
 
-  const start = () => {
-    const sizeError = validateMapSize(world.width, world.height);
-    if (sizeError) return setError(sizeError);
+  const start = async () => {
     try {
+      if (theater) {
+        // A historical theater: the real map, each player a different nation (named for it unless the seat has its own name).
+        const data = await loadTheater(theater.id);
+        const preset = theaterWorld(data, world.players, seed, rules.advancedUnits);
+        const named = seats.map((s, i) => (/^Player \d+$/.test(s.name) ? { ...s, name: preset.nations[i] } : s));
+        const session = GameSession.create({ world: { ...world, width: data.width, height: data.height, wrap: data.wrap }, seed, seats: named, rules, preset }, store);
+        saveNewGameSettings({ world, seats, rules });
+        return onStart(session);
+      }
+      const sizeError = validateMapSize(world.width, world.height);
+      if (sizeError) return setError(sizeError);
       const session = GameSession.create({ world, seed, seats, rules }, store);
       saveNewGameSettings({ world, seats, rules });
       onStart(session);
@@ -183,6 +202,31 @@ export function TitleScreen({ store, onStart }: Props) {
         {panel === 'new' && (
       <section>
         <h2>New game</h2>
+        <label>Map{' '}
+          <select aria-label="Map" value={mapKind} onChange={(e) => {
+            const kind = (e.target as HTMLSelectElement).value as 'random' | 'theater';
+            setMapKind(kind);
+            if (kind === 'theater') chooseTheater(theaterId);
+          }}>
+            <option value="random">Random map</option>
+            <option value="theater">Historical theater</option>
+          </select>
+        </label>
+        {theater && (
+          <>
+            <label>Theater{' '}
+              <select aria-label="Theater" value={theaterId} onChange={(e) => chooseTheater((e.target as HTMLSelectElement).value)}>
+                {THEATERS.map((t) => <option value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+            <div class="theater-info">
+              <p class="theater-wars">{theater.wars}</p>
+              <p>{theater.notes}</p>
+              <p class="muted">{theater.width}×{theater.height} squares, {theater.cities} real cities. Each player starts as a different country: {theater.nations.join(', ')}.</p>
+            </div>
+          </>
+        )}
+        {!theater && <>
         <label>Map size{' '}
           <select onChange={(e) => {
             const preset = (e.target as HTMLSelectElement).value as SizePreset;
@@ -221,9 +265,10 @@ export function TitleScreen({ store, onStart }: Props) {
         </label>
         <label><input type="checkbox" checked={world.wrap}
           onChange={(e) => setWorld({ ...world, wrap: (e.target as HTMLInputElement).checked })} /> Wrap east–west</label>
+        </>}
         <label>Players{' '}
           <select value={world.players} onChange={(e) => setPlayers(Number((e.target as HTMLSelectElement).value))}>
-            {[2, 3, 4, 5, 6].map((n) => <option value={n}>{n}</option>)}
+            {[2, 3, 4, 5, 6].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}
           </select>
         </label>
         <table class="seats">
@@ -271,6 +316,7 @@ export function TitleScreen({ store, onStart }: Props) {
             </label>
           ))}
         </fieldset>
+        {!theater && <>
         <label>City names{' '}
           <select value={world.nameRegion} onChange={(e) => setWorld({ ...world, nameRegion: (e.target as HTMLSelectElement).value as WorldOptions['nameRegion'] })}>
             {REGION_OPTIONS.map((r) => <option value={r.value}>{r.label}</option>)}
@@ -279,6 +325,7 @@ export function TitleScreen({ store, onStart }: Props) {
         <label>Seed{' '}
           <input type="number" value={seed} onInput={(e) => setSeed(Number((e.target as HTMLInputElement).value) | 0)} />
         </label>
+        </>}
         <div class="row">
           <button class="primary" onClick={start}>Start</button>
           <button onClick={() => setPanel('menu')}>Back</button>

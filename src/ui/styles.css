@@ -47,6 +47,9 @@ input, select { font: inherit; background: #0f1318; color: var(--text); border: 
 .seats td { padding: 2px 6px 2px 0; }
 .house-rules { border: 1px solid #333c48; border-radius: 6px; margin: 0; padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
 .house-rules legend { padding: 0 4px; }
+.theater-info { border-left: 3px solid #3b5575; padding: 2px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 0.92em; }
+.theater-info p { margin: 0; }
+.theater-wars { color: #d8c38a; }
 .house-rule { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
 .house-rule input { margin-top: 3px; }
 .house-rule .hint { display: block; }

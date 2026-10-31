@@ -4,7 +4,7 @@ import {
   type Command, type Dir, type GameEvent, type GameState, type HouseRules, type PlayerId, type PlayerView, type UnitType,
 } from '../engine';
 import { playAiTurn } from '../ai/play';
-import { generateWorld, type WorldOptions } from '../mapgen';
+import { generateWorld, type GeneratedWorld, type WorldOptions } from '../mapgen';
 import type { SaveFile, SaveStore, SeatConfig } from '../storage';
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -22,6 +22,8 @@ export interface NewSessionOptions {
   seed: number;
   seats: SeatConfig[];
   rules?: Partial<HouseRules>;
+  /** A ready-made world (a historical theater) instead of a generated one; `world` then only carries its size and wrap. */
+  preset?: GeneratedWorld;
 }
 
 const IDLE_GUARD = 10_000;
@@ -57,7 +59,7 @@ export class GameSession {
   static create(o: NewSessionOptions, store: SaveStore | null): GameSession {
     if (o.seats.length !== o.world.players) throw new Error('seat count must match the number of players');
     if (!o.seats.some((s) => s.kind === 'human')) throw new Error('at least one seat must be human');
-    const world = generateWorld(o.world, o.seed, !!o.rules?.advancedUnits);
+    const world = o.preset ?? generateWorld(o.world, o.seed, !!o.rules?.advancedUnits);
     const initial = createGame({
       map: world.map,
       wrap: o.world.wrap,
