@@ -14,9 +14,9 @@ import { THEATERS } from './theaters.mjs';
 
 const SRC = process.env.THEATER_DATA ?? 'C:/Users/robta/theater-source-data';
 const OUT = path.resolve('src/data/theaters');
-const TILE_ZOOM = 5;
+let TILE_ZOOM = 5; // elevation tile zoom, set per theater (a bigger area wants a smaller zoom)
 const SAMPLES = 4; // fine samples per cell, per axis
-const MIN_CITY_SPACING = 3;
+const MIN_CITY_SPACING = 3; // squares between cities, unless the theater sets citySpacing
 
 const readJson = (name) => JSON.parse(fs.readFileSync(path.join(SRC, `${name}.geojson`), 'utf8'));
 
@@ -76,6 +76,7 @@ async function tile(z, x, y) {
 
 /** Elevation in metres at a point (nearest pixel); the tiles it needs must be loaded already. */
 function elevationAt(lon, lat) {
+  lon = ((((lon + 180) % 360) + 360) % 360) - 180; // a map across the date line has longitudes past 180
   const n = 2 ** TILE_ZOOM * 256;
   const px = Math.min(n - 1, Math.max(0, Math.floor(((lon + 180) / 360) * n)));
   const latR = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180;
@@ -87,9 +88,9 @@ function elevationAt(lon, lat) {
 }
 
 // ---------------------------------------------------------------- polygons onto a raster
-function fillPolygons(features, mask, view, value) {
+function fillPolygons(features, mask, view, value, shift = 0) {
   const { west, east, north, south, RW, RH } = view;
-  const toX = (lon) => ((lon - west) / (east - west)) * RW;
+  const toX = (lon) => ((lon + shift - west) / (east - west)) * RW;
   const toY = (lat) => ((north - lat) / (north - south)) * RH;
   for (const f of features) {
     const g = f.geometry;
@@ -132,17 +133,20 @@ const ORTHO = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 // ---------------------------------------------------------------- one theater
 async function build(t, land50, lakes50, rivers, places, regions) {
   const { west, east, south, north } = t.bbox;
+  TILE_ZOOM = t.tileZoom ?? 5;
+  const offsets = east > 180 ? [0, 360] : [0]; // a map across the date line: draw the western hemisphere again, 360 degrees on
   const midLat = (north + south) / 2;
   const W = t.width;
-  const H = Math.round((W * (north - south)) / ((east - west) * Math.cos((midLat * Math.PI) / 180)));
+  const stretch = t.projection === 'equirect' ? 1 : Math.cos((midLat * Math.PI) / 180); // squares about square on the ground
+  const H = Math.round((W * (north - south)) / ((east - west) * stretch));
   const RW = W * SAMPLES, RH = H * SAMPLES;
   const view = { west, east, north, south, RW, RH };
   console.log(`\n== ${t.name}: ${W}x${H}`);
 
   // Land: fill the land polygons, take the lakes back out, then each cell is land when enough of it is.
   const mask = new Uint8Array(RW * RH);
-  fillPolygons(land50.features, mask, view, 1);
-  fillPolygons(lakes50.features.filter((f) => (f.properties.scalerank ?? 9) <= (t.lakeRank ?? 3)), mask, view, 0);
+  for (const off of offsets) fillPolygons(land50.features, mask, view, 1, off);
+  for (const off of offsets) fillPolygons(lakes50.features.filter((f) => (f.properties.scalerank ?? 9) <= (t.lakeRank ?? 3)), mask, view, 0, off);
   const land = new Array(W * H).fill(false);
   for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
     let n = 0;
@@ -154,7 +158,7 @@ async function build(t, land50, lakes50, rivers, places, regions) {
   const n = 2 ** TILE_ZOOM;
   const tx = (lon) => Math.floor(((lon + 180) / 360) * n);
   const ty = (lat) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * n);
-  for (let x = tx(west); x <= tx(east); x++) for (let y = ty(Math.min(north, 84)); y <= ty(Math.max(south, -84)); y++) await tile(TILE_ZOOM, x, y);
+  for (let x = tx(west); x <= tx(east); x++) for (let y = ty(Math.min(north, 84)); y <= ty(Math.max(south, -84)); y++) await tile(TILE_ZOOM, ((x % n) + n) % n, y);
   const meanElev = new Array(W * H).fill(0), maxElev = new Array(W * H).fill(0);
   for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
     let sum = 0, peak = -Infinity;
@@ -174,10 +178,11 @@ async function build(t, land50, lakes50, rivers, places, regions) {
   const landCells = land.filter(Boolean).length;
   const target = Math.round(landCells / (t.landPerCity ?? 24));
   const candidates = places.features
-    .map((f) => f.properties)
+    .map((f) => ({ ...f.properties, longitude: east > 180 && f.properties.longitude < west ? f.properties.longitude + 360 : f.properties.longitude }))
     .filter((p) => p.longitude >= west && p.longitude <= east && p.latitude >= south && p.latitude <= north)
-    .sort((a, b) => (b.featurecla === 'Admin-0 capital') - (a.featurecla === 'Admin-0 capital') || b.pop_max - a.pop_max);
+    .sort((a, b) => (t.capitalsFirst === false ? 0 : (b.featurecla === 'Admin-0 capital') - (a.featurecla === 'Admin-0 capital')) || b.pop_max - a.pop_max);
   const cities = [];
+  const usedNames = new Set();
   const taken = new Set();
   const cheb = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
   for (const p of candidates) {
@@ -192,8 +197,15 @@ async function build(t, land50, lakes50, rivers, places, regions) {
       if (!best) continue;
       ci += best[0]; cj += best[1];
     }
-    if (cities.some((c) => cheb([c.x, c.y], [ci, cj]) < MIN_CITY_SPACING)) continue;
-    cities.push({ x: ci, y: cj, name: p.name, nation: t.nationOverrides?.[p.name] ?? p.adm0name, pop: p.pop_max, capital: p.featurecla === 'Admin-0 capital' });
+    if (cities.some((c) => cheb([c.x, c.y], [ci, cj]) < (t.citySpacing ?? MIN_CITY_SPACING))) continue;
+    // A country can be split by state or province (the American Civil War: Union and Confederacy); a single city can be re-assigned by name.
+    const nation = t.nationOverrides?.[p.name] ?? t.nationByRegion?.[p.adm0name]?.[p.adm1name] ?? p.adm0name;
+    // Two cities can share a name (Victoria, Cordoba): the bigger one, picked first, keeps it and the other is told apart by its country.
+    let name = p.name;
+    if (usedNames.has(name)) name = `${p.name} (${nation})`;
+    while (usedNames.has(name)) name += ' II';
+    usedNames.add(name);
+    cities.push({ x: ci, y: cj, name, nation, pop: p.pop_max, capital: p.featurecla === 'Admin-0 capital' && !t.nationByRegion?.[p.adm0name] });
     taken.add(cj * W + ci);
   }
   cities.sort((a, b) => a.y - b.y || a.x - b.x);
@@ -210,7 +222,7 @@ async function build(t, land50, lakes50, rivers, places, regions) {
   // mountains inside it stay as they are. `desertExcept` lists region names that are not really desert for this theater.
   if (t.desert !== false) {
     const dmask = new Uint8Array(RW * RH);
-    fillPolygons(regions.features.filter((f) => f.properties.FEATURECLA === 'Desert' && !(t.desertExcept ?? []).includes(f.properties.NAME)), dmask, view, 1);
+    for (const off of offsets) fillPolygons(regions.features.filter((f) => f.properties.FEATURECLA === 'Desert' && !(t.desertExcept ?? []).includes(f.properties.NAME)), dmask, view, 1, off);
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       const k = j * W + i;
       if (!land[k] || taken.has(k) || relief[k] !== 'clear') continue;
@@ -237,7 +249,8 @@ async function build(t, land50, lakes50, rivers, places, regions) {
   const rank = t.riverRank ?? 6;
   for (const f of rivers.features) {
     if (f.properties.featurecla !== 'River' || (f.properties.scalerank ?? 99) > rank || !f.geometry) continue;
-    const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    const raw = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    const lines = raw.flatMap((line) => offsets.map((off) => line.map(([lon, lat]) => [lon + off, lat])));
     for (const line of lines) {
       const pts = line.map(([lon, lat]) => [((lon - west) / (east - west)) * W, ((north - lat) / (north - south)) * H]);
       if (pts.every(([x, y]) => x < -1 || y < -1 || x > W + 1 || y > H + 1)) continue;
