@@ -18,12 +18,19 @@ export const RIVER_WIDTH = 0.065;
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
 const LAYERS = [
-  { scale: 2.9, plus: 1.5, shift: 0, style: 'rgba(70, 60, 36, 0.17)' },
-  { scale: 1.8, plus: 1.25, shift: 0.7, style: 'rgba(206, 190, 142, 0.5)' },
-  { scale: 1.16, plus: 0.6, shift: -0.45, style: 'rgba(22, 44, 46, 0.62)' },
-  { scale: 1.0, plus: 0, shift: 0, style: 'water' },
-  { scale: 1.0, plus: 0, shift: 0, style: 'rgba(76, 156, 164, 0.3)' },
+  { scale: 2.9, plus: 1.5, style: 'rgba(70, 60, 36, 0.17)' },
+  { scale: 1.8, plus: 1.25, style: 'rgba(206, 190, 142, 0.5)' },
+  { scale: 1.16, plus: 0.6, style: 'rgba(22, 44, 46, 0.62)' },
+  { scale: 1.0, plus: 0, style: 'water' },
+  { scale: 1.0, plus: 0, style: 'rgba(76, 156, 164, 0.3)' },
 ] as const;
+
+/**
+ * How the banks are shaded, with the light in the north-west (the shifts are in units of `off`, toward the south-east):
+ * the water darkens under the north-west wall by `dark`, and the lit water is moved `lit` away from it; the sandy bank
+ * moves `sand` and its dark rim `rim` (negative: toward the light's side, so the rim is thick there and thin opposite).
+ */
+const BANK = { dark: 0.78, lit: 1.8, sand: 1.1, rim: -0.7 } as const;
 
 interface Pt { x: number; y: number }
 
@@ -340,6 +347,8 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     const pattern = waterPattern(c);
     const off = Math.max(0.7, Math.min(3.5, 0.024 * t)); // how far the banks and shading shift, in pixels
     for (const layer of LAYERS) {
+      const shift = layer.scale === 1.8 ? BANK.sand : layer.scale === 1.16 ? BANK.rim : 0;
+      const style: string = layer.style;
       const path = new Path2D();
       for (const r of rs) {
         const left: Pt[] = [];
@@ -362,22 +371,22 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
         path.arc(n.p.x, n.p.y, r, 0, Math.PI * 2, true);
         path.closePath();
       }
-      c.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
+      c.fillStyle = style === 'water' ? (pattern ?? '#2c6a93') : style;
       // Light from the north-west: the bank on the lit side shows a wider sandy lip, the one in shadow a darker rim.
-      if (layer.shift) {
+      if (shift) {
         c.save();
-        c.translate(layer.shift * off, layer.shift * off);
+        c.translate(shift * off, shift * off);
         c.fill(path, 'nonzero');
         c.restore();
       } else c.fill(path, 'nonzero');
-      if (layer.style === 'water') {
+      if (style === 'water') {
         // The river lies below the land: the wall on its north-west side shades the water, which brightens away from it.
         c.save();
         c.clip(path, 'nonzero');
-        c.fillStyle = 'rgba(6, 22, 38, 0.6)';
+        c.fillStyle = `rgba(6, 22, 38, ${BANK.dark})`;
         c.fill(path, 'nonzero');
         const lit = new Path2D();
-        lit.addPath(path, new DOMMatrix().translate(off * 1.1, off * 1.1));
+        lit.addPath(path, new DOMMatrix().translate(off * BANK.lit, off * BANK.lit));
         c.fillStyle = pattern ?? '#2c6a93';
         c.fill(lit, 'nonzero');
         c.restore();
