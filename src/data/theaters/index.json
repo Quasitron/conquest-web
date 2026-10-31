@@ -1,0 +1,21 @@
+[
+ {
+  "id": "western-europe",
+  "name": "Western Europe & the Atlantic Coast",
+  "wars": "Napoleonic Wars (1803–15) · World War I, the Western Front (1914–18) · World War II, the Battle of France and D-Day (1940–45)",
+  "notes": "The British Isles to Poland, Scandinavia's southern tip to Gibraltar. Dense cities, the Alps and the Pyrenees, and the Channel between rivals.",
+  "width": 90,
+  "height": 88,
+  "wrap": false,
+  "cities": 179,
+  "nations": [
+   "France",
+   "Spain",
+   "Germany",
+   "Italy",
+   "United Kingdom",
+   "Poland",
+   "Austria"
+  ]
+ }
+]
