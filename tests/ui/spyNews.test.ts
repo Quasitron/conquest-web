@@ -15,7 +15,8 @@ describe('spyHeadlines', () => {
 
   it('tells the spy\'s owner how the job went', () => {
     expect(spyHeadlines([sabotaged(false)], 1, name)[0].headline).toBe('BOMBER FACTORY SABOTAGED IN PORTLAND!');
-    expect(spyHeadlines([sabotaged(true)], 1, name)[0].headline).toBe('OUR AGENT CAUGHT IN PORTLAND!');
+    expect(spyHeadlines([sabotaged(true)], 1, name)[0].headline).toBe('BOMBER FACTORY SABOTAGED IN PORTLAND!');
+    expect(spyHeadlines([sabotaged(true)], 1, name)[0].subhead).toBe('Suspect killed');
   });
 
   it('reports damage to the garrison to both sides', () => {
