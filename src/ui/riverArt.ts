@@ -14,7 +14,7 @@ const hash2 = (x: number, y: number, k: number): number => {
 };
 
 /** How wide every river is, in squares. */
-export const RIVER_WIDTH = 0.075;
+export const RIVER_WIDTH = 0.065;
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
 const LAYERS = [
@@ -30,9 +30,9 @@ interface Pt { x: number; y: number }
 /** One stretch of river, from the middle of a square to the next one down: points along its centre line, with a half width at each. */
 interface Reach { pts: Pt[]; normals: Pt[]; half: number[]; mouth: boolean }
 
-const SAMPLES = 9;
+const SAMPLES = 14;
 /** A mouth starts to fade out at this sample of its last reach. */
-const FADE_FROM = 3;
+const FADE_FROM = 5;
 /** How strongly a reach keeps the heading it arrives with: below 1 it cannot overshoot and curl at a sharp turn. */
 const TENSION = 0.7;
 
@@ -165,9 +165,69 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     return unit(to.x - from.x, to.y - from.y);
   };
 
+  // Smooth value noise in world squares, the same wherever it is drawn (and wrapping with the map), for the meander.
+  const vnoise = (x: number, y: number, k: number, period: number): number => {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const fx = x - x0;
+    const fy = y - y0;
+    const sx = fx * fx * (3 - 2 * fx);
+    const sy = fy * fy * (3 - 2 * fy);
+    const h = (ix: number, iy: number) => hash2(mod(ix, period), iy, k);
+    const a = h(x0, y0);
+    const b = h(x0 + 1, y0);
+    const c = h(x0, y0 + 1);
+    const d = h(x0 + 1, y0 + 1);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  };
+  /** How far the river wanders from its smooth line at a spot, in squares: a slow wander plus a fast squiggle, as in the original game. */
+  const meander = (wx: number, wy: number): number =>
+    (vnoise(wx * 2, wy * 2, 21, W * 2) - 0.5) * 0.42 + (vnoise(wx * 5, wy * 5, 22, W * 5) - 0.5) * 0.22;
+  const normalsOf = (pts: Pt[]): Pt[] => pts.map((_, k) => {
+    const a = pts[Math.max(0, k - 1)];
+    const b = pts[Math.min(pts.length - 1, k + 1)];
+    const d = unit(b.x - a.x, b.y - a.y);
+    return { x: -d.y, y: d.x };
+  });
+  /** A small side stream: it wanders off from `from` along `dir`, thinning to a thread. */
+  const twig = (from: Pt, dir: Pt, len: number, half0: number, gx: number, gy: number, tag: number): Reach => {
+    const n = 7;
+    const pts: Pt[] = [];
+    let p = from;
+    let d = dir;
+    for (let k = 0; k <= n; k++) {
+      pts.push(p);
+      const turn = (hash2(gx, gy, tag * 16 + k) - 0.5) * 1.1;
+      d = unit(d.x * Math.cos(turn) - d.y * Math.sin(turn), d.x * Math.sin(turn) + d.y * Math.cos(turn));
+      p = { x: p.x + (d.x * len) / n, y: p.y + (d.y * len) / n };
+    }
+    return { pts, normals: normalsOf(pts), half: pts.map((_, k) => Math.max(0.5, half0 * (1 - (0.7 * k) / n))), mouth: false };
+  };
+  const rot = (v: Pt, a: number): Pt => ({ x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a) });
+  /** The little streams that fan out where a river begins or ends on land, pointing along `dir`. */
+  const feather = (out: Reach[], at: Pt, dir: Pt, half0: number, gx: number, gy: number, tag: number): void => {
+    const angles = [-0.95, -0.4, 0, 0.4, 0.95];
+    angles.forEach((a, i) => {
+      const r = hash2(gx, gy, tag + i);
+      if (r < 0.2 && i !== 2) return;
+      const len = (i === 2 ? 0.42 : 0.22 + 0.2 * r) * t;
+      out.push(twig(at, rot(dir, a + (r - 0.5) * 0.4), len, half0 * (i === 2 ? 0.85 : 0.65), gx, gy, tag + 8 + i));
+    });
+  };
+
   const reaches: Reach[] = [];
   const nodes: { p: Pt; half: number }[] = [];
   for (const s of squares.values()) {
+    if (s.to === null && feeder.has(keyOfSq(s))) {
+      // A river that ends on land: it frays into little streams, as at the source.
+      const f = feeder.get(keyOfSq(s))!;
+      const p = nodeAt(s.rawX, s.y);
+      const from = nodeAt(f.rawX, f.y);
+      const w = widthOf(s);
+      feather(reaches, p, unit(p.x - from.x, p.y - from.y), w / 2, mod(s.rawX, W), s.y, 60);
+      nodes.push({ p, half: w / 2 });
+      continue;
+    }
     if (s.to === null || isSpur(s)) continue;
     const a = nodeAt(s.rawX, s.y);
     const b = endOf(s);
@@ -201,8 +261,25 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
       const dx = (6 * u ** 2 - 6 * u) * a.x + (3 * u ** 2 - 4 * u + 1) * ta.x * len * TENSION + (-6 * u ** 2 + 6 * u) * b.x + (3 * u ** 2 - 2 * u) * tb.x * len * TENSION;
       const dy = (6 * u ** 2 - 6 * u) * a.y + (3 * u ** 2 - 4 * u + 1) * ta.y * len * TENSION + (-6 * u ** 2 + 6 * u) * b.y + (3 * u ** 2 - 2 * u) * tb.y * len * TENSION;
       const dir = unit(dx, dy);
-      const swing = Math.sin(Math.PI * u) ** 2 * bend;
+      const env = Math.sin(Math.PI * u) ** 2; // nothing at the ends, so reaches still join smoothly
+      const swing = env * bend + env * meander(x / t + cam.x, y / t + cam.y) * t;
       pts.push({ x: x - dir.y * swing, y: y + dir.x * swing });
+    }
+    const gx = mod(s.rawX, W);
+    const R = (k: number) => hash2(gx, s.y, 40 + k);
+    // Now and then a big stream splits round a small island and comes together again.
+    let branch: Pt[] | null = null;
+    if (!mouth && s.flow >= 3 && R(10) < 0.28) {
+      const k0 = 3;
+      const k1 = SAMPLES - 3;
+      const d = (0.06 + R(11) * 0.05) * t;
+      const base = normalsOf(pts);
+      branch = [];
+      for (let k = k0; k <= k1; k++) {
+        const bump = Math.sin((Math.PI * (k - k0)) / (k1 - k0)) ** 2;
+        branch.push({ x: pts[k].x + base[k].x * d * bump, y: pts[k].y + base[k].y * d * bump });
+        pts[k] = { x: pts[k].x - base[k].x * d * bump, y: pts[k].y - base[k].y * d * bump };
+      }
     }
     // The sides of the band stand square to the line: from the stream's own heading at the two ends (the same as the
     // next reach's, so the joint is clean), and from the neighbouring points in between.
@@ -212,6 +289,15 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
     });
     const half = pts.map((_, k) => { const u = k / SAMPLES; return (wa + (wb - wa) * (u * u * (3 - 2 * u))) / 2; });
     reaches.push({ pts, normals, half, mouth });
+    if (branch) reaches.push({ pts: branch, normals: normalsOf(branch), half: branch.map(() => wa * 0.42), mouth: false });
+    // Small side streams here and there along the way, reaching up the valley.
+    for (let j = 0; j < 2; j++) {
+      if (R(j * 3) >= 0.55) continue;
+      const idx = 3 + Math.floor(R(j * 3 + 1) * (SAMPLES - 6));
+      const flowDir = unit(pts[idx + 1].x - pts[idx - 1].x, pts[idx + 1].y - pts[idx - 1].y);
+      const side = R(j * 3 + 2) < 0.5 ? 1 : -1;
+      reaches.push(twig(pts[idx], rot({ x: -flowDir.x, y: -flowDir.y }, side * (0.6 + R(j * 3 + 20) * 0.5)), (0.26 + R(j * 3 + 21) * 0.3) * t, wa * 0.42, gx, s.y, 30 + j));
+    }
     if (s.hidden && !feeder.has(keyOfSq(s))) {
       // The stream comes from ground not yet explored: run it right up to the edge of the square, where the fog begins.
       const e = { x: (s.rawX - cam.x + 0.5 + s.hidden[0] * 0.5) * t, y: (s.y - cam.y + 0.5 + s.hidden[1] * 0.5) * t };
@@ -233,7 +319,11 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
         snorm.push({ x: -d.y, y: d.x });
       }
       reaches.push({ pts: spts, normals: snorm, half: spts.map(() => wa / 2), mouth: false });
-    } else if (!feeder.has(keyOfSq(s))) nodes.push({ p: a, half: wa / 2 }); // round the tip of a spring
+    } else if (!feeder.has(keyOfSq(s))) {
+      // The source: it frays into little streams, reaching up the valley.
+      nodes.push({ p: a, half: wa / 2 });
+      feather(reaches, a, { x: -ta.x, y: -ta.y }, wa / 2, gx, s.y, 50);
+    }
     if (target && !mouth && feeder.get(keyOfSq(target)) !== s) nodes.push({ p: b, half: wb / 2 }); // and the end of a tributary, which melts into the stream it joins
   }
   if (reaches.length === 0) return;
