@@ -192,7 +192,7 @@ async function build(t, land50, lakes50, rivers, places) {
       ci += best[0]; cj += best[1];
     }
     if (cities.some((c) => cheb([c.x, c.y], [ci, cj]) < MIN_CITY_SPACING)) continue;
-    cities.push({ x: ci, y: cj, name: p.name, nation: p.adm0name, pop: p.pop_max, capital: p.featurecla === 'Admin-0 capital' });
+    cities.push({ x: ci, y: cj, name: p.name, nation: t.nationOverrides?.[p.name] ?? p.adm0name, pop: p.pop_max, capital: p.featurecla === 'Admin-0 capital' });
     taken.add(cj * W + ci);
   }
   cities.sort((a, b) => a.y - b.y || a.x - b.x);
