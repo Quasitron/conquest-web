@@ -26,7 +26,7 @@ export function spyHeadlines(events: readonly GameEvent[], me: PlayerId, cityNam
       } else if (e.by === me) {
         out.push(e.caught
           ? { headline: `OUR AGENT CAUGHT IN ${place}!`, subhead: 'The mission succeeded, at a price', text: `Production in ${city} was wrecked, but our agent was discovered and shot.` }
-          : { headline: `SABOTAGE IN ${place}!`, subhead: 'Our agent strikes unseen', text: `Production in ${city} is wrecked, and our agent remains in place.` });
+          : { headline: `SABOTAGE IN ${place}!`, subhead: 'Foreign agent suspected, suspect at large', text: `Production in ${city} is wrecked, and our agent remains in place.` });
       }
     } else if (e.type === 'garrisonHurt') {
       const unit = UNIT_STATS[e.unitType].name;
@@ -35,7 +35,7 @@ export function spyHeadlines(events: readonly GameEvent[], me: PlayerId, cityNam
       } else if (e.by === me) {
         out.push(e.caught
           ? { headline: `OUR AGENT CAUGHT IN ${place}!`, subhead: 'The mission succeeded, at a price', text: `The ${unit} in ${city} was damaged, but our agent was discovered and shot.` }
-          : { headline: `GARRISON HIT IN ${place}!`, subhead: 'Our agent strikes unseen', text: `The ${unit} in ${city} was damaged, and our agent remains in place.` });
+          : { headline: `GARRISON HIT IN ${place}!`, subhead: 'Foreign agent suspected, suspect at large', text: `The ${unit} in ${city} was damaged, and our agent remains in place.` });
       }
     } else if (e.type === 'spyFound') {
       if (e.owner === me) {
