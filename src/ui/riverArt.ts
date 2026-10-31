@@ -30,7 +30,7 @@ const LAYERS = [
  * the water darkens under the north-west wall by `dark`, and the lit water is moved `lit` away from it; the sandy bank
  * moves `sand` and its dark rim `rim` (negative: toward the light's side, so the rim is thick there and thin opposite).
  */
-const BANK = { dark: 0.78, lit: 1.8, sand: 1.1, rim: -0.7 } as const;
+const BANK = { dark: 0.78, lit: 1.3, sand: 1.1, rim: -0.7 } as const;
 
 interface Pt { x: number; y: number }
 
