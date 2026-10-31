@@ -47,7 +47,7 @@ export const UNIT_STATS: Record<UnitType, UnitStats> = {
   /** Made from an Army or Armor on open land; never moves or attacks, and holds up to eight aircraft of either kind. */
   airbase:    { ...base, advanced: true, producible: false, name: 'Airbase', domain: 'land', move: 0, hits: 1, attack: 0, defense: 2, shot: 1, build: 0, buildRepeat: 0, carries: ['fighter', 'bomber'], capacity: 8 },
   /** Slips into enemy cities unseen to read and sabotage their production; no defence at all. Visible to the enemy only when uncovered (see fog.ts). */
-  spy:        { ...base, advanced: true, promotes: true, name: 'Spy', domain: 'land', move: 1, hits: 1, attack: 0, defense: 0, shot: 1, build: 14, buildRepeat: 12 },
+  spy:        { ...base, advanced: true, promotes: true, name: 'Spy', domain: 'land', move: 1, hits: 1, attack: 0, defense: 0, shot: 1, build: 16, buildRepeat: 14 },
 };
 
 /** Cities defend like an army and never attack. */
