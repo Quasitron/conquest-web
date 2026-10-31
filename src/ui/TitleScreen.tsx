@@ -241,7 +241,7 @@ export function TitleScreen({ store, onStart }: Props) {
             <div class="theater-info">
               <p class="theater-wars">{theater.wars}</p>
               <p>{theater.notes}</p>
-              <p class="muted">{theater.width}×{theater.height} squares, {theater.cities} real cities. Each player starts as a different country: {theater.nations.join(', ')}.</p>
+              <p class="muted">{theater.width}×{theater.height} squares, {theater.cities} real cities. Up to {mostPlayers} players, each starting as a different country picked at random from {theater.nations.length}: {theater.nations.join(', ')}. The cities of the other countries start neutral, free to be captured.</p>
             </div>
           </>
         )}
