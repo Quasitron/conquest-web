@@ -345,7 +345,8 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   /** Fills each layer once from all the given reaches together (so the translucent layers do not double up where they overlap). */
   const paintLayers = (c: CanvasRenderingContext2D, rs: Reach[], discs: { p: Pt; half: number }[]) => {
     const pattern = waterPattern(c);
-    const off = Math.max(0.7, Math.min(3.5, 0.024 * t)); // how far the banks and shading shift, in pixels
+    // How far the banks and shading shift, in pixels: it grows with the zoom, but slowly, so the river is not mostly shadow close up.
+    const off = Math.max(0.7, Math.min(1.5, 0.7 + 0.009 * (t - 12)));
     for (const layer of LAYERS) {
       const shift = layer.scale === 1.8 ? BANK.sand : layer.scale === 1.16 ? BANK.rim : 0;
       const style: string = layer.style;
