@@ -36,5 +36,27 @@
    "Germany",
    "Finland"
   ]
+ },
+ {
+  "id": "mediterranean",
+  "name": "The Mediterranean & North Africa",
+  "wars": "Punic Wars (264–146 BC) · The Crusades (1096–1291) · Battle of Lepanto (1571) · World War II: North Africa, Sicily and Italy (1940–45)",
+  "notes": "The inland sea of the ancient and modern world, from Gibraltar to the Levant. Italy, the Balkans and the African coast face each other across short, contested crossings, with Malta, Sicily, Crete and Cyprus as the stepping stones, the Nile to the south and the Atlas, the Alps and the Taurus around the edges.",
+  "width": 110,
+  "height": 55,
+  "wrap": false,
+  "cities": 174,
+  "nations": [
+   "Turkey",
+   "Italy",
+   "Algeria",
+   "Spain",
+   "Greece",
+   "Morocco",
+   "Libya",
+   "France",
+   "Egypt",
+   "Tunisia"
+  ]
  }
 ]
