@@ -58,5 +58,283 @@
    "Egypt",
    "Tunisia"
   ]
+ },
+ {
+  "id": "north-atlantic",
+  "name": "The North Atlantic",
+  "wars": "The Battle of the Atlantic, World Wars I and II (1914–18, 1939–45) · The age of sail, from the Armada to Trafalgar · The Cold War and the GIUK Gap",
+  "notes": "Mostly ocean: the convoy road between North America and Europe, with Newfoundland, Iceland, Ireland and the British Isles as the stepping stones. Win the sea and the land follows.",
+  "width": 100,
+  "height": 62,
+  "wrap": false,
+  "cities": 107,
+  "nations": [
+   "Canada",
+   "United States of America",
+   "France",
+   "Spain",
+   "United Kingdom",
+   "Iceland",
+   "Ireland",
+   "Portugal"
+  ]
+ },
+ {
+  "id": "pacific",
+  "name": "The Pacific",
+  "wars": "World War II in the Pacific (1941–45): Pearl Harbor, Midway, Guadalcanal, the Philippines and the road to Japan · The Russo-Japanese War (1904–05)",
+  "notes": "The widest theater: Japan, China and the East Indies to Australia, New Zealand and Hawaii, with a thousand islands between and oceans of sea power. Carriers, transports and island hopping decide it.",
+  "width": 110,
+  "height": 92,
+  "wrap": false,
+  "cities": 125,
+  "nations": [
+   "China",
+   "Indonesia",
+   "Australia",
+   "Japan",
+   "Philippines",
+   "Papua New Guinea",
+   "New Zealand"
+  ]
+ },
+ {
+  "id": "east-asia",
+  "name": "East Asia",
+  "wars": "The Sino-Japanese Wars (1894–95, 1937–45) · The Russo-Japanese War (1904–05) · World War II in China · The Korean War (1950–53)",
+  "notes": "China, Korea and Japan around the Yellow Sea: great river valleys, the long Chinese coast, the Korean peninsula pointing at Japan, and the steppe and mountains behind.",
+  "width": 90,
+  "height": 92,
+  "wrap": false,
+  "cities": 229,
+  "nations": [
+   "China",
+   "Russia",
+   "Japan",
+   "Mongolia",
+   "South Korea",
+   "North Korea",
+   "Taiwan"
+  ]
+ },
+ {
+  "id": "korea",
+  "name": "Korea",
+  "wars": "The Korean War (1950–53) · The First Sino-Japanese War (1894–95) · The Russo-Japanese War (1904–05) · The Japanese invasions of Korea (1592–98)",
+  "notes": "A small, fast theater: one mountainous peninsula between China, Japan and the sea, with the Yalu and Han rivers and Inchon and Pusan on the coast. A good first map to learn on.",
+  "width": 50,
+  "height": 74,
+  "wrap": false,
+  "cities": 56,
+  "nations": [
+   "China",
+   "North Korea",
+   "South Korea",
+   "Japan"
+  ]
+ },
+ {
+  "id": "southeast-asia",
+  "name": "Southeast Asia",
+  "wars": "The Vietnam War (1955–75) · World War II: Malaya, Singapore and Burma (1941–45) · The First Indochina War (1946–54)",
+  "notes": "Jungle, rivers and islands: the Mekong and Irrawaddy, the long Vietnamese coast and the Malay peninsula, with the Philippines and the East Indies to the east and south.",
+  "width": 80,
+  "height": 88,
+  "wrap": false,
+  "cities": 145,
+  "nations": [
+   "China",
+   "Indonesia",
+   "Thailand",
+   "Myanmar",
+   "Vietnam",
+   "Philippines",
+   "Malaysia"
+  ]
+ },
+ {
+  "id": "middle-east",
+  "name": "The Middle East & the Persian Gulf",
+  "wars": "World War I: Gallipoli to Arabia and Palestine (1914–18) · The Arab–Israeli Wars (1948–73) · The Iran–Iraq War (1980–88) · The Gulf Wars (1990–91, 2003)",
+  "notes": "Desert, oil and the narrow seas: the Nile to the Persian Gulf, the Red Sea and Suez, the Tigris and Euphrates, and the mountains of Anatolia and Iran around the edge.",
+  "width": 90,
+  "height": 80,
+  "wrap": false,
+  "cities": 199,
+  "nations": [
+   "Iran",
+   "Turkey",
+   "Saudi Arabia",
+   "Egypt",
+   "Iraq",
+   "Yemen",
+   "Syria",
+   "Oman"
+  ]
+ },
+ {
+  "id": "eastern-north-america",
+  "name": "Eastern North America",
+  "wars": "The American Revolution (1775–83) · The War of 1812 · The American Civil War (1861–65)",
+  "notes": "From the Mississippi to the Atlantic and the Gulf to the Great Lakes: the Appalachians, the Ohio and Mississippi rivers and a long coast. Here the players are the Union, the Confederacy and Canada.",
+  "width": 90,
+  "height": 71,
+  "wrap": false,
+  "cities": 161,
+  "nations": [
+   "Union",
+   "Confederate States",
+   "Canada"
+  ]
+ },
+ {
+  "id": "caribbean",
+  "name": "The Caribbean & Central America",
+  "wars": "The Spanish–American War (1898) · The Banana Wars and the Panama Canal (1900s) · The Cuban Missile Crisis (1962) · The U-boat war in the Caribbean (1942–43)",
+  "notes": "A sea of islands and short crossings between Florida, Mexico and South America: Cuba, Hispaniola and Jamaica, the Panama isthmus, and the passages that every convoy had to use.",
+  "width": 100,
+  "height": 60,
+  "wrap": false,
+  "cities": 92,
+  "nations": [
+   "Mexico",
+   "Venezuela",
+   "United States of America",
+   "Colombia",
+   "Cuba",
+   "Dominican Republic",
+   "Haiti",
+   "Honduras",
+   "Panama"
+  ]
+ },
+ {
+  "id": "india",
+  "name": "India & the Indian Ocean",
+  "wars": "The Seven Years' War in India (1756–63) · The Indian Rebellion (1857) · World War II: Burma and India (1942–45) · The Indo-Pakistani Wars (1947–71)",
+  "notes": "The Indian subcontinent and the ocean around it: the Himalayas to the north, the Ganges and Indus plains, Ceylon, the Arabian coast and the sea lanes from Aden to Singapore.",
+  "width": 90,
+  "height": 84,
+  "wrap": false,
+  "cities": 160,
+  "nations": [
+   "India",
+   "China",
+   "Iran",
+   "Pakistan",
+   "Afghanistan",
+   "Myanmar",
+   "Indonesia",
+   "Thailand",
+   "Oman",
+   "Bangladesh",
+   "Sri Lanka"
+  ]
+ },
+ {
+  "id": "scandinavia",
+  "name": "Scandinavia & the Baltic",
+  "wars": "The Great Northern War (1700–21) · The Finnish War (1808–09) · The Winter War and the invasion of Norway (1939–40) · The Cold War",
+  "notes": "Fjords, forests and lakes around the Baltic: Norway and Sweden, Finland and Denmark, with the Baltic Sea, the Danish straits and the Gulf of Finland as the stage for sea power.",
+  "width": 70,
+  "height": 86,
+  "wrap": false,
+  "cities": 120,
+  "nations": [
+   "Russia",
+   "Sweden",
+   "Norway",
+   "Finland",
+   "Denmark"
+  ]
+ },
+ {
+  "id": "africa",
+  "name": "Africa",
+  "wars": "The Scramble for Africa and the colonial wars (1880–1914) · The Boer Wars (1880–81, 1899–1902) · World War II: East Africa and the Western Desert (1940–43)",
+  "notes": "A whole continent: the Sahara and the Nile, the Congo and the Great Lakes, the Ethiopian highlands, the Cape and the long coasts. Distances are huge and cities far apart.",
+  "width": 90,
+  "height": 89,
+  "wrap": false,
+  "cities": 166,
+  "nations": [
+   "Sudan",
+   "South Africa",
+   "Algeria",
+   "Nigeria",
+   "Morocco",
+   "Mozambique",
+   "Libya",
+   "Tanzania",
+   "Angola",
+   "Egypt",
+   "Ethiopia"
+  ]
+ },
+ {
+  "id": "south-america",
+  "name": "South America & the South Atlantic",
+  "wars": "The Wars of Independence (1808–26) · The War of the Triple Alliance (1864–70) · The War of the Pacific (1879–84) · The Falklands War (1982)",
+  "notes": "The Andes down the west, the Amazon and the Pampas, and a long South Atlantic coast out to the Falklands. A continent with a great jungle in the middle and the sea on three sides.",
+  "width": 70,
+  "height": 89,
+  "wrap": false,
+  "cities": 97,
+  "nations": [
+   "Brazil",
+   "Argentina",
+   "Chile",
+   "Peru",
+   "Venezuela",
+   "Colombia",
+   "Bolivia"
+  ]
+ },
+ {
+  "id": "balkans-black-sea",
+  "name": "The Balkans, Black Sea & Anatolia",
+  "wars": "The Crimean War (1853–56) · The Balkan Wars (1912–13) · World War I: Gallipoli and the Salonika front (1915–18) · World War II: the invasion of Greece and Crete (1941)",
+  "notes": "Straits, peninsulas and mountains: the Bosphorus and Dardanelles, the Aegean islands, the Danube, and the Black Sea ringed by Turkey, the Balkans, Ukraine and the Caucasus.",
+  "width": 80,
+  "height": 46,
+  "wrap": false,
+  "cities": 151,
+  "nations": [
+   "Turkey",
+   "Russia",
+   "Romania",
+   "Italy",
+   "Greece",
+   "Ukraine",
+   "Bulgaria",
+   "Croatia",
+   "Serbia",
+   "Georgia"
+  ]
+ },
+ {
+  "id": "world",
+  "name": "The World",
+  "wars": "World War II, a global war (1939–45) · The Cold War · The Age of Sail and the empires",
+  "notes": "The whole Earth on one map, wrapping east to west: every ocean, every continent and the great powers. Play it on the large grid, and expect long voyages, long wars and cities far apart.",
+  "width": 150,
+  "height": 56,
+  "wrap": true,
+  "cities": 257,
+  "nations": [
+   "Russia",
+   "United States of America",
+   "China",
+   "Brazil",
+   "India",
+   "Mexico",
+   "Indonesia",
+   "Canada",
+   "Australia",
+   "Japan",
+   "South Africa",
+   "Turkey",
+   "Argentina"
+  ]
  }
 ]

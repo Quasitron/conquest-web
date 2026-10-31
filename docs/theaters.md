@@ -5,6 +5,15 @@ given a different real country, picked at random from the game seed, and starts 
 "Player N" unless the seat was renamed). Cities are real, with real names and positions; mountains, rough ground and rivers
 (with the Advanced units rule) follow the real geography.
 
+## The theaters
+
+Seventeen, listed in the menu in this order: Western Europe & the Atlantic Coast, Eastern Europe & Russia, The Mediterranean &
+North Africa, The North Atlantic, The Pacific (it crosses the date line), East Asia, Korea (the small one: 50 × 74),
+Southeast Asia, The Middle East & the Persian Gulf, Eastern North America (the players are the Union, the Confederate States
+and Canada, by state), The Caribbean & Central America, India & the Indian Ocean, Scandinavia & the Baltic, Africa, South
+America & the South Atlantic, The Balkans, Black Sea & Anatolia, and The World (150 × 56, wraps east to west). Each one
+carries its wars and notes, shown on the New Game screen. A game takes up to 6 players; the other countries' cities start neutral.
+
 ## How they are made
 
 `node tools/theaters/build.mjs [id ...]` builds the maps; `tools/theaters/theaters.mjs` lists them. Nothing is drawn by hand.
