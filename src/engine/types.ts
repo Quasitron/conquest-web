@@ -221,7 +221,7 @@ export type GameEvent =
   /** A bomber's hit on a city: its production so far is lost, or one of the units in it is destroyed. */
   | { type: 'cityBombed'; cityId: number; by: PlayerId; owner: PlayerId; effect: 'production' | 'unit'; unitType?: UnitType }
   /** A spy's sabotage: the city loses the production it had built up. caught: the spy was discovered and shot. */
-  | { type: 'citySabotaged'; cityId: number; by: PlayerId; owner: PlayerId; caught: boolean }
+  | { type: 'citySabotaged'; cityId: number; by: PlayerId; owner: PlayerId; caught: boolean; /** What the city was building. */ production: UnitType }
   /** An Elite spy's attempt at a revolt; on success a cityCaptured event follows. */
   /** A spy hiding in a city was discovered at the start of its owner's turn and shot. */
   /** A spy damaged a unit in a city by a hit. */
