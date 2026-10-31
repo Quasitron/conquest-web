@@ -18,11 +18,11 @@ export const RIVER_WIDTH = 0.065;
 
 /** The layers a river is drawn in, widest first: damp ground, the bank, the water, a tint and a faint centre line. */
 const LAYERS = [
-  { scale: 2.9, plus: 1.5, style: 'rgba(70, 60, 36, 0.17)' },
-  { scale: 1.8, plus: 1.25, style: 'rgba(206, 190, 142, 0.5)' },
-  { scale: 1.16, plus: 0.6, style: 'rgba(22, 44, 46, 0.62)' },
-  { scale: 1.0, plus: 0, style: 'water' },
-  { scale: 1.0, plus: 0, style: 'rgba(76, 156, 164, 0.3)' },
+  { scale: 2.9, plus: 1.5, shift: 0, style: 'rgba(70, 60, 36, 0.17)' },
+  { scale: 1.8, plus: 1.25, shift: 0.7, style: 'rgba(206, 190, 142, 0.5)' },
+  { scale: 1.16, plus: 0.6, shift: -0.45, style: 'rgba(22, 44, 46, 0.62)' },
+  { scale: 1.0, plus: 0, shift: 0, style: 'water' },
+  { scale: 1.0, plus: 0, shift: 0, style: 'rgba(76, 156, 164, 0.3)' },
 ] as const;
 
 interface Pt { x: number; y: number }
@@ -338,6 +338,7 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
   /** Fills each layer once from all the given reaches together (so the translucent layers do not double up where they overlap). */
   const paintLayers = (c: CanvasRenderingContext2D, rs: Reach[], discs: { p: Pt; half: number }[]) => {
     const pattern = waterPattern(c);
+    const off = Math.max(0.7, Math.min(3.5, 0.024 * t)); // how far the banks and shading shift, in pixels
     for (const layer of LAYERS) {
       const path = new Path2D();
       for (const r of rs) {
@@ -362,7 +363,25 @@ export function drawRivers(ctx: CanvasRenderingContext2D, view: PlayerView, cam:
         path.closePath();
       }
       c.fillStyle = layer.style === 'water' ? (pattern ?? '#2c6a93') : layer.style;
-      c.fill(path, 'nonzero');
+      // Light from the north-west: the bank on the lit side shows a wider sandy lip, the one in shadow a darker rim.
+      if (layer.shift) {
+        c.save();
+        c.translate(layer.shift * off, layer.shift * off);
+        c.fill(path, 'nonzero');
+        c.restore();
+      } else c.fill(path, 'nonzero');
+      if (layer.style === 'water') {
+        // The river lies below the land: the wall on its north-west side shades the water, which brightens away from it.
+        c.save();
+        c.clip(path, 'nonzero');
+        c.fillStyle = 'rgba(6, 22, 38, 0.6)';
+        c.fill(path, 'nonzero');
+        const lit = new Path2D();
+        lit.addPath(path, new DOMMatrix().translate(off * 1.1, off * 1.1));
+        c.fillStyle = pattern ?? '#2c6a93';
+        c.fill(lit, 'nonzero');
+        c.restore();
+      }
     }
   };
 
