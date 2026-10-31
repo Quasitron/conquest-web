@@ -29,12 +29,13 @@ export function sabotageCity(s: GameState, rng: RandomSource, spy: Unit, events:
     return 'a spy can only sabotage an enemy city it is inside';
   }
   if (city.production === null || city.progress === 0) return 'the city has no production built up to sabotage';
+  const production = city.production;
   city.progress = 0;
   spy.movesLeft = 0;
   spy.movedThisTurn = true;
   spy.orders = null;
   const caught = rng.next() < SABOTAGE_CATCH_CHANCE[rankOf(spy.wins)];
-  events.push({ type: 'citySabotaged', cityId: city.id, by: spy.owner, owner: city.owner, caught });
+  events.push({ type: 'citySabotaged', cityId: city.id, by: spy.owner, owner: city.owner, caught, production });
   if (caught) destroyUnit(s, spy, 'caught', events, city.owner);
   else recordWin(s, spy, events); // a clean job counts towards promotion
   return null;

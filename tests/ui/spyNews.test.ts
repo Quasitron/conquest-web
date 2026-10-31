@@ -1,20 +1,20 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../../src/engine';
 import { spyHeadlines } from '../../src/ui/spyNews';
 
 const name = (id: number) => (id === 7 ? 'Portland' : undefined);
-const sabotaged = (caught: boolean): GameEvent => ({ type: 'citySabotaged', cityId: 7, by: 1, owner: 0, caught });
+const sabotaged = (caught: boolean): GameEvent => ({ type: 'citySabotaged', cityId: 7, by: 1, owner: 0, caught, production: 'bomber' });
 
 describe('spyHeadlines', () => {
   it('tells the victim about a sabotaged city', () => {
     const [item] = spyHeadlines([sabotaged(false)], 0, name);
-    expect(item.headline).toBe('PRODUCTION SABOTAGED IN PORTLAND!');
+    expect(item.headline).toBe('BOMBER FACTORY SABOTAGED IN PORTLAND!');
     expect(item.text).toContain('slipped away');
     expect(spyHeadlines([sabotaged(true)], 0, name)[0].text).toContain('shot');
   });
 
   it('tells the spy\'s owner how the job went', () => {
-    expect(spyHeadlines([sabotaged(false)], 1, name)[0].headline).toBe('SABOTAGE IN PORTLAND!');
+    expect(spyHeadlines([sabotaged(false)], 1, name)[0].headline).toBe('BOMBER FACTORY SABOTAGED IN PORTLAND!');
     expect(spyHeadlines([sabotaged(true)], 1, name)[0].headline).toBe('OUR AGENT CAUGHT IN PORTLAND!');
   });
 
@@ -42,6 +42,6 @@ describe('spyHeadlines', () => {
 
   it('ignores other events and copes with an unknown city', () => {
     expect(spyHeadlines([{ type: 'turnStarted', player: 0, turn: 3 }], 0, name)).toEqual([]);
-    expect(spyHeadlines([{ ...(sabotaged(false) as object), cityId: 99 } as GameEvent], 0, name)[0].headline).toBe('PRODUCTION SABOTAGED IN THE CITY!');
+    expect(spyHeadlines([{ ...(sabotaged(false) as object), cityId: 99 } as GameEvent], 0, name)[0].headline).toBe('BOMBER FACTORY SABOTAGED IN THE CITY!');
   });
 });

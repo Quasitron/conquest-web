@@ -70,7 +70,7 @@ describe('soundsForEvents', () => {
   });
 
   it('a sabotaged city explodes', () => {
-    const sabotaged: GameEvent = { type: 'citySabotaged', cityId: 1, by: 1, owner: 0, caught: false };
+    const sabotaged: GameEvent = { type: 'citySabotaged', cityId: 1, by: 1, owner: 0, caught: false, production: 'bomber' };
     expect(soundsForEvents([sabotaged], 0)).toEqual(['explosion']);
   });
 

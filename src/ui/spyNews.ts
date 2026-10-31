@@ -1,10 +1,15 @@
-import { UNIT_STATS, type GameEvent, type PlayerId } from '../engine';
+import { UNIT_STATS, type GameEvent, type PlayerId, type UnitType } from '../engine';
 
 /** One newspaper front page: a headline in capitals, a line under it, and the story. */
 export interface NewsItem {
   headline: string;
   subhead: string;
   text: string;
+}
+
+/** What a city building this unit is called in the papers: a Bomber Factory, a Destroyer Shipyard. */
+function works(type: UnitType): string {
+  return `${UNIT_STATS[type].name} ${UNIT_STATS[type].domain === 'sea' ? 'Shipyard' : 'Factory'}`;
 }
 
 /**
@@ -19,14 +24,14 @@ export function spyHeadlines(events: readonly GameEvent[], me: PlayerId, cityNam
     if (e.type === 'citySabotaged') {
       if (e.owner === me) {
         out.push({
-          headline: `PRODUCTION SABOTAGED IN ${place}!`,
+          headline: `${works(e.production).toUpperCase()} SABOTAGED IN ${place}!`,
           subhead: 'An enemy agent strikes at the factories',
           text: `All the work under way in ${city} has been wrecked. ${e.caught ? 'The saboteur was caught and shot.' : 'The saboteur slipped away.'}`,
         });
       } else if (e.by === me) {
         out.push(e.caught
           ? { headline: `OUR AGENT CAUGHT IN ${place}!`, subhead: 'The mission succeeded, at a price', text: `Production in ${city} was wrecked, but our agent was discovered and shot.` }
-          : { headline: `SABOTAGE IN ${place}!`, subhead: 'Foreign agent suspected, suspect at large', text: `Production in ${city} is wrecked, and our agent remains in place.` });
+          : { headline: `${works(e.production).toUpperCase()} SABOTAGED IN ${place}!`, subhead: 'Foreign agent suspected, suspect at large', text: `Production in ${city} is wrecked, and our agent remains in place.` });
       }
     } else if (e.type === 'garrisonHurt') {
       const unit = UNIT_STATS[e.unitType].name;
