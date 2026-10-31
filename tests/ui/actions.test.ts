@@ -13,6 +13,17 @@ function viewOf(s: ReturnType<typeof makeGame>, id: number) {
   return { v, u: v.myUnits.find((x) => x.id === id)! };
 }
 
+describe('a spy in an enemy city', () => {
+  it('offers Damage Garrison only when someone is in the city', () => {
+    const s = makeGame(M, { rules: { advancedUnits: true } });
+    const spy = addUnit(s, 'spy', 0, 6, 0);
+    const hurt = () => { const { v, u } = viewOf(s, spy.id); return availableActions(v, u).hurt; };
+    expect(hurt()).toBe(false);
+    addUnit(s, 'armor', 1, 6, 0);
+    expect(hurt()).toBe(true);
+  });
+});
+
 describe('repair action', () => {
   it('is offered to a damaged unit (at sea it goes to a city first) that is not already repairing', () => {
     const s = makeGame(M);
