@@ -11,7 +11,7 @@ export interface ParsedMap {
 
 const CHARS: Record<string, Terrain> = { '.': 'water', '#': 'land', '*': 'city' };
 /** Land squares with terrain, for tests: rough, river, forest, mountain. */
-const RELIEF_CHARS: Record<string, Relief> = { r: 'rough', v: 'river', f: 'forest', m: 'mountain' };
+const RELIEF_CHARS: Record<string, Relief> = { r: 'rough', v: 'river', f: 'forest', m: 'mountain', d: 'desert' };
 
 /** Builds a map from rows of '.', '#', '*' (water, land, city), and 'r', 'v', 'f', 'm' (rough, river, forest, mountain land). */
 export function parseAscii(rows: string[]): ParsedMap {

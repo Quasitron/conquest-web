@@ -13,6 +13,7 @@ const PICTURE: Record<Surface, string> = {
   rough: '/art/terrain/rough.webp',
   forest: '/art/terrain/forest.webp',
   mountain: '/art/terrain/mountain.webp',
+  desert: '/art/terrain/desert.webp',
 };
 
 /** A picture covers this many squares across and down before it repeats. */
@@ -27,16 +28,16 @@ export const EXACT_FADE_TILE = 48;
 
 /** The average colour of each picture, for the flat map, the minimap and while the pictures load. */
 export const FLAT: Record<Surface, string> = {
-  water: '#184c74', clear: '#5f8f4a', river: '#5f8f4a', rough: '#8c7650', forest: '#264e2e', mountain: '#7a7c82',
+  water: '#184c74', clear: '#5f8f4a', river: '#5f8f4a', rough: '#8c7650', forest: '#264e2e', mountain: '#7a7c82', desert: '#d6ba80',
 };
 
 /** How far from a square's edge a neighbouring ground fades in, in squares (the coast uses a narrower strip). */
 const REACH = 0.42;
 const COAST_REACH = 0.2;
 
-const SURFACES: Surface[] = ['water', 'clear', 'rough', 'forest', 'mountain'];
+const SURFACES: Surface[] = ['water', 'clear', 'rough', 'forest', 'mountain', 'desert'];
 
-/** The five pictures, or null until all of them have loaded (loading starts the first time they are asked for). */
+/** The pictures (all but the river, which is drawn on clear ground), or null until all of them have loaded (loading starts the first time they are asked for). */
 function pictures(): Record<Surface, HTMLImageElement> | null {
   if (typeof document === 'undefined') return null;
   const out = {} as Record<Surface, HTMLImageElement>;

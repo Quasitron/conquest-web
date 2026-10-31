@@ -1,7 +1,8 @@
 // Builds the historical theater maps from public-domain data. Run: node tools/theaters/build.mjs [theater-id ...]
 //
 // Sources (not kept in the repository; the data folder is THEATER_DATA, by default C:/Users/robta/theater-source-data):
-//   Natural Earth (public domain): ne_50m_land, ne_50m_lakes, ne_10m_rivers_lake_centerlines, ne_10m_populated_places_simple
+//   Natural Earth (public domain): ne_50m_land, ne_50m_lakes, ne_10m_rivers_lake_centerlines, ne_10m_populated_places_simple,
+//   ne_10m_geography_regions_polys (the desert regions)
 //   Elevation: AWS Terrain Tiles (terrarium, built from SRTM, GMTED2010 and ETOPO1, among others), downloaded and cached
 // Output: src/data/theaters/<id>.json for each theater and src/data/theaters/index.json (what the New Game menu lists).
 //
@@ -129,7 +130,7 @@ function vnoise(x, y, k) {
 const ORTHO = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
 // ---------------------------------------------------------------- one theater
-async function build(t, land50, lakes50, rivers, places) {
+async function build(t, land50, lakes50, rivers, places, regions) {
   const { west, east, south, north } = t.bbox;
   const midLat = (north + south) / 2;
   const W = t.width;
@@ -204,6 +205,19 @@ async function build(t, land50, lakes50, rivers, places) {
     const mean = meanElev[k], peak = maxElev[k];
     if (mean >= (t.mountainMean ?? 1000) || peak >= (t.mountainPeak ?? 2200)) relief[k] = 'mountain';
     else if (mean >= (t.roughMean ?? 450) || peak >= (t.roughPeak ?? 1000)) relief[k] = 'rough';
+  }
+  // Desert: open ground inside a desert region (Natural Earth's geography regions) becomes sand; rough ground and
+  // mountains inside it stay as they are. `desertExcept` lists region names that are not really desert for this theater.
+  if (t.desert !== false) {
+    const dmask = new Uint8Array(RW * RH);
+    fillPolygons(regions.features.filter((f) => f.properties.FEATURECLA === 'Desert' && !(t.desertExcept ?? []).includes(f.properties.NAME)), dmask, view, 1);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const k = j * W + i;
+      if (!land[k] || taken.has(k) || relief[k] !== 'clear') continue;
+      let n = 0;
+      for (let sy = 0; sy < SAMPLES; sy++) for (let sx = 0; sx < SAMPLES; sx++) n += dmask[(j * SAMPLES + sy) * RW + i * SAMPLES + sx];
+      if (n / (SAMPLES * SAMPLES) >= 0.5) relief[k] = 'desert';
+    }
   }
   const latOf = (j) => north - ((j + 0.5) / H) * (north - south);
   const clearCells = [];
@@ -298,12 +312,12 @@ async function build(t, land50, lakes50, rivers, places) {
     let row = '';
     for (let i = 0; i < W; i++) {
       const k = j * W + i;
-      row += taken.has(k) ? 'C' : !land[k] ? '~' : { clear: '.', mountain: 'm', rough: 'r', forest: 'f', river: 'v' }[relief[k]];
+      row += taken.has(k) ? 'C' : !land[k] ? '~' : { clear: '.', mountain: 'm', rough: 'r', forest: 'f', river: 'v', desert: 'd' }[relief[k]];
     }
     rows.push(row);
   }
   const count = (r) => relief.filter((x, k) => land[k] && x === r).length;
-  console.log(`land ${landCells} cells, ${cities.length} cities (target ${target}), mountain ${count('mountain')}, rough ${count('rough')}, forest ${count('forest')}, river ${count('river')}`);
+  console.log(`land ${landCells} cells, ${cities.length} cities (target ${target}), mountain ${count('mountain')}, rough ${count('rough')}, forest ${count('forest')}, river ${count('river')}, desert ${count('desert')}`);
   console.log(`nations: ${nations.map((x) => `${x.name} ${x.cities}`).join(', ')}`);
   fs.mkdirSync(path.join(SRC, 'previews'), { recursive: true });
   fs.writeFileSync(path.join(SRC, 'previews', `${t.id}.txt`), rows.join('\n') + '\n'); // a picture to check the map by (~ water, C city, m r f v terrain)
@@ -313,7 +327,7 @@ async function build(t, land50, lakes50, rivers, places) {
   const reliefRows = [];
   for (let j = 0; j < H; j++) {
     let row = '';
-    for (let i = 0; i < W; i++) { const k = j * W + i; row += !land[k] ? '~' : { clear: 'c', mountain: 'm', rough: 'r', forest: 'f', river: 'v' }[relief[k]]; }
+    for (let i = 0; i < W; i++) { const k = j * W + i; row += !land[k] ? '~' : { clear: 'c', mountain: 'm', rough: 'r', forest: 'f', river: 'v', desert: 'd' }[relief[k]]; }
     reliefRows.push(row);
   }
   const full = {
@@ -334,8 +348,9 @@ const land50 = readJson('ne_50m_land');
 const lakes50 = readJson('ne_50m_lakes');
 const rivers = readJson('ne_10m_rivers_lake_centerlines');
 const places = readJson('ne_10m_populated_places_simple');
+const regions = readJson('ne_10m_geography_regions_polys');
 const summaries = [];
-for (const t of todo) summaries.push(await build(t, land50, lakes50, rivers, places));
+for (const t of todo) summaries.push(await build(t, land50, lakes50, rivers, places, regions));
 const indexFile = path.join(OUT, 'index.json');
 const previous = fs.existsSync(indexFile) ? JSON.parse(fs.readFileSync(indexFile, 'utf8')) : [];
 const merged = [...previous.filter((p) => !summaries.some((s) => s.id === p.id)), ...summaries]

@@ -24,7 +24,7 @@ export interface TheaterSummary {
 export interface TheaterData extends Omit<TheaterSummary, 'cities' | 'nations'> {
   /** One string per row: ~ water, . land, C city. */
   terrain: string[];
-  /** One string per row: ~ water, c clear, m mountain, r rough, f forest, v river. */
+  /** One string per row: ~ water, c clear, m mountain, r rough, f forest, v river, d desert. */
   relief: string[];
   cities: { x: number; y: number; name: string; nation: string }[];
   /** `start` is the index of the nation's starting city (its capital, or its biggest city). */
@@ -44,7 +44,7 @@ export async function loadTheater(id: string): Promise<TheaterData> {
   return module.default as TheaterData;
 }
 
-const RELIEF: Record<string, Relief> = { c: 'clear', m: 'mountain', r: 'rough', f: 'forest', v: 'river' };
+const RELIEF: Record<string, Relief> = { c: 'clear', m: 'mountain', r: 'rough', f: 'forest', v: 'river', d: 'desert' };
 
 /**
  * A theater as a game world: each player is given a different nation, chosen at random from the seed, and starts in that

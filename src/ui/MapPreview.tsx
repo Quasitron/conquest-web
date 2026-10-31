@@ -15,6 +15,7 @@ const COLORS = {
   rough: '#8a7142',
   mountain: '#9a9a96',
   river: '#4f93d0',
+  desert: '#d6ba80',
   city: '#f2efe6',
 };
 
@@ -38,6 +39,7 @@ export function MapPreview({ map, starts, colors }: Props) {
           : r === 'mountain' ? COLORS.mountain
           : r === 'rough' ? COLORS.rough
           : r === 'forest' ? COLORS.forest
+          : r === 'desert' ? COLORS.desert
           : COLORS.land;
         ctx.fillRect(x * cell, y * cell, cell, cell);
       }

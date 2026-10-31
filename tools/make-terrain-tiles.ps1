@@ -6,7 +6,8 @@
 #   4. it is scaled to 936 x 624 px and saved as WebP.
 # The game cuts one 78 px square out of the picture for each map square, from the picture's own position of that square,
 # so the picture repeats every 12 x 8 squares (see src/ui/terrainTiles.ts). Needs ffmpeg on the PATH.
-# Run from the project folder:  powershell -File tools/make-terrain-tiles.ps1
+# Run from the project folder:  powershell -File tools/make-terrain-tiles.ps1 [-Only desert]   (-Only makes just the named grounds)
+param([string[]]$Only = @())
 Add-Type -AssemblyName System.Drawing
 $src = Join-Path $env:USERPROFILE 'OneDrive\Documents\Claude\art-originals\terrain'
 $out = Join-Path (Split-Path $PSScriptRoot -Parent) 'public\art\terrain'
@@ -19,7 +20,8 @@ $grounds = @(
   @{ name = 'clear';    file = 'Clear-C.webp';    sigma = 110; target = @(95, 143, 74) },
   @{ name = 'rough';    file = 'Rough-C.webp';    sigma = 110; target = @(140, 118, 80) },
   @{ name = 'forest';   file = 'Forest-C.webp';   sigma = 110; target = @(38, 78, 46) },
-  @{ name = 'mountain'; file = 'Mountain-C.webp'; sigma = 300; target = @(122, 124, 130) }
+  @{ name = 'mountain'; file = 'Mountain-C.webp'; sigma = 300; target = @(122, 124, 130) },
+  @{ name = 'desert';   file = 'Desert_3.jpg';    sigma = 110; target = @(214, 186, 128) }
 )
 
 function MeanColor($png) {
@@ -32,6 +34,7 @@ function MeanColor($png) {
 }
 
 foreach ($g in $grounds) {
+  if ($Only.Count -gt 0 -and $Only -notcontains $g.name) { continue }
   $n = $g.name
   $raw = Join-Path $tmp "$n-raw.png"
   $flat = Join-Path $tmp "$n-flat.png"

@@ -14,6 +14,7 @@ given a different real country, picked at random from the game seed, and starts 
 | Coastlines, lakes | Natural Earth 1:50m land and lakes | public domain |
 | Rivers | Natural Earth 1:10m river centrelines | public domain |
 | Cities, capitals, countries | Natural Earth 1:10m populated places | public domain |
+| Deserts | Natural Earth 1:10m geography regions (the "Desert" features: Sahara, Libyan, Arabian, Gobi and the rest) | public domain |
 | Elevation (mountains, rough ground) | AWS Terrain Tiles, terrarium, zoom 5 (built from SRTM, GMTED2010, ETOPO1 and others) | open data; credit the sources |
 
 The downloaded data is kept outside the repository (`THEATER_DATA`, default `C:/Users/robta/theater-source-data`); what the
@@ -32,5 +33,9 @@ writes a picture of the map to `<THEATER_DATA>/previews/<id>.txt` to check it by
 
 - Countries are today's borders (Natural Earth), so a 1940 Soviet Union or a 1914 Austro-Hungarian Empire is shown as the
   modern countries that cover it.
+- Desert is open sand that plays exactly like Clear ground (nothing slows Armor, no defence bonus); only the picture
+  differs (`public/art/terrain/desert.webp`, made from `Desert_3` by tools/make-terrain-tiles.ps1). Open ground inside a
+  desert region becomes sand; rough ground and mountains inside it stay. `desert: false` turns it off for a theater and
+  `desertExcept` lists region names to ignore.
 - Forests are not real: there is no public land-cover layer in the data above, so forest is patchy and kept out of the dry belt.
 - Rivers run only where they reach the water, never through a mountain square or a city (they step round a city).
