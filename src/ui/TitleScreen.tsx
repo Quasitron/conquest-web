@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { SettingsDialog } from './SettingsDialog';
 import { GameSession } from '../app/session';
 import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
-import { DEFAULT_WORLD, SIZE_PRESETS, generateWorld, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
+import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
 import { pickFileText } from './exportFile';
@@ -115,21 +115,16 @@ export function TitleScreen({ store, onStart }: Props) {
     return () => { live = false; };
   }, [theater?.id]);
 
-  // The map as it will be played, for the picture on the form: the same world the Start button would make from these settings.
+  // The picture of a theater on the form. Random maps are never shown ahead of time (they are for discovering), and
+  // nobody's start is shown either: that stays secret until the player is able to choose a country.
   const preview = useMemo(() => {
-    if (panel !== 'new') return null;
+    if (panel !== 'new' || mapKind !== 'theater' || !theaterData || theaterData.id !== theaterId) return null;
     try {
-      if (mapKind === 'theater') {
-        if (!theaterData || theaterData.id !== theaterId || world.players > theaterData.nations.length) return null;
-        const w = theaterWorld(theaterData, world.players, seed, rules.advancedUnits);
-        return { map: w.map, starts: w.startCityIndices, nations: w.nations };
-      }
-      const w = generateWorld(world, seed, rules.advancedUnits);
-      return { map: w.map, starts: w.startCityIndices, nations: null };
+      return theaterWorld(theaterData, 2, seed, rules.advancedUnits).map;
     } catch {
       return null;
     }
-  }, [panel, mapKind, theaterData, theaterId, world, seed, rules.advancedUnits]);
+  }, [panel, mapKind, theaterData, theaterId, seed, rules.advancedUnits]);
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -290,17 +285,7 @@ export function TitleScreen({ store, onStart }: Props) {
         <label><input type="checkbox" checked={world.wrap}
           onChange={(e) => setWorld({ ...world, wrap: (e.target as HTMLInputElement).checked })} /> Wrap east–west</label>
         </>}
-        {preview && (
-          <div class="preview-box">
-            <MapPreview map={preview.map} starts={preview.starts} colors={seats.map((s) => s.color)} />
-            <div class="preview-starts">
-              {preview.starts.map((_, i) => (
-                <span><span class="swatch" style={{ background: seats[i]?.color }} />{preview.nations ? preview.nations[i] : seats[i]?.name}</span>
-              ))}
-            </div>
-            <button type="button" onClick={() => setSeed(randomSeed())}>{theater ? 'Pick different countries' : 'New random map'}</button>
-          </div>
-        )}
+        {preview && <MapPreview map={preview} starts={[]} colors={[]} />}
         <label>Players{' '}
           <select value={world.players} onChange={(e) => setPlayers(Number((e.target as HTMLSelectElement).value))}>
             {[2, 3, 4, 5, 6].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}

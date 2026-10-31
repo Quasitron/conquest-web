@@ -3,7 +3,7 @@ import type { ParsedMap } from '../engine/ascii';
 
 interface Props {
   map: ParsedMap;
-  /** Indices into `map.cities` of each player's starting city, and the colour of each player. */
+  /** Indices into `map.cities` of each player's starting city, and the colour of each player (to show starts to a player choosing a country; none are shown otherwise). */
   starts: number[];
   colors: string[];
 }
