@@ -21,6 +21,12 @@ export const UNIT_BUTTONS: ActionId[] = [
   'next', 'skip', 'hold', 'sentry', 'repair', 'moveTo', 'explore', 'load', 'unload', 'patrol', 'escort', 'airbase', 'sabotage', 'hurt', 'incite', 'goHome', 'clearOrders', 'center', 'info', 'disband',
 ];
 
+/** True when a spy's own report on the city it stands in shows no garrison at all. */
+function emptyGarrison(view: PlayerView, u: Unit): boolean {
+  const city = view.knownCities.find((c) => c.x === u.x && c.y === u.y);
+  return !!city?.intel && city.intel.garrison.length === 0;
+}
+
 export function availableActions(view: PlayerView, u: Unit): Record<ActionId, boolean> {
   const st = UNIT_STATS[u.type];
   const air = st.domain === 'air';
@@ -51,7 +57,8 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
     airbase: view.rules.advancedUnits && canBecomeAirbase(u.type) && u.carriedBy === null && !inCity
       && view.terrain[u.y * view.width + u.x] === 'land',
     sabotage: view.rules.advancedUnits && inEnemyCity,
-    hurt: view.rules.advancedUnits && inEnemyCity,
+    // Nothing to damage in an empty city (its spy-eyed garrison list is empty).
+    hurt: view.rules.advancedUnits && inEnemyCity && !emptyGarrison(view, u),
     incite: view.rules.advancedUnits && inEnemyCity && rankOf(u.wins) === 3,
     clearOrders: u.orders !== null,
     // Damaged: in a city of ours it sits there until repaired, elsewhere it first goes to the nearest suitable city.
