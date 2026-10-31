@@ -1,7 +1,8 @@
 // The historical theaters. `width` is the grid width in squares (the height follows from the area's shape, so squares are
 // about square on the ground); change it and rebuild (node tools/theaters/build.mjs <id>) to make a map bigger or smaller.
 // Optional tuning per theater: landPerCity, landThreshold, mountainMean/Peak, roughMean/Peak, forestShare, riverRank,
-// minNationCities, lakeRank, startNations (the countries a player may start as; by default every country with enough cities).
+// minNationCities, lakeRank, startNations (the countries a player may start as; by default every country with enough cities),
+// nationOverrides (city name -> country, where today's data disagrees with the history).
 export const THEATERS = [
   {
     id: 'western-europe',
@@ -14,5 +15,21 @@ export const THEATERS = [
     roughMean: 650,
     roughPeak: 1500,
     riverRank: 8,
+  },
+  {
+    id: 'eastern-europe',
+    name: 'Eastern Europe & Russia',
+    wars: "Napoleon's invasion of Russia (1812) · World War I, the Eastern Front (1914–18) · Russian Civil War (1918–22) · World War II, from Barbarossa to Stalingrad and Kursk (1941–45)",
+    notes: 'Berlin to the Volga and the Black Sea to the Gulf of Finland. A vast plain cut by great rivers, the Vistula, Dnieper, Don and Volga, with the Carpathians and the Caucasus along the southern edge and long marches between cities.',
+    bbox: { west: 10, east: 60, south: 41, north: 64 },
+    width: 100,
+    landPerCity: 30,
+    lakeRank: 4,
+    riverRank: 8,
+    roughMean: 600,
+    roughPeak: 1400,
+    startNations: ['Russia', 'Ukraine', 'Poland', 'Germany', 'Finland', 'Romania', 'Belarus'],
+    // Natural Earth shows Crimea under Russia; for these wars it belongs with Ukraine.
+    nationOverrides: { Sevastopol: 'Ukraine', Simferopol: 'Ukraine', Yalta: 'Ukraine', Kerch: 'Ukraine', Feodosiya: 'Ukraine', Yevpatoriya: 'Ukraine' },
   },
 ];

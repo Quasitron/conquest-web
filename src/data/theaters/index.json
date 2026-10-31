@@ -17,5 +17,24 @@
    "Poland",
    "Austria"
   ]
+ },
+ {
+  "id": "eastern-europe",
+  "name": "Eastern Europe & Russia",
+  "wars": "Napoleon's invasion of Russia (1812) · World War I, the Eastern Front (1914–18) · Russian Civil War (1918–22) · World War II, from Barbarossa to Stalingrad and Kursk (1941–45)",
+  "notes": "Berlin to the Volga and the Black Sea to the Gulf of Finland. A vast plain cut by great rivers, the Vistula, Dnieper, Don and Volga, with the Carpathians and the Caucasus along the southern edge and long marches between cities.",
+  "width": 100,
+  "height": 76,
+  "wrap": false,
+  "cities": 219,
+  "nations": [
+   "Russia",
+   "Ukraine",
+   "Poland",
+   "Romania",
+   "Belarus",
+   "Germany",
+   "Finland"
+  ]
  }
 ]
