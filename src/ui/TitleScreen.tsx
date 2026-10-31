@@ -1,15 +1,16 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '../ai/difficulty';
 import { Fragment } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { SettingsDialog } from './SettingsDialog';
 import { GameSession } from '../app/session';
 import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
-import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
+import { DEFAULT_WORLD, SIZE_PRESETS, generateWorld, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
 import { pickFileText } from './exportFile';
 import { VERSION_LABEL } from './version';
-import { THEATERS, loadTheater, maxTheaterPlayers, theaterById, theaterWorld } from '../theaters';
+import { THEATERS, loadTheater, maxTheaterPlayers, theaterById, theaterWorld, type TheaterData } from '../theaters';
+import { MapPreview } from './MapPreview';
 
 interface Props {
   store: SaveStore;
@@ -106,6 +107,29 @@ export function TitleScreen({ store, onStart }: Props) {
   const [theaterId, setTheaterId] = useState(THEATERS[0]?.id ?? '');
   const theater = mapKind === 'theater' ? theaterById(theaterId) : undefined;
   const mostPlayers = theater ? maxTheaterPlayers(theater) : 6;
+  const [theaterData, setTheaterData] = useState<TheaterData | null>(null);
+  useEffect(() => {
+    if (!theater) return;
+    let live = true;
+    loadTheater(theater.id).then((d) => { if (live) setTheaterData(d); }).catch(() => { if (live) setTheaterData(null); });
+    return () => { live = false; };
+  }, [theater?.id]);
+
+  // The map as it will be played, for the picture on the form: the same world the Start button would make from these settings.
+  const preview = useMemo(() => {
+    if (panel !== 'new') return null;
+    try {
+      if (mapKind === 'theater') {
+        if (!theaterData || theaterData.id !== theaterId || world.players > theaterData.nations.length) return null;
+        const w = theaterWorld(theaterData, world.players, seed, rules.advancedUnits);
+        return { map: w.map, starts: w.startCityIndices, nations: w.nations };
+      }
+      const w = generateWorld(world, seed, rules.advancedUnits);
+      return { map: w.map, starts: w.startCityIndices, nations: null };
+    } catch {
+      return null;
+    }
+  }, [panel, mapKind, theaterData, theaterId, world, seed, rules.advancedUnits]);
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -266,6 +290,17 @@ export function TitleScreen({ store, onStart }: Props) {
         <label><input type="checkbox" checked={world.wrap}
           onChange={(e) => setWorld({ ...world, wrap: (e.target as HTMLInputElement).checked })} /> Wrap east–west</label>
         </>}
+        {preview && (
+          <div class="preview-box">
+            <MapPreview map={preview.map} starts={preview.starts} colors={seats.map((s) => s.color)} />
+            <div class="preview-starts">
+              {preview.starts.map((_, i) => (
+                <span><span class="swatch" style={{ background: seats[i]?.color }} />{preview.nations ? preview.nations[i] : seats[i]?.name}</span>
+              ))}
+            </div>
+            <button type="button" onClick={() => setSeed(randomSeed())}>{theater ? 'Pick different countries' : 'New random map'}</button>
+          </div>
+        )}
         <label>Players{' '}
           <select value={world.players} onChange={(e) => setPlayers(Number((e.target as HTMLSelectElement).value))}>
             {[2, 3, 4, 5, 6].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}
