@@ -50,16 +50,51 @@ function pictures(): Record<Surface, HTMLImageElement> | null {
   return out;
 }
 
+const mod = (a: number, n: number) => ((a % n) + n) % n;
+
+/** In a tie the first of these wins, so a city only leaves clear ground when another look has more of its neighbours. */
+const CITY_LOOKS: Surface[] = ['clear', 'desert', 'forest', 'rough'];
+
+/**
+ * What a city's square looks like. A city plays on clear ground, but drawn that way it sits in a green patch in a desert
+ * or a forest, so it takes the look of most of the land around it (a river counts as clear, mountains as rough).
+ */
+export function cityLook(view: PlayerView, x: number, y: number): Surface {
+  const count = new Map<Surface, number>();
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const ny = y + dy;
+      if (ny < 0 || ny >= view.height) continue;
+      let nx = x + dx;
+      if (view.wrap) nx = mod(nx, view.width);
+      else if (nx < 0 || nx >= view.width) continue;
+      const i = ny * view.width + nx;
+      if (view.terrain[i] !== 'land') continue;
+      let look: Surface = view.relief?.[i] ?? 'clear';
+      if (look === 'river') look = 'clear';
+      else if (look === 'mountain') look = 'rough';
+      count.set(look, (count.get(look) ?? 0) + 1);
+    }
+  }
+  let best: Surface = 'clear';
+  let most = 0;
+  for (const look of CITY_LOOKS) {
+    const n = count.get(look) ?? 0;
+    if (n > most) { best = look; most = n; }
+  }
+  return best;
+}
+
 /** The surface of a known square, or null when it is unexplored. */
 export function surfaceAt(view: PlayerView, x: number, y: number): Surface | null {
   const i = y * view.width + x;
   const t = view.terrain[i];
   if (t === null) return null;
   if (t === 'water') return 'water';
+  if (t === 'city') return view.relief ? cityLook(view, x, y) : 'clear';
   return view.relief?.[i] ?? 'clear';
 }
-
-const mod = (a: number, n: number) => ((a % n) + n) % n;
 
 /**
  * Smaller copies of a picture (a square cell of 78, 39, 26 or 13 px), so a small square is drawn from a copy near its
