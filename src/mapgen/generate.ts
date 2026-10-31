@@ -31,7 +31,7 @@ function attempt(o: WorldOptions, seed: number, minOthers: number, withRelief: b
   if (!starts) return null;
   const terrain: Terrain[] = land.map((l) => (l ? 'land' : 'water'));
   for (const c of cities) terrain[c.y * width + c.x] = 'city';
-  const relief = withRelief ? generateRelief(h, land, width, height, wrap, cities, seed) : null;
+  const relief = withRelief ? generateRelief(h, land, width, height, wrap, cities, seed, o.climate) : null;
   return {
     map: { width, height, terrain, ...(relief ? { relief } : {}), cities },
     startCityIndices: starts,

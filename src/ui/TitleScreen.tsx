@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { SettingsDialog } from './SettingsDialog';
 import { GameSession } from '../app/session';
 import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
-import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
+import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Climate, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
 import { pickFileText } from './exportFile';
@@ -267,6 +267,14 @@ export function TitleScreen({ store, onStart }: Props) {
             <option value="mixed">Mixed</option>
             <option value="continents">Few continents</option>
           </select>
+        </label>
+        <label>Climate{' '}
+          <select aria-label="Climate" value={world.climate} onChange={(e) => setWorld({ ...world, climate: (e.target as HTMLSelectElement).value as Climate })}>
+            <option value="temperate">Temperate</option>
+            <option value="arid">Arid (deserts)</option>
+            <option value="wet">Wet (more forest)</option>
+          </select>
+          {!rules.advancedUnits && world.climate !== 'temperate' && <span class="muted hint"> Shapes the terrain, which needs the Advanced units rule.</span>}
         </label>
         <label>Starting positions{' '}
           <select value={world.starts} onChange={(e) => setWorld({ ...world, starts: (e.target as HTMLSelectElement).value as WorldOptions['starts'] })}>

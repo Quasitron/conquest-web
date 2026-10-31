@@ -1,11 +1,23 @@
 import type { Pos, Relief } from '../engine/types';
 import { Rng } from '../engine/rng';
 import { heightField } from './noise';
+import type { Climate } from './options';
 
 /** Share of land squares that become mountains, rough ground and forest. Clear ground is what remains. */
 const MOUNTAIN_SHARE = 0.07;
 const ROUGH_SHARE = 0.1;
 const FOREST_SHARE = 0.22;
+/**
+ * What a climate does to the open (clear) squares, as a share of them: sand on the driest (the flattest, furthest inland,
+ * by a noise of its own) and forest on the leafiest. Temperate is the plain map of old, so its seeds make the same maps.
+ */
+const CLIMATE: Record<Climate, { desert: number; forest: number }> = {
+  temperate: { desert: 0, forest: FOREST_SHARE },
+  arid: { desert: 0.35, forest: 0.08 },
+  wet: { desert: 0, forest: 0.36 },
+};
+/** How far inland counts towards dryness, in squares. */
+const DRY_REACH = 6;
 /** Rivers cover about this share of the land squares, the ones with the biggest catchments (at least MIN_CATCHMENT squares drain through). */
 const RIVER_SHARE = 0.15;
 const MIN_CATCHMENT = 2;
@@ -28,7 +40,7 @@ function cutoff(values: number[], share: number): number {
  * water stay clear. `height` is the same field that made the coastline, so the high ground sits inland.
  */
 export function generateRelief(
-  height: number[], land: boolean[], width: number, h: number, wrap: boolean, cities: Pos[], seed: number,
+  height: number[], land: boolean[], width: number, h: number, wrap: boolean, cities: Pos[], seed: number, climate: Climate = 'temperate',
 ): Relief[] {
   const relief: Relief[] = land.map(() => 'clear');
   const isCity = new Set(cities.map((c) => c.y * width + c.x));
@@ -40,9 +52,40 @@ export function generateRelief(
   const roughAt = cutoff(squares.map((i) => height[i]), MOUNTAIN_SHARE + ROUGH_SHARE);
   for (const i of squares) relief[i] = height[i] >= mountainAt ? 'mountain' : height[i] >= roughAt ? 'rough' : 'clear';
 
+  const shares = CLIMATE[climate];
+  if (shares.desert > 0) {
+    // Distance from the coast over the land, so the middle of a landmass is drier than its shore.
+    const around = (x: number, y: number): number[] => ORTHO.flatMap(([dx, dy]) => {
+      const yy = y + dy;
+      if (yy < 0 || yy >= h) return [];
+      let xx = x + dx;
+      if (wrap) xx = ((xx % width) + width) % width;
+      else if (xx < 0 || xx >= width) return [];
+      return [yy * width + xx];
+    });
+    const coastDist = new Array<number>(land.length).fill(-1);
+    const wave: number[] = [];
+    for (let i = 0; i < land.length; i++) {
+      if (!land[i]) continue;
+      const x = i % width;
+      const near = around(x, (i - x) / width);
+      if (near.length < 4 || near.some((m) => !land[m])) { coastDist[i] = 0; wave.push(i); }
+    }
+    for (let q = 0; q < wave.length; q++) {
+      const x = wave[q] % width;
+      for (const m of around(x, (wave[q] - x) / width)) {
+        if (land[m] && coastDist[m] < 0) { coastDist[m] = coastDist[wave[q]] + 1; wave.push(m); }
+      }
+    }
+    const dry = heightField(width, h, wrap, 9, seed ^ 0xd35e47, 3);
+    const score = (i: number) => dry[i] + (0.45 * Math.min(Math.max(coastDist[i], 0), DRY_REACH)) / DRY_REACH;
+    const clearNow = squares.filter((i) => relief[i] === 'clear');
+    const driest = cutoff(clearNow.map(score), shares.desert);
+    for (const i of clearNow) if (score(i) >= driest) relief[i] = 'desert';
+  }
   const leafy = heightField(width, h, wrap, 5, seed ^ 0x51f15eed, 3);
   const open = squares.filter((i) => relief[i] === 'clear');
-  const forestAt = cutoff(open.map((i) => leafy[i]), FOREST_SHARE);
+  const forestAt = cutoff(open.map((i) => leafy[i]), shares.forest);
   for (const i of open) if (leafy[i] >= forestAt) relief[i] = 'forest';
 
   const rng = new Rng(seed ^ 0x7e57ab1e);

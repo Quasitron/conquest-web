@@ -42,6 +42,13 @@ describe('parseNewGameSettings', () => {
     expect(r.rules).toEqual({ ...CLASSIC_RULES, easierNeutralCities: true });
   });
 
+  it('remembers a valid climate, and settings saved before climate existed (or with a bad one) get temperate', () => {
+    expect(parseNewGameSettings({ world: { climate: 'arid' } }, fallback()).world.climate).toBe('arid');
+    expect(parseNewGameSettings({ world: { climate: 'wet' } }, fallback()).world.climate).toBe('wet');
+    expect(parseNewGameSettings({ world: { width: 60, height: 45 } }, fallback()).world.climate).toBe('temperate');
+    expect(parseNewGameSettings({ world: { climate: 'frozen' } }, fallback()).world.climate).toBe('temperate');
+  });
+
   it('rejects a map size the game would refuse', () => {
     const r = parseNewGameSettings({ world: { width: 3, height: 3 } }, fallback());
     expect([r.world.width, r.world.height]).toEqual([DEFAULT_WORLD.width, DEFAULT_WORLD.height]);

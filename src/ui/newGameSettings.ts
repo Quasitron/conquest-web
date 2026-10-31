@@ -1,5 +1,5 @@
 import { validateMapSize, type HouseRules } from '../engine';
-import type { CityDensity, Landmass, WorldOptions } from '../mapgen';
+import type { CityDensity, Climate, Landmass, WorldOptions } from '../mapgen';
 import type { SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
 import { DIFFICULTIES, type Difficulty } from '../ai/difficulty';
@@ -15,6 +15,7 @@ export const NEW_GAME_KEY = 'conquest.newGame';
 
 const LANDMASS: readonly Landmass[] = ['islands', 'mixed', 'continents'];
 const DENSITY: readonly CityDensity[] = ['low', 'normal', 'high'];
+const CLIMATES: readonly Climate[] = ['temperate', 'arid', 'wet'];
 const REGIONS: readonly WorldOptions['nameRegion'][] = [
   'world', 'europe', 'northAmerica', 'latinAmerica', 'asia', 'africaMiddleEast', 'oceania',
 ];
@@ -52,6 +53,7 @@ export function parseNewGameSettings(raw: unknown, fallback: NewGameSettings): N
   if (isInt(w.waterPercent) && w.waterPercent >= 60 && w.waterPercent <= 85) world.waterPercent = w.waterPercent;
   if (LANDMASS.includes(w.landmass as Landmass)) world.landmass = w.landmass as Landmass;
   if (DENSITY.includes(w.cityDensity as CityDensity)) world.cityDensity = w.cityDensity as CityDensity;
+  if (CLIMATES.includes(w.climate as Climate)) world.climate = w.climate as Climate;
   if (isInt(w.players) && w.players >= 2 && w.players <= 6) world.players = w.players;
   if (STARTS.includes(w.starts as WorldOptions['starts'])) world.starts = w.starts as WorldOptions['starts'];
   if (REGIONS.includes(w.nameRegion as WorldOptions['nameRegion'])) world.nameRegion = w.nameRegion as WorldOptions['nameRegion'];
