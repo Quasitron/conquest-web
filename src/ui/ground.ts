@@ -7,10 +7,11 @@ export const GROUND_COLORS: Record<Relief, string> = {
   river: '#5f8f4a',
   forest: '#2f6a35',
   mountain: '#7b7e86',
+  desert: '#d3b87e',
 };
 
 export const GROUND_NAMES: Record<Relief, string> = {
-  clear: 'Clear', rough: 'Rough', river: 'River', forest: 'Forest', mountain: 'Mountains',
+  clear: 'Clear', rough: 'Rough', river: 'River', forest: 'Forest', mountain: 'Mountains', desert: 'Desert',
 };
 
 /** One line saying what the ground does, for the info panel (the Advanced rules, Appendix III of the manual). */
@@ -20,6 +21,7 @@ export const GROUND_HINTS: Record<Relief, string> = {
   river: 'Armor can only move one square here. Land units defend at double against Armor.',
   forest: 'Armor can only move one square here. Land units defend at double against Armor, aircraft and ships.',
   mountain: 'Armor cannot enter. Land units defend at double against Armor, aircraft and ships.',
+  desert: 'Open sand: no effect on movement or combat.',
 };
 
 /** The known ground of a square, or null when the map has no terrain, the square is unexplored, or it is not land. */

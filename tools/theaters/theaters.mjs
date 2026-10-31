@@ -32,4 +32,19 @@ export const THEATERS = [
     // Natural Earth shows Crimea under Russia; for these wars it belongs with Ukraine.
     nationOverrides: { Sevastopol: 'Ukraine', Simferopol: 'Ukraine', Yalta: 'Ukraine', Kerch: 'Ukraine', Feodosiya: 'Ukraine', Yevpatoriya: 'Ukraine' },
   },
+  {
+    id: 'mediterranean',
+    name: 'The Mediterranean & North Africa',
+    wars: 'Punic Wars (264–146 BC) · The Crusades (1096–1291) · Battle of Lepanto (1571) · World War II: North Africa, Sicily and Italy (1940–45)',
+    notes: 'The inland sea of the ancient and modern world, from Gibraltar to the Levant. Italy, the Balkans and the African coast face each other across short, contested crossings, with Malta, Sicily, Crete and Cyprus as the stepping stones, the Nile to the south and the Atlas, the Alps and the Taurus around the edges.',
+    bbox: { west: -10, east: 37, south: 27, north: 46 },
+    width: 110,
+    landPerCity: 22,
+    riverRank: 8,
+    mountainMean: 1400, // the Anatolian plateau is high but not a mountain range
+    mountainPeak: 2500,
+    roughMean: 800,
+    roughPeak: 1700,
+    startNations: ['Italy', 'France', 'Spain', 'Greece', 'Turkey', 'Egypt', 'Libya', 'Algeria', 'Tunisia', 'Morocco', 'Syria'],
+  },
 ];

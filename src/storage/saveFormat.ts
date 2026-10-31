@@ -39,7 +39,7 @@ function isSeat(v: unknown): v is SeatConfig {
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 const TERRAINS = ['water', 'land', 'city'];
-const RELIEFS = ['clear', 'rough', 'river', 'forest', 'mountain'];
+const RELIEFS = ['clear', 'rough', 'river', 'forest', 'mountain', 'desert'];
 
 /** Structural check of a GameState. Returns a problem description, or null when the shape is usable. */
 function gameStateProblem(v: unknown): string | null {
