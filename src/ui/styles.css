@@ -186,6 +186,14 @@ svg.leader circle { fill: #ffd24a; }
 .prod-layout { display: flex; align-items: flex-start; gap: 12px; }
 .prod-layout .unit-card { flex: 0 0 280px; margin: 0; }
 @media (max-width: 760px) { .prod-layout .unit-card { display: none; } }
+.manual-search { position: sticky; top: 0; z-index: 1; padding: 6px 0; background: inherit; }
+.manual-search input { width: 100%; box-sizing: border-box; }
+.manual-contents { display: flex; flex-wrap: wrap; gap: 4px; }
+.manual-section { display: flex; flex-direction: column; gap: 6px; }
+.manual-section dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
+.manual-section dt { font-weight: 600; }
+.manual-section dd { margin: 0; }
+@media (max-width: 760px) { .manual-section dl { grid-template-columns: 1fr; } .manual-section dd { margin-bottom: 4px; } }
 .dialog-wide { width: 680px; }
 @media (max-width: 760px) { .dialog-wide { width: 380px; } }
 .status-players { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 0.9rem; }
