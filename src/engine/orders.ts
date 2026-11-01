@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Orders, OrdersEndReason, PlayerId, Pos, Unit } from './types';
 import type { RandomSource } from './rng';
-import { UNIT_STATS, canCarry, fightRatings, hitsOf, isCrippled } from './units';
+import { UNIT_STATS, attackRating, canCarry, fightRatings, hitsOf, isCrippled } from './units';
 import { combatWinChance } from './combat';
 import { chebyshev, index, isCoastal, neighbors, reliefAt } from './map';
 import { cityAt, hasRoomFor, isAtRefuelPoint, topLevelUnitsAt } from './query';
@@ -287,7 +287,7 @@ export function executeEscort(s: GameState, rng: RandomSource, u: Unit, events: 
       const d = UNIT_STATS[foe.type];
       const rating = fightRatings(s.rules, u.type, foe.type, reliefAt(s, foe.x, foe.y));
       const chance = combatWinChance(
-        { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+        { attack: attackRating(s.rules, u, rating.attack), shot: a.shot, hits: hitsOf(u), damage: u.damage },
         { defense: rating.defense, shot: d.shot, hits: hitsOf(foe), damage: foe.damage },
       );
       if (chance < ESCORT_MIN_WIN || attackUnit(s, rng, u, foe, events) !== null) return endOrders(u, 'enemySighted', events);

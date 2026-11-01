@@ -1,6 +1,6 @@
 import type { City, GameEvent, GameState, Unit } from './types';
 import type { RandomSource } from './rng';
-import { CITY_COMBAT, CITY_STRENGTH_HITS, STRIKE_CHANCE, UNIT_STATS, armorBlockedBy, attackBlockedReason, fightRatings, garrisonBonus, hitsOf, isCrippled, isStrikeTarget, rankOf } from './units';
+import { CITY_COMBAT, CITY_STRENGTH_HITS, STRIKE_CHANCE, UNIT_STATS, attackRating, armorBlockedBy, attackBlockedReason, fightRatings, garrisonBonus, hitsOf, isCrippled, isStrikeTarget, rankOf } from './units';
 import { chebyshev, normalize, reliefAt, terrainAt } from './map';
 import { cityAt, destroyUnit, spawnUnit, topLevelUnitsAt, trimCargo, unitsAt } from './query';
 import { areFriendly } from './relations';
@@ -77,7 +77,7 @@ export function attackUnit(s: GameState, rng: RandomSource, att: Unit, def: Unit
     struck = !r.attackerWon;
   } else {
     r = resolveCombat(
-      { attack: rating.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
+      { attack: attackRating(s.rules, att, rating.attack), shot: a.shot, hits: hitsOf(att), damage: att.damage },
       { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: hitsOf(def), damage: def.damage },
       rng,
     );
@@ -135,7 +135,7 @@ export function bombardCity(s: GameState, rng: RandomSource, att: Unit, city: Ci
     : 0;
   spendMove(att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: hitsOf(att), damage: att.damage },
+    { attack: attackRating(s.rules, att, a.attack), shot: a.shot, hits: hitsOf(att), damage: att.damage },
     { defense: (CITY_COMBAT.defense + garrison) / 2, shot: CITY_COMBAT.shot, hits: floor, damage: city.damage ?? 0 },
     rng,
   );
@@ -166,7 +166,7 @@ export function bombCity(s: GameState, rng: RandomSource, att: Unit, city: City,
   const owner = city.owner;
   spendMove(att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
+    { attack: attackRating(s.rules, att, a.attack), shot: a.shot, hits: a.hits, damage: att.damage },
     { defense: CITY_COMBAT.defense + garrison, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
     rng,
   );
@@ -202,7 +202,7 @@ export function attackCity(s: GameState, rng: RandomSource, att: Unit, city: Cit
     : 0;
   spendMove(att);
   const r = resolveCombat(
-    { attack: a.attack, shot: a.shot, hits: a.hits, damage: att.damage },
+    { attack: attackRating(s.rules, att, a.attack), shot: a.shot, hits: a.hits, damage: att.damage },
     {
       defense: (s.rules.easierNeutralCities && city.owner === null ? 1 : CITY_COMBAT.defense) + garrison,
       shot: CITY_COMBAT.shot,

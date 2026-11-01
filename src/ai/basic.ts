@@ -1,5 +1,5 @@
 import {
-  CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, cargoUsed, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
+  CITY_STRENGTH_HITS, UNIT_STATS, armorBlockedBy, attackRating, cargoUsed, chebyshev, combatWinChance, garrisonBonus, hitsOf, findFrontier, findPath, neighbors, normalize, pathMapFromView,
   type City, type MapLike, type PlayerId, type PlayerView, type Pos, type Unit, type UnitType,
 } from '../engine';
 import type { SessionCommand } from '../app/session';
@@ -476,11 +476,11 @@ function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand
 }
 
 /** Chance that our ship wins a fight against a ship of `type` (its damage is unknown, so assumed none). */
-function winChance(u: Unit, type: UnitType, foeRank = 0): number {
+function winChance(view: PlayerView, u: Unit, type: UnitType, foeRank = 0): number {
   const a = UNIT_STATS[u.type];
   const d = UNIT_STATS[type];
   return combatWinChance(
-    { attack: a.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+    { attack: attackRating(view.rules, u, a.attack), shot: a.shot, hits: hitsOf(u), damage: u.damage },
     { defense: d.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },
   );
 }
@@ -576,7 +576,7 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
 
   // An enemy ship right beside us that we are likely to beat (or that is alone and easy): attack it.
   const adjacent = ships.find((e) => e.visibleNow && chebyshev(geo(view), u, e) === 1);
-  if (adjacent && winChance(u, adjacent.type, adjacent.rank ?? 0) >= t.minShipWinChance) {
+  if (adjacent && winChance(view, u, adjacent.type, adjacent.rank ?? 0) >= t.minShipWinChance) {
     const dir = dirTo(view, u, adjacent);
     if (dir !== null) return { type: 'move', unitId: u.id, dir };
   }
