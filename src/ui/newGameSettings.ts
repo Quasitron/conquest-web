@@ -1,4 +1,4 @@
-import { validateMapSize, type HouseRules } from '../engine';
+import { MAX_PLAYERS, validateMapSize, type HouseRules } from '../engine';
 import type { CityDensity, Climate, Landmass, WorldOptions } from '../mapgen';
 import type { SeatConfig } from '../storage';
 import { PLAYER_COLORS } from './colors';
@@ -34,7 +34,8 @@ const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInt
 function validSeat(v: unknown): v is SeatConfig {
   return isObj(v) && typeof v.name === 'string' && v.name.length <= 40
     && KINDS.includes(v.kind as SeatConfig['kind']) && typeof v.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.color)
-    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty));
+    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty))
+    && (v.team === undefined || (isInt(v.team) && v.team >= 1 && v.team <= MAX_PLAYERS));
 }
 
 /**
@@ -54,7 +55,7 @@ export function parseNewGameSettings(raw: unknown, fallback: NewGameSettings): N
   if (LANDMASS.includes(w.landmass as Landmass)) world.landmass = w.landmass as Landmass;
   if (DENSITY.includes(w.cityDensity as CityDensity)) world.cityDensity = w.cityDensity as CityDensity;
   if (CLIMATES.includes(w.climate as Climate)) world.climate = w.climate as Climate;
-  if (isInt(w.players) && w.players >= 2 && w.players <= 6) world.players = w.players;
+  if (isInt(w.players) && w.players >= 2 && w.players <= MAX_PLAYERS) world.players = w.players;
   if (STARTS.includes(w.starts as WorldOptions['starts'])) world.starts = w.starts as WorldOptions['starts'];
   if (REGIONS.includes(w.nameRegion as WorldOptions['nameRegion'])) world.nameRegion = w.nameRegion as WorldOptions['nameRegion'];
 

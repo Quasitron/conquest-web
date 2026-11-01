@@ -3,7 +3,7 @@ import { Fragment } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { SettingsDialog } from './SettingsDialog';
 import { GameSession } from '../app/session';
-import { CLASSIC_RULES, validateMapSize, type HouseRules } from '../engine';
+import { CLASSIC_RULES, MAX_PLAYERS, validateMapSize, type HouseRules } from '../engine';
 import { DEFAULT_WORLD, SIZE_PRESETS, type CityDensity, type Climate, type Landmass, type SizePreset, type WorldOptions } from '../mapgen';
 import { parseSave, serializeSave, type SaveStore, type SaveSummary, type SeatConfig } from '../storage';
 import { defaultSeats, loadNewGameSettings, saveNewGameSettings } from './newGameSettings';
@@ -106,7 +106,8 @@ export function TitleScreen({ store, onStart }: Props) {
   const [mapKind, setMapKind] = useState<'random' | 'theater'>('random');
   const [theaterId, setTheaterId] = useState(THEATERS[0]?.id ?? '');
   const theater = mapKind === 'theater' ? theaterById(theaterId) : undefined;
-  const mostPlayers = theater ? maxTheaterPlayers(theater) : 6;
+  const mostPlayers = theater ? maxTheaterPlayers(theater) : MAX_PLAYERS;
+  const TEAM_NUMBERS = [1, 2, 3, 4];
   const [theaterData, setTheaterData] = useState<TheaterData | null>(null);
   useEffect(() => {
     if (!theater) return;
@@ -144,6 +145,8 @@ export function TitleScreen({ store, onStart }: Props) {
 
   const start = async () => {
     try {
+      // Everyone on one team would leave nobody to fight.
+      if (seats.every((s) => s.team !== undefined && s.team === seats[0].team)) return setError('Put at least two sides in the game: players on the same team are allies.');
       if (theater) {
         // A historical theater: the real map, each player a different nation (named for it unless the seat has its own name).
         const data = await loadTheater(theater.id);
@@ -296,7 +299,7 @@ export function TitleScreen({ store, onStart }: Props) {
         {preview && <MapPreview map={preview} starts={[]} colors={[]} />}
         <label>Players{' '}
           <select value={world.players} onChange={(e) => setPlayers(Number((e.target as HTMLSelectElement).value))}>
-            {[2, 3, 4, 5, 6].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}
+            {[2, 3, 4, 5, 6, 7, 8].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}
           </select>
         </label>
         <table class="seats">
@@ -313,11 +316,25 @@ export function TitleScreen({ store, onStart }: Props) {
                   <option value="idle">Idle</option>
                 </select>
               </td>
+              <td>
+                <select aria-label={`Team of ${s.name}`} title="Players on the same team are allies" value={s.team ?? ''}
+                  onChange={(e) => {
+                    const v = (e.target as HTMLSelectElement).value;
+                    setSeats(seats.map((x, j) => {
+                      if (j !== i) return x;
+                      const { team: _old, ...rest } = x;
+                      return v === '' ? rest : { ...rest, team: Number(v) };
+                    }));
+                  }}>
+                  <option value="">Alone</option>
+                  {TEAM_NUMBERS.map((n) => <option value={n}>Team {n}</option>)}
+                </select>
+              </td>
             </tr>
             {s.kind === 'ai' && (
               <tr>
                 <td />
-                <td colSpan={2}>
+                <td colSpan={3}>
                   <label>Difficulty{' '}
                     <select aria-label={`Difficulty of ${s.name}`} value={s.difficulty ?? DEFAULT_DIFFICULTY}
                       onChange={(e) => updateSeat(i, { difficulty: (e.target as HTMLSelectElement).value as Difficulty })}>

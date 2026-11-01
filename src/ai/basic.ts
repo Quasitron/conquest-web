@@ -33,6 +33,9 @@ const LATE_TURN = 60;
 
 const geo = (v: PlayerView): MapLike => v as unknown as MapLike;
 
+/** Whether a city or unit of this owner (null = neutral) is someone to fight: anyone but me and my allies. */
+const isFoe = (v: PlayerView, owner: PlayerId | null): boolean => owner !== v.me && !(owner !== null && v.allies.includes(owner));
+
 function bump(memo: AiMemo, key: string): boolean {
   const n = memo.tries.get(key) ?? 0;
   if (n >= MAX_TRIES) return false;
@@ -218,7 +221,7 @@ function nearestApproach(view: PlayerView, u: Unit): Pos | null {
   const dist = reach(view, u);
   let best: { sq: Pos; d: number } | null = null;
   for (const c of view.knownCities) {
-    if (c.owner === view.me) continue;
+    if (!isFoe(view, c.owner)) continue;
     for (const n of neighbors(geo(view), c.x, c.y)) {
       const d = dist.get(n.y * view.width + n.x);
       if (d !== undefined && d > 0 && (best === null || d < best.d)) best = { sq: n, d };
@@ -230,7 +233,7 @@ function nearestApproach(view: PlayerView, u: Unit): Pos | null {
 /** Known cities that are not ours, nearest first. */
 function foreignCities(view: PlayerView, from: Pos) {
   return view.knownCities
-    .filter((c) => c.owner !== view.me)
+    .filter((c) => isFoe(view, c.owner))
     .sort((a, b) => chebyshev(geo(view), from, a) - chebyshev(geo(view), from, b) || a.id - b.id);
 }
 
@@ -303,7 +306,7 @@ function armyTarget(view: PlayerView, u: Unit): { city: { id: number; x: number;
   const dist = reach(view, u);
   let best: { city: { id: number; x: number; y: number; owner: PlayerId | null }; sq: Pos; cost: number } | null = null;
   for (const c of view.knownCities) {
-    if (c.owner === view.me) continue;
+    if (!isFoe(view, c.owner)) continue;
     let sq: Pos | null = null;
     let d = Infinity;
     for (const n of neighbors(geo(view), c.x, c.y)) {
@@ -332,7 +335,7 @@ function decideArmy(view: PlayerView, u: Unit, port: City | null, t: AiTuning): 
     if (inside.indexOf(u.id) < t.garrison) return null;
   }
   // A foreign city next door: attack it, a held one only once enough armies stand ready (a lone army has poor odds).
-  const next = view.knownCities.find((c) => c.owner !== view.me && chebyshev(geo(view), u, c) === 1);
+  const next = view.knownCities.find((c) => isFoe(view, c.owner) && chebyshev(geo(view), u, c) === 1);
   if (next) {
     if (next.owner !== null && armiesNear(view, next, RALLY_RADIUS) < assaultSize(view, t) + extraForCityRules(view, next)) return null;
     const dir = dirTo(view, u, next);
@@ -425,7 +428,7 @@ function safeApproach(view: PlayerView, u: Unit): SessionCommand | 'hold' | 'non
   const dist = reach(view, u);
   const squares: { sq: Pos; d: number }[] = [];
   for (const c of view.knownCities) {
-    if (c.owner === view.me) continue;
+    if (!isFoe(view, c.owner)) continue;
     for (const n of neighbors(geo(view), c.x, c.y)) {
       const d = dist.get(n.y * view.width + n.x);
       if (d !== undefined && d > 0) squares.push({ sq: n, d });
@@ -454,7 +457,7 @@ function decideTransport(view: PlayerView, u: Unit, t: AiTuning): SessionCommand
     return setOrders(u, { kind: 'explore' });
   }
   if (cargo.length > 0) {
-    const nextToCity = view.knownCities.some((c) => c.owner !== view.me && chebyshev(geo(view), u, c) <= 1);
+    const nextToCity = view.knownCities.some((c) => isFoe(view, c.owner) && chebyshev(geo(view), u, c) <= 1);
     // Sleeping cargo next to a foreign city: wake it so the armies can step ashore.
     if (nextToCity && cargo.some((a) => a.orders !== null)) return { type: 'unload', transportId: u.id, unitIds: null };
     if (nextToCity) return null;
@@ -500,8 +503,8 @@ const PATROL_MAX = 8;
 /** A water square a patrol can run out to, leaning toward the nearest enemy (or unowned) city; null if none. */
 function patrolEnd(view: PlayerView, u: Unit): Pos | null {
   const dist = reach(view, u);
-  const enemy = view.knownCities.filter((c) => c.owner !== null && c.owner !== view.me);
-  const goals = enemy.length > 0 ? enemy : view.knownCities.filter((c) => c.owner !== view.me);
+  const enemy = view.knownCities.filter((c) => c.owner !== null && isFoe(view, c.owner));
+  const goals = enemy.length > 0 ? enemy : view.knownCities.filter((c) => isFoe(view, c.owner));
   let best: { sq: Pos; score: number } | null = null;
   for (const [i, d] of dist) {
     if (d < PATROL_MIN || d > PATROL_MAX) continue;
@@ -580,7 +583,7 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
 
   // City strength rule: a healthy bombarding ship beside an enemy player's city fires on it while that can still wear it down.
   if (view.rules.cityStrength && UNIT_STATS[u.type].bombard && u.damage === 0 && u.movesLeft > 0) {
-    const city = view.knownCities.find((c) => c.owner !== null && c.owner !== view.me
+    const city = view.knownCities.find((c) => c.owner !== null && isFoe(view, c.owner)
       && chebyshev(geo(view), u, c) === 1 && c.damage < CITY_STRENGTH_HITS - 1);
     if (city && cityBombardChance(view, u, city.damage, 0) >= t.minShipWinChance) {
       const dir = dirTo(view, u, city);
@@ -617,7 +620,7 @@ function decideWarship(view: PlayerView, u: Unit, t: AiTuning): SessionCommand |
   if (view.rules.cityStrength && UNIT_STATS[u.type].bombard) {
     let goal: { sq: Pos; d: number } | null = null;
     for (const c of view.knownCities) {
-      if (c.owner === null || c.owner === view.me || c.damage >= CITY_STRENGTH_HITS - 1) continue;
+      if (c.owner === null || !isFoe(view, c.owner) || c.damage >= CITY_STRENGTH_HITS - 1) continue;
       for (const n of neighbors(geo(view), c.x, c.y)) {
         const d = dist.get(n.y * view.width + n.x);
         if (d !== undefined && d > 0 && d <= HUNT_RANGE * 2 && (goal === null || d < goal.d)) goal = { sq: n, d };
@@ -656,7 +659,7 @@ function decideScout(view: PlayerView, u: Unit): SessionCommand | null {
   if (best) {
     // The neighbouring square nearest the target that holds no visible enemy and no foreign city.
     const blocked = (n: Pos) => view.enemies.some((e) => e.visibleNow && at(e, n))
-      || view.knownCities.some((c) => c.owner !== view.me && at(c, n));
+      || view.knownCities.some((c) => isFoe(view, c.owner) && at(c, n));
     let step: Pos | null = null;
     for (const n of neighbors(geo(view), u.x, u.y)) {
       if (blocked(n)) continue;
@@ -703,7 +706,7 @@ function decideCarrierFighter(view: PlayerView, u: Unit): SessionCommand | null 
     const o = f.id !== u.id && f.type === 'fighter' ? f.orders : null;
     return o?.kind === 'patrol' ? [o.carrier?.end === 'a' ? o.b : o.a] : [];
   });
-  const goals = view.knownCities.filter((c) => c.owner !== view.me);
+  const goals = view.knownCities.filter((c) => isFoe(view, c.owner));
   const w = view.width;
   let best: { sq: Pos; score: number } | null = null;
   for (let i = 0; i < view.terrain.length; i++) {
@@ -753,7 +756,7 @@ function decideBomber(view: PlayerView, u: Unit, memo: AiMemo): SessionCommand |
   if (!here && fuel <= homeDist(u) + 2) return goBack();
 
   const target = view.knownCities
-    .filter((c) => c.owner !== null && c.owner !== view.me && dist(u, c) + homeDist(c) + SORTIE_MARGIN <= fuel)
+    .filter((c) => c.owner !== null && isFoe(view, c.owner) && dist(u, c) + homeDist(c) + SORTIE_MARGIN <= fuel)
     .sort((a, b) => dist(u, a) - dist(u, b) || a.id - b.id)
     .find((c) => cityBombChance(view, u, visibleGarrison(view, c, c.owner)) >= MIN_BOMB_CHANCE);
   if (!target) return goBack();
@@ -770,7 +773,7 @@ function decideBomber(view: PlayerView, u: Unit, memo: AiMemo): SessionCommand |
   const spot = neighbors(geo(view), target.x, target.y)
     .filter((n) => view.terrain[n.y * view.width + n.x] !== null
       && !view.enemies.some((e) => e.visibleNow && at(e, n))
-      && !view.knownCities.some((c) => at(c, n) && c.owner !== view.me))
+      && !view.knownCities.some((c) => at(c, n) && isFoe(view, c.owner)))
     .sort((a, b) => dist(u, a) - dist(u, b))[0];
   return (spot ? goTo(view, u, spot) : null) ?? goBack();
 }
@@ -789,7 +792,7 @@ function airbaseSquare(view: PlayerView, sq: Pos): boolean {
   if (view.terrain[sq.y * view.width + sq.x] !== 'land') return false;
   const dOwn = Math.min(999, ...view.myCities.map((c) => chebyshev(geo(view), sq, c)));
   if (dOwn < 2 || dOwn > 6) return false;
-  if (view.knownCities.some((c) => c.owner !== view.me && chebyshev(geo(view), sq, c) < 3)) return false;
+  if (view.knownCities.some((c) => isFoe(view, c.owner) && chebyshev(geo(view), sq, c) < 3)) return false;
   return !view.myUnits.some((b) => b.type === 'airbase' && chebyshev(geo(view), sq, b) < 4);
 }
 
@@ -805,7 +808,7 @@ function airbaseOrders(view: PlayerView, u: Unit): SessionCommand | null {
     .filter((s) => (s.type === 'army' || s.type === 'armor') && s.carriedBy === null && s.orders === null && view.myCities.some((c) => at(c, s)))
     .sort((a, b) => a.id - b.id)[0];
   if (!inCity || oldest?.id !== u.id) return null;
-  const foreign = view.knownCities.filter((c) => c.owner !== view.me);
+  const foreign = view.knownCities.filter((c) => isFoe(view, c.owner));
   if (foreign.length === 0) return null;
   const walk = reach(view, u);
   let best: { sq: Pos; d: number } | null = null;

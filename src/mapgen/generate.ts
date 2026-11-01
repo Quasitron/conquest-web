@@ -44,7 +44,7 @@ function attempt(o: WorldOptions, seed: number, minOthers: number, withRelief: b
 export function generateWorld(o: WorldOptions, seed: number, withRelief = false): GeneratedWorld {
   const sizeError = validateMapSize(o.width, o.height);
   if (sizeError) throw new Error(sizeError);
-  if (!Number.isInteger(o.players) || o.players < 2 || o.players > 6) throw new Error('players must be 2 to 6');
+  if (!Number.isInteger(o.players) || o.players < 2 || o.players > 8) throw new Error('players must be 2 to 8');
   if (o.waterPercent < 60 || o.waterPercent > 85) throw new Error('water must be 60% to 85%');
   for (let k = 0; k < ATTEMPTS; k++) {
     const w = attempt(o, (seed + k) | 0, 3, withRelief);

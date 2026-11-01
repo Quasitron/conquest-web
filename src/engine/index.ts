@@ -5,7 +5,7 @@ export { UNIT_STATS, UNIT_TYPES, CITY_COMBAT, CITY_STRENGTH_HITS, garrisonBonus,
 export type { UnitStats } from './units';
 export { parseAscii } from './ascii';
 export type { ParsedMap } from './ascii';
-export { createGame } from './setup';
+export { createGame, MAX_PLAYERS } from './setup';
 export type { NewGameOptions } from './setup';
 export { apply } from './apply';
 export { replay } from './replay';
@@ -15,7 +15,7 @@ export type { PlayerView } from './view';
 export { ordinal, unitDisplayName, defaultCityName, cleanName, NAME_MAX } from './names';
 export { buildTime } from './production';
 export { combatWinChance } from './combat';
-export { areFriendly } from './relations';
+export { areFriendly, teammatesOf } from './relations';
 export { Rng } from './rng';
 export type { RandomSource } from './rng';
 export { computeRiverNet, riverNetOf, SEA, NONE, type RiverNet } from './rivers';

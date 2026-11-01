@@ -34,7 +34,7 @@ export function availableActions(view: PlayerView, u: Unit): Record<ActionId, bo
   const hasCargo = view.myUnits.some((c) => c.carriedBy === u.id);
   const fixed = u.type === 'airbase'; // an Airbase never moves
   // A spy inside an enemy city (not a neutral one) can sabotage it, and an Elite one can try to turn it.
-  const inEnemyCity = u.type === 'spy' && u.carriedBy === null && u.movesLeft > 0 && view.knownCities.some((c) => c.x === u.x && c.y === u.y && c.owner !== null && c.owner !== view.me);
+  const inEnemyCity = u.type === 'spy' && u.carriedBy === null && u.movesLeft > 0 && view.knownCities.some((c) => c.x === u.x && c.y === u.y && c.owner !== null && c.owner !== view.me && !view.allies.includes(c.owner));
   return {
     next: true,
     skip: !fixed,
