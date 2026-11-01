@@ -108,6 +108,8 @@ export function TitleScreen({ store, onStart }: Props) {
   const theater = mapKind === 'theater' ? theaterById(theaterId) : undefined;
   const mostPlayers = theater ? maxTheaterPlayers(theater) : MAX_PLAYERS;
   const TEAM_NUMBERS = [1, 2, 3, 4];
+  /** The country each seat chose on a theater map ('' = drawn at random). */
+  const [picks, setPicks] = useState<string[]>([]);
   const [theaterData, setTheaterData] = useState<TheaterData | null>(null);
   useEffect(() => {
     if (!theater) return;
@@ -117,15 +119,20 @@ export function TitleScreen({ store, onStart }: Props) {
   }, [theater?.id]);
 
   // The picture of a theater on the form. Random maps are never shown ahead of time (they are for discovering), and
-  // nobody's start is shown either: that stays secret until the player is able to choose a country.
+  // nobody's start is shown either, except a country a player has chosen.
   const preview = useMemo(() => {
     if (panel !== 'new' || mapKind !== 'theater' || !theaterData || theaterData.id !== theaterId) return null;
     try {
-      return theaterWorld(theaterData, 2, seed, rules.advancedUnits).map;
+      const map = theaterWorld(theaterData, 2, seed, rules.advancedUnits).map;
+      const shown = seats.slice(0, world.players).flatMap((s, i) => {
+        const n = theaterData.nations.find((x) => x.name === picks[i]);
+        return n ? [{ start: n.start, color: s.color }] : [];
+      });
+      return { map, starts: shown.map((s) => s.start), colors: shown.map((s) => s.color) };
     } catch {
       return null;
     }
-  }, [panel, mapKind, theaterData, theaterId, seed, rules.advancedUnits]);
+  }, [panel, mapKind, theaterData, theaterId, seed, rules.advancedUnits, picks, seats, world.players]);
 
   useEffect(() => {
     store.list().then(setSaves).catch(() => setSaves([]));
@@ -137,8 +144,10 @@ export function TitleScreen({ store, onStart }: Props) {
   };
   const updateSeat = (i: number, patch: Partial<SeatConfig>) =>
     setSeats(seats.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const pickNation = (i: number, nation: string) => setPicks((p) => Object.assign([...p], { [i]: nation }));
   const chooseTheater = (id: string) => {
     setTheaterId(id);
+    setPicks([]);
     const t = theaterById(id);
     if (t && world.players > maxTheaterPlayers(t)) setPlayers(maxTheaterPlayers(t));
   };
@@ -150,7 +159,7 @@ export function TitleScreen({ store, onStart }: Props) {
       if (theater) {
         // A historical theater: the real map, each player a different nation (named for it unless the seat has its own name).
         const data = await loadTheater(theater.id);
-        const preset = theaterWorld(data, world.players, seed, rules.advancedUnits);
+        const preset = theaterWorld(data, world.players, seed, rules.advancedUnits, picks);
         const named = seats.map((s, i) => (/^Player \d+$/.test(s.name) ? { ...s, name: preset.nations[i] } : s));
         const session = GameSession.create({ world: { ...world, width: data.width, height: data.height, wrap: data.wrap }, seed, seats: named, rules, preset }, store);
         saveNewGameSettings({ world, seats, rules });
@@ -244,7 +253,7 @@ export function TitleScreen({ store, onStart }: Props) {
             <div class="theater-info">
               <p class="theater-wars">{theater.wars}</p>
               <p>{theater.notes}</p>
-              <p class="muted">{theater.width}×{theater.height} squares, {theater.cities} real cities. Up to {mostPlayers} players, each starting as a different country picked at random from {theater.nations.length}: {theater.nations.join(', ')}. The cities of the other countries start neutral, free to be captured.</p>
+              <p class="muted">{theater.width}×{theater.height} squares, {theater.cities} real cities. Up to {mostPlayers} players, each starting as a different country, chosen for each player below or drawn at random, from {theater.nations.length}: {theater.nations.join(', ')}. The cities of the other countries start neutral, free to be captured.</p>
             </div>
           </>
         )}
@@ -296,7 +305,7 @@ export function TitleScreen({ store, onStart }: Props) {
         <label><input type="checkbox" checked={world.wrap}
           onChange={(e) => setWorld({ ...world, wrap: (e.target as HTMLInputElement).checked })} /> Wrap east–west</label>
         </>}
-        {preview && <MapPreview map={preview} starts={[]} colors={[]} />}
+        {preview && <MapPreview map={preview.map} starts={preview.starts} colors={preview.colors} />}
         <label>Players{' '}
           <select value={world.players} onChange={(e) => setPlayers(Number((e.target as HTMLSelectElement).value))}>
             {[2, 3, 4, 5, 6, 7, 8].filter((n) => n <= mostPlayers).map((n) => <option value={n}>{n}</option>)}
@@ -334,6 +343,14 @@ export function TitleScreen({ store, onStart }: Props) {
                     {TEAM_NUMBERS.map((n) => <option value={n}>Team {n}</option>)}
                   </select>
                 </label>
+                {theater && (
+                  <label>{' '}Country{' '}
+                    <select aria-label={`Country of ${s.name}`} value={picks[i] ?? ''} onChange={(e) => pickNation(i, (e.target as HTMLSelectElement).value)}>
+                      <option value="">Random</option>
+                      {theater.nations.filter((n) => n === picks[i] || !picks.slice(0, world.players).includes(n)).map((n) => <option value={n}>{n}</option>)}
+                    </select>
+                  </label>
+                )}
                 {s.kind === 'ai' && (
                   <label>{' '}Difficulty{' '}
                     <select aria-label={`Difficulty of ${s.name}`} value={s.difficulty ?? DEFAULT_DIFFICULTY}

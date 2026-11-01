@@ -319,6 +319,14 @@ export function GameScreen({ session, onQuit }: Props) {
     if (hover.x === selectedUnit.x && hover.y === selectedUnit.y) return null;
     if (samePos(frozen, hover)) return null;
     if (samePos(noPath, hover)) return { path: null, ok: false, label: 'no known path' };
+    // A spy can walk into a player's city: say so instead of reporting that nothing leads there.
+    const hostile = selectedUnit.type === 'spy' ? view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== null && c.owner !== view.me && !view.allies.includes(c.owner)) : undefined;
+    if (hostile) {
+      const approach = approachSquare(view, selectedUnit, hover);
+      if (approach === null) return dirTo(view, selectedUnit, hover) !== null ? { path: [], ok: true, label: 'infiltrate' } : { path: null, ok: false, label: 'no known path' };
+      const r = planPath(view, selectedUnit, approach);
+      return { ...r, label: r.ok ? `infiltrate · ${r.label}` : r.label };
+    }
     return planPath(view, selectedUnit, hover);
   }, [selectedUnit?.id, hover, view, frozen, noPath, attack]);
 
