@@ -21,6 +21,7 @@ export function ManualDialog({ onClose }: Props) {
           type="search" placeholder="Search the manual" aria-label="Search the manual" value={query} autoFocus
           onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
         />
+        <button class="primary" onClick={(e) => { blur(e); onClose(); }}>Close</button>
       </div>
       {query.trim() === '' && (
         <nav class="manual-contents" aria-label="Contents">

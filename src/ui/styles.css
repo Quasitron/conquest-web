@@ -186,8 +186,8 @@ svg.leader circle { fill: #ffd24a; }
 .prod-layout { display: flex; align-items: flex-start; gap: 12px; }
 .prod-layout .unit-card { flex: 0 0 280px; margin: 0; }
 @media (max-width: 760px) { .prod-layout .unit-card { display: none; } }
-.manual-search { position: sticky; top: 0; z-index: 1; padding: 6px 0; background: inherit; }
-.manual-search input { width: 100%; box-sizing: border-box; }
+.manual-search { position: sticky; top: 0; z-index: 1; padding: 6px 0; background: inherit; display: flex; gap: 8px; }
+.manual-search input { flex: 1; min-width: 0; box-sizing: border-box; }
 .manual-contents { display: flex; flex-wrap: wrap; gap: 4px; }
 .manual-section { display: flex; flex-direction: column; gap: 6px; }
 .manual-section dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; }
