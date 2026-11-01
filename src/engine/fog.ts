@@ -5,6 +5,7 @@ import { cityAt, destroyUnit } from './query';
 import { areFriendly } from './relations';
 
 const SIGHT = 1;
+const ADVANCED_SIGHT = 2;
 const MARKER_LIFETIME = 3;
 
 interface Observer {
@@ -20,18 +21,29 @@ function observersOf(s: GameState, pid: PlayerId): Observer[] {
   return obs;
 }
 
+/**
+ * How far an observer sees. In the Advanced rules all air units, cities and Airbases see 2 squares; everything else sees 1.
+ */
+function sightOf(s: GameState, o: Observer): number {
+  if (!s.rules.advancedUnits) return SIGHT;
+  return o.kind === 'city' || o.kind === 'airbase' || UNIT_STATS[o.kind].domain === 'air' ? ADVANCED_SIGHT : SIGHT;
+}
+
 function observerSees(s: GameState, o: Observer, target: { type: UnitType; x: number; y: number }): boolean {
-  if (chebyshev(s, o, target) > SIGHT) return false;
+  const canSeeTarget = !(o.kind === 'submarine' && UNIT_STATS[target.type].domain !== 'sea');
+  // Advanced rules: anything that can see aircraft sees them from 2 squares away.
+  const range = s.rules.advancedUnits && UNIT_STATS[target.type].domain === 'air' && canSeeTarget ? Math.max(sightOf(s, o), ADVANCED_SIGHT) : sightOf(s, o);
+  if (chebyshev(s, o, target) > range) return false;
   if (target.type === 'submarine' && o.kind !== 'city' && !UNIT_STATS[o.kind].seesSubs) return false;
-  if (o.kind === 'submarine' && UNIT_STATS[target.type].domain !== 'sea') return false;
-  return true;
+  return canSeeTarget;
 }
 
 export function visibleSquares(s: GameState, pid: PlayerId): Set<number> {
   const vis = new Set<number>();
   for (const o of observersOf(s, pid)) {
-    for (let dy = -SIGHT; dy <= SIGHT; dy++) {
-      for (let dx = -SIGHT; dx <= SIGHT; dx++) {
+    const sight = sightOf(s, o);
+    for (let dy = -sight; dy <= sight; dy++) {
+      for (let dx = -sight; dx <= sight; dx++) {
         const p = normalize(s, o.x + dx, o.y + dy);
         if (p) vis.add(index(s, p.x, p.y));
       }

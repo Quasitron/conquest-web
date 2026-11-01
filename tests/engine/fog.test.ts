@@ -44,6 +44,49 @@ describe('fog of war', () => {
     expect(s.fog[0].lastSeen[theirs.id]).toBeUndefined();
   });
 
+  describe('Advanced sighting (2 squares)', () => {
+    it('air units, cities and Airbases see 2 squares; other units still see 1', () => {
+      const s = makeGame(land);
+      s.rules.advancedUnits = true;
+      const foe = addUnit(s, 'army', 1, 4, 1);
+      const walker = addUnit(s, 'army', 0, 2, 1);
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(false);
+      walker.x = 3; walker.y = 0;
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(true);
+      walker.x = 0; walker.y = 2;
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(false);
+      const flyer = addUnit(s, 'fighter', 0, 2, 1);
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(true);
+      flyer.x = 1; flyer.y = 1;
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(false);
+      addUnit(s, 'airbase', 0, 2, 2);
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(true);
+      // The start city at (0,0) sees (2,2) at range 2.
+      const near = addUnit(s, 'army', 1, 2, 2);
+      s.units = s.units.filter((u) => u.type !== 'airbase');
+      expect(canPlayerSeeUnit(s, 0, near)).toBe(true);
+    });
+
+    it('anything that sees aircraft sees them 2 squares away, but the classic rules stay at 1', () => {
+      const s = makeGame(land);
+      addUnit(s, 'army', 0, 1, 1);
+      const jet = addUnit(s, 'fighter', 1, 3, 1);
+      expect(canPlayerSeeUnit(s, 0, jet)).toBe(false);
+      s.rules.advancedUnits = true;
+      expect(canPlayerSeeUnit(s, 0, jet)).toBe(true);
+      // Only the aircraft are seen at 2: the Army explores no further than before.
+      updateFog(s, 0);
+      expect(s.fog[0].explored[index(s, 3, 1)]).toBe(0);
+    });
+
+    it('the classic rules see only 1 square, even for aircraft', () => {
+      const s = makeGame(land);
+      addUnit(s, 'fighter', 0, 2, 1);
+      const foe = addUnit(s, 'army', 1, 4, 1);
+      expect(canPlayerSeeUnit(s, 0, foe)).toBe(false);
+    });
+  });
+
   it('submarines are seen only by cities, destroyers, submarines and cruisers', () => {
     const s = makeGame(sea);
     addUnit(s, 'transport', 0, 2, 1);
