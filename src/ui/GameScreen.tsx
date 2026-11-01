@@ -418,6 +418,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const soundSeen = useRef<{ me: number; count: number } | null>(null);
   // When the sounds just played for a batch should have finished, so a production sound can wait for them.
   const soundsEnd = useRef(0);
+  // Spy stories waiting for the start of my turn.
+  const pendingNews = useRef<NewsItem[]>([]);
   useEffect(installAudioUnlock, []);
   useEffect(() => {
     const log = session.log(view.me);
@@ -437,9 +439,17 @@ export function GameScreen({ session, onQuit }: Props) {
         if (fresh.length > 0) pendingSights.current = fresh.map((e) => ({ x: e.x, y: e.y }));
       }
       const stories = spyHeadlines(log.slice(seen.count).map((l) => l.event), view.me, lookup.city);
-      if (stories.length > 0) setNews((q) => [...q, ...stories]);
+      pendingNews.current.push(...stories);
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
+    }
+    // The papers come out at the start of my turn (or right away when it is my turn and something happens), not
+    // while the other players move or the battle replay runs. The same story is never printed twice in a batch.
+    if (view.currentPlayer === view.me && pendingNews.current.length > 0) {
+      const batch = pendingNews.current;
+      pendingNews.current = [];
+      const fresh = batch.filter((s, i) => batch.findIndex((o) => o.headline === s.headline && o.subhead === s.subhead && o.text === s.text) === i);
+      setNews((q) => [...q, ...fresh]);
     }
     soundSeen.current = { me: view.me, count: log.length };
     lastSeenEnemies.current = view.enemies.filter((e) => e.visibleNow);
