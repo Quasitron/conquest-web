@@ -325,7 +325,7 @@ export function GameScreen({ session, onQuit }: Props) {
     const hostile = selectedUnit.type === 'spy' ? view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== null && c.owner !== view.me && !view.allies.includes(c.owner)) : undefined;
     if (hostile) {
       const approach = approachSquare(view, selectedUnit, hover);
-      if (approach === null) return dirTo(view, selectedUnit, hover) !== null ? { path: [], ok: true, label: 'infiltrate' } : { path: null, ok: false, label: 'no known path' };
+      if (approach === null) return dirTo(view, selectedUnit, hover) !== null ? { path: [{ x: hover.x, y: hover.y }], ok: true, label: 'infiltrate' } : { path: null, ok: false, label: 'no known path' };
       const r = planPath(view, selectedUnit, approach);
       return { ...r, label: r.ok ? `infiltrate · ${r.label}` : r.label };
     }
