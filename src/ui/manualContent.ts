@@ -65,6 +65,7 @@ export function buildManual(): ManualSection[] {
       paragraphs: [
         'Theater of Conquest is a turn-based war game in the spirit of Empire Deluxe. You begin with a single city. Your cities build armies, fleets and aircraft, and you use them to explore the map, capture neutral and enemy cities, and defeat your rivals.',
         'A player is knocked out at the end of their turn when they hold no city and have no unit that could take one. The game is won when everyone still alive is on the same side: the last player standing, or the last team.',
+        'Theater of Conquest is an independent fan project. It is not affiliated with or endorsed by the makers of Empire Deluxe, whose name belongs to its owners.',
       ],
     },
     {
