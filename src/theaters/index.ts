@@ -52,8 +52,13 @@ const RELIEF: Record<string, Relief> = { c: 'clear', m: 'mountain', r: 'rough', 
  * nation's capital. The map's terrain (mountains, rough ground, forest, rivers) belongs to the Advanced rules, so it is
  * left out unless `withRelief`.
  */
-export function theaterWorld(t: TheaterData, players: number, seed: number, withRelief: boolean): GeneratedWorld & { nations: string[] } {
+export function theaterWorld(
+  t: TheaterData, players: number, seed: number, withRelief: boolean, picks: readonly (string | null | undefined)[] = [],
+): GeneratedWorld & { nations: string[] } {
   if (players < 2 || players > t.nations.length) throw new Error(`${t.name} takes 2 to ${t.nations.length} players`);
+  const wanted = picks.slice(0, players).map((p) => (p ? t.nations.findIndex((n) => n.name === p) : -1));
+  const taken = wanted.filter((i) => i >= 0);
+  if (new Set(taken).size !== taken.length) throw new Error('Two players cannot be the same country.');
   const terrain: Terrain[] = [];
   const relief: Relief[] = [];
   for (let y = 0; y < t.height; y++) {
@@ -69,7 +74,9 @@ export function theaterWorld(t: TheaterData, players: number, seed: number, with
     const j = Math.floor(rng.next() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
-  const chosen = order.slice(0, players).map((i) => t.nations[i]);
+  // Seats that picked a country get it; the others take the rest in the shuffled order.
+  const rest = order.filter((i) => !taken.includes(i));
+  const chosen = Array.from({ length: players }, (_, s) => t.nations[wanted[s] >= 0 ? wanted[s] : rest.shift()!]);
   return {
     map: {
       width: t.width, height: t.height, terrain, ...(withRelief ? { relief } : {}),

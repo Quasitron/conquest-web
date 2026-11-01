@@ -319,6 +319,14 @@ export function GameScreen({ session, onQuit }: Props) {
     if (hover.x === selectedUnit.x && hover.y === selectedUnit.y) return null;
     if (samePos(frozen, hover)) return null;
     if (samePos(noPath, hover)) return { path: null, ok: false, label: 'no known path' };
+    // A spy can walk into a player's city: say so instead of reporting that nothing leads there.
+    const hostile = selectedUnit.type === 'spy' ? view.knownCities.find((c) => c.x === hover.x && c.y === hover.y && c.owner !== null && c.owner !== view.me && !view.allies.includes(c.owner)) : undefined;
+    if (hostile) {
+      const approach = approachSquare(view, selectedUnit, hover);
+      if (approach === null) return dirTo(view, selectedUnit, hover) !== null ? { path: [], ok: true, label: 'infiltrate' } : { path: null, ok: false, label: 'no known path' };
+      const r = planPath(view, selectedUnit, approach);
+      return { ...r, label: r.ok ? `infiltrate · ${r.label}` : r.label };
+    }
     return planPath(view, selectedUnit, hover);
   }, [selectedUnit?.id, hover, view, frozen, noPath, attack]);
 
@@ -410,6 +418,8 @@ export function GameScreen({ session, onQuit }: Props) {
   const soundSeen = useRef<{ me: number; count: number } | null>(null);
   // When the sounds just played for a batch should have finished, so a production sound can wait for them.
   const soundsEnd = useRef(0);
+  // Spy stories waiting for the start of my turn.
+  const pendingNews = useRef<NewsItem[]>([]);
   useEffect(installAudioUnlock, []);
   useEffect(() => {
     const log = session.log(view.me);
@@ -429,9 +439,17 @@ export function GameScreen({ session, onQuit }: Props) {
         if (fresh.length > 0) pendingSights.current = fresh.map((e) => ({ x: e.x, y: e.y }));
       }
       const stories = spyHeadlines(log.slice(seen.count).map((l) => l.event), view.me, lookup.city);
-      if (stories.length > 0) setNews((q) => [...q, ...stories]);
+      pendingNews.current.push(...stories);
       playAll(sounds);
       if (sounds.length > 0) soundsEnd.current = Date.now() + (sounds.length - 1) * SOUND_GAP_MS + 1300;
+    }
+    // The papers come out at the start of my turn (or right away when it is my turn and something happens), not
+    // while the other players move or the battle replay runs. The same story is never printed twice in a batch.
+    if (view.currentPlayer === view.me && pendingNews.current.length > 0) {
+      const batch = pendingNews.current;
+      pendingNews.current = [];
+      const fresh = batch.filter((s, i) => batch.findIndex((o) => o.headline === s.headline && o.subhead === s.subhead && o.text === s.text) === i);
+      setNews((q) => [...q, ...fresh]);
     }
     soundSeen.current = { me: view.me, count: log.length };
     lastSeenEnemies.current = view.enemies.filter((e) => e.visibleNow);

@@ -59,6 +59,18 @@ describe('historical theaters', () => {
         expect(() => theaterWorld(t, t.nations.length + 1, 1, true)).toThrow();
       });
 
+      it('gives a player the country they pick, and draws the rest at random without repeats', async () => {
+        const t = await loadTheater(summary.id);
+        const last = t.nations[t.nations.length - 1].name;
+        const w = theaterWorld(t, 2, 7, false, [null, last]);
+        expect(w.nations[1]).toBe(last);
+        expect(w.nations[0]).not.toBe(last);
+        expect(w.startCityIndices[1]).toBe(t.nations[t.nations.length - 1].start);
+        // No picks gives exactly what it always did.
+        expect(theaterWorld(t, 2, 7, false, ['', undefined]).nations).toEqual(theaterWorld(t, 2, 7, false).nations);
+        expect(() => theaterWorld(t, 2, 7, false, [last, last])).toThrow();
+      });
+
       it('starts a real game, with the real city names and each player holding its nation\'s start city', async () => {
         const t = await loadTheater(summary.id);
         const preset = theaterWorld(t, 2, 99, false);
