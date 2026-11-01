@@ -14,6 +14,7 @@ import { CityScreen } from './CityScreen';
 import { installAudioUnlock, play, playAll } from '../audio/engine';
 import { produceSound, SOUND_GAP_MS, soundsForEvents } from '../audio/fromEvents';
 import { SettingsDialog } from './SettingsDialog';
+import { ManualDialog } from './ManualDialog';
 import { UnitList } from './UnitList';
 import { GroupDialog } from './GroupDialog';
 import { eligibleFor, GROUP_ORDERS, unitsInBox, type GroupBox, type GroupOrderId } from './group';
@@ -131,6 +132,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const [routesMap, setRoutesMap] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   // Fights playing out on the map, and the turn-start replay of what the other players did (null when none).
   const [fx, setFx] = useState<ActiveFx[]>([]);
   const [replay, setReplay] = useState<{ steps: Fight[]; more: number; index: number } | null>(null);
@@ -244,7 +246,7 @@ export function GameScreen({ session, onQuit }: Props) {
   const openCityObj = playing && cityOpen !== null ? view.myCities.find((c) => c.id === cityOpen) ?? null : null;
   const report = playing && !openCityObj ? reports[reportIdx] ?? null : null;
   const reportCity = report ? view.myCities.find((c) => c.id === report.cityId) ?? null : null;
-  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen || replay !== null;
+  const dialogOpen = openCityObj !== null || reportCity !== null || unitsOpen || reportTab !== null || soundOpen || manualOpen || replay !== null;
   // The next spy story shows once nothing else is open, with the newspaper sound.
   const newsShown = news.length > 0 && eliminated.length === 0 && !dialogOpen;
   const newsKey = newsShown ? `:` : '';
@@ -1202,6 +1204,7 @@ export function GameScreen({ session, onQuit }: Props) {
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
         <button onClick={(e) => { blur(e); downloadSave(session.toSave()); }}>Export</button>
+        <button onClick={(e) => { blur(e); setManualOpen(true); }}>Manual</button>
         <button onClick={(e) => { blur(e); setSoundOpen(true); }}>Settings</button>
         <button
           title="Give up this game: all your units are lost and your cities go neutral"
@@ -1366,6 +1369,7 @@ export function GameScreen({ session, onQuit }: Props) {
       )}
       {eliminated.length > 0 && <EliminationNotice view={view} colors={colors} ids={eliminated} onOk={() => setEliminated([])} />}
       {soundOpen && <SettingsDialog onClose={() => setSoundOpen(false)} />}
+      {manualOpen && <ManualDialog onClose={() => setManualOpen(false)} />}
       {unitsOpen && (
         <UnitList
           view={view}
