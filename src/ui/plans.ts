@@ -1,5 +1,5 @@
 import {
-  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, STRIKE_CHANCE, isStrikeTarget, fightRatings, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
+  CITY_COMBAT, CITY_STRENGTH_HITS, DIRS, attackRating, STRIKE_CHANCE, isStrikeTarget, fightRatings, garrisonBonus, hitsOf, UNIT_STATS, chebyshev, combatWinChance, findPath, normalize, pathMapFromView,
   type Dir, type MapLike, type PlayerId, type PlayerView, type Pos, type Relief, type Unit, type UnitType,
 } from '../engine';
 
@@ -79,7 +79,7 @@ export function cityAttackChance(view: PlayerView, u: Unit, cityOwner: PlayerId 
     + (view.rules.garrisonsDefend && cityOwner !== null ? garrisonBonus(garrison) : 0);
   const strength = view.rules.cityStrength && cityOwner !== null;
   return combatWinChance(
-    { attack: st.attack, shot: st.shot, hits: hitsOf(u), damage: u.damage },
+    { attack: attackRating(view.rules, u, st.attack), shot: st.shot, hits: hitsOf(u), damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: strength ? CITY_STRENGTH_HITS : CITY_COMBAT.hits, damage: strength ? cityDamage : 0 },
   );
 }
@@ -89,7 +89,7 @@ export function cityBombardChance(view: PlayerView, u: Unit, cityDamage = 0, gar
   const st = UNIT_STATS[u.type];
   const defense = (CITY_COMBAT.defense + (view.rules.garrisonsDefend ? garrisonBonus(garrison) : 0)) / 2;
   return combatWinChance(
-    { attack: st.attack, shot: st.shot, hits: hitsOf(u), damage: u.damage },
+    { attack: attackRating(view.rules, u, st.attack), shot: st.shot, hits: hitsOf(u), damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: CITY_STRENGTH_HITS - 1, damage: cityDamage },
   );
 }
@@ -106,7 +106,7 @@ export function unitAttackChance(
   const bombard = a.domain === 'sea' && d.domain === 'land';
   const rating = fightRatings(rules, u.type, type, ground);
   const fight = combatWinChance(
-    { attack: rating.attack, shot: a.shot, hits: hitsOf(u), damage: u.damage },
+    { attack: attackRating(rules, u, rating.attack), shot: a.shot, hits: hitsOf(u), damage: u.damage },
     { defense: bombard ? rating.defense / 2 : rating.defense, shot: d.shot, hits: d.hits + (foeRank === 3 ? 1 : 0), damage: 0 },
   );
   // Submarine strike: the salvo lands first, so the sub comes through (sinking or striking and slipping away) that often.
@@ -119,7 +119,7 @@ export function cityBombChance(view: PlayerView, u: Unit, garrison = 0): number 
   const st = UNIT_STATS[u.type];
   const defense = CITY_COMBAT.defense + (view.rules.garrisonsDefend ? garrisonBonus(garrison) : 0);
   return combatWinChance(
-    { attack: st.attack, shot: st.shot, hits: st.hits, damage: u.damage },
+    { attack: attackRating(view.rules, u, st.attack), shot: st.shot, hits: st.hits, damage: u.damage },
     { defense, shot: CITY_COMBAT.shot, hits: CITY_COMBAT.hits, damage: 0 },
   );
 }

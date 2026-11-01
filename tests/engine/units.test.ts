@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { UNIT_STATS, UNIT_TYPES, isCrippled, effectiveMove, cargoCapacity } from '../../src/engine/units';
+import { UNIT_STATS, UNIT_TYPES, isCrippled, attackRating, effectiveMove, cargoCapacity } from '../../src/engine/units';
 import type { Unit, UnitType } from '../../src/engine/types';
 
 function unit(type: UnitType, damage = 0): Unit {
@@ -24,6 +24,13 @@ describe('unit stats', () => {
     expect(isCrippled(unit('battleship', 5))).toBe(false);
     expect(isCrippled(unit('battleship', 6))).toBe(true);
     expect(isCrippled(unit('cruiser', 0))).toBe(false);
+  });
+
+  it('a crippled unit attacks at half strength, only with the Advanced units rule', () => {
+    const adv = { advancedUnits: true };
+    expect(attackRating(adv, unit('battleship', 6), 4)).toBe(2);
+    expect(attackRating(adv, unit('battleship', 5), 4)).toBe(4);
+    expect(attackRating({ advancedUnits: false }, unit('battleship', 6), 4)).toBe(4);
   });
 
   it('crippled units move 1', () => {

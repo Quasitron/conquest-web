@@ -68,6 +68,11 @@ export function isCrippled(u: Unit): boolean {
   return u.damage > 0 && u.damage * 2 >= UNIT_STATS[u.type].hits;
 }
 
+/** With the Advanced units rule a crippled unit attacks at half strength ("any unit that is crippled attacks poorly"). */
+export function attackRating(rules: { advancedUnits: boolean }, u: Unit, base: number): number {
+  return rules.advancedUnits && isCrippled(u) ? base / 2 : base;
+}
+
 export function effectiveMove(u: Unit): number {
   return isCrippled(u) ? 1 : UNIT_STATS[u.type].move;
 }
