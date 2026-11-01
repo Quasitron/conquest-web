@@ -106,7 +106,7 @@ export function moveUnit(s: GameState, rng: RandomSource, u: Unit, dir: Dir, eve
   }
 
   const host = occupants.find(
-    (o) => hasRoomFor(s, o, u.type),
+    (o) => o.owner === u.owner && hasRoomFor(s, o, u.type),
   );
   if (host) {
     spendMove(u);

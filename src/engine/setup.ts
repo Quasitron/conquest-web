@@ -7,10 +7,13 @@ import { advanceProduction } from './production';
 import { defaultCityName } from './names';
 import { emptyStats } from './stats';
 
+/** The most players a game takes. */
+export const MAX_PLAYERS = 8;
+
 export interface NewGameOptions {
   map: ParsedMap;
   wrap?: boolean;
-  players: { name: string; kind: 'human' | 'ai' }[];
+  players: { name: string; kind: 'human' | 'ai'; team?: number }[];
   /** For each player, the index into map.cities of their starting city. */
   startCityIndices: number[];
   seed: number;
@@ -21,7 +24,7 @@ export interface NewGameOptions {
 
 export function createGame(o: NewGameOptions): GameState {
   const n = o.players.length;
-  if (n < 2 || n > 6) throw new Error('a game needs 2 to 6 players');
+  if (n < 2 || n > MAX_PLAYERS) throw new Error(`a game needs 2 to ${MAX_PLAYERS} players`);
   if (o.startCityIndices.length !== n) throw new Error('each player needs exactly one start city');
   if (new Set(o.startCityIndices).size !== n) throw new Error('start cities must be distinct');
   for (const i of o.startCityIndices) {
@@ -41,7 +44,7 @@ export function createGame(o: NewGameOptions): GameState {
       id, name: o.cityNames?.[id] ?? defaultCityName(id), x: p.x, y: p.y, owner: null, production: null, progress: 0, lastBuilt: null,
     })),
     units: [],
-    players: o.players.map((p, id) => ({ id, name: p.name, kind: p.kind, eliminated: false })),
+    players: o.players.map((p, id) => ({ id, name: p.name, kind: p.kind, eliminated: false, ...(p.team !== undefined ? { team: p.team } : {}) })),
     fog: o.players.map(() => ({ explored: new Array(size).fill(0), lastSeen: {}, knownCityOwner: {} })),
     currentPlayer: 0,
     turn: 1,

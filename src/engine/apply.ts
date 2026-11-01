@@ -11,6 +11,7 @@ import { hurtGarrison, incitePeople, sabotageCity } from './spy';
 import { inOwnCity, loadUnits, unloadCargo } from './cargo';
 import { chooseHome, giveOrders, runEscorts } from './orders';
 import { cleanName } from './names';
+import { teammatesOf } from './relations';
 import { pickUpRoute, validateRoute } from './routes';
 
 function validDir(dir: unknown): boolean {
@@ -195,6 +196,9 @@ export function apply(state: GameState, cmd: Command): ApplyResult {
   catchSpies(s, events);
   s.rngState = rng.state;
   const fogCommands = ['buildAirbase', 'sabotage', 'hurtGarrison', 'incite', 'move', 'setProduction', 'disband', 'load', 'unload', 'setOrders', 'goHome'];
-  if (fogCommands.includes(cmd.type)) updateFog(s, actor);
+  if (fogCommands.includes(cmd.type)) {
+    updateFog(s, actor);
+    for (const mate of teammatesOf(s, actor)) updateFog(s, mate); // allies share what they see
+  }
   return { ok: true, state: s, events };
 }

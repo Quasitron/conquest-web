@@ -38,6 +38,7 @@ import { fightsFromEvents, placeNote, replayFights, stepDuration, FIGHT_MS, BURS
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
+import { Flag } from './Flag';
 import { StatusLine } from './StatusLine';
 import { dirTo, stepTargets } from './targets';
 import { UnitInfo } from './UnitInfo';
@@ -971,7 +972,7 @@ export function GameScreen({ session, onQuit }: Props) {
     if (city && !selectedUnit) return setSelection({ kind: 'city', id: city.id });
     if (city && selectedUnit) {
       // A city click with a unit selected is an order: go into an own city, or move up to a hostile one.
-      if (city.owner === view.me) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
+      if (city.owner === view.me || (city.owner !== null && view.allies.includes(city.owner))) return giveRoute(selectedUnit, { kind: 'goto', target: p }, p);
       if (dirTo(view, selectedUnit, p) !== null) {
         setMessage('That unit cannot attack this city now.');
         return;
@@ -1178,7 +1179,7 @@ export function GameScreen({ session, onQuit }: Props) {
     <div class={dialogOpen ? 'game modal' : 'game'}>
       <header class="topbar">
         <span title={view.wrap ? 'This map wraps east-west' : 'This map does not wrap'}>Turn {view.turn}</span>
-        <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
+        <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> <Flag name={current.name} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>
@@ -1374,21 +1375,26 @@ export function GameScreen({ session, onQuit }: Props) {
           </div>
         </div>
       )}
-      {session.phase === 'over' && !revealed && reportTab === null && view.winner !== null && (
-        // A human win shows the Victory card, a computer win the Defeated one.
+      {session.phase === 'over' && !revealed && reportTab === null && view.winner !== null && (() => {
+        // The winner is a player, or a whole team (those still alive on it). A human win shows the Victory card, a computer win the Defeated one.
+        const team = view.players[view.winner].team;
+        const winners = view.players.filter((p) => !p.eliminated && (p.id === view.winner || (team !== undefined && p.team === team)));
+        const human = winners.some((p) => session.seats[p.id].kind === 'human');
+        return (
         <div class="overlay victory">
           <img
-            src={session.seats[view.winner].kind === 'human' ? '/art/victory.webp' : '/art/defeat.webp'}
-            alt={session.seats[view.winner].kind === 'human' ? 'Victory' : 'Defeated'}
+            src={human ? '/art/victory.webp' : '/art/defeat.webp'}
+            alt={human ? 'Victory' : 'Defeated'}
           />
           <div class="victory-bar">
-            <h2>{names[view.winner]} wins!</h2>
+            <h2>{winners.map((p) => names[p.id]).join(' and ')} {winners.length === 1 ? 'wins' : 'win'}!</h2>
             <button class="primary" onClick={onQuit}>New game</button>
             <button onClick={() => setReportTab('status')}>Stats</button>
             <button onClick={() => setRevealed(true)}>View map</button>
           </div>
         </div>
-      )}
+        );
+      })()}
       {session.phase === 'over' && !revealed && reportTab === null && view.winner === null && (
         <div class="overlay">
           <div class="card">

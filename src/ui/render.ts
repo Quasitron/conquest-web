@@ -425,6 +425,13 @@ export function drawMap(ctx: CanvasRenderingContext2D, o: DrawOptions): void {
     });
   }
 
+  // Allies' units in the open, always known (allies share their sight).
+  for (const a of showUnits ? view.allyUnits : []) {
+    each((mx, my, sx, sy) => {
+      if (mx === a.x && my === a.y && !hidden(mx, my)) unitMark(sx, sy, colors[a.owner], a.type, 1, 1, 0.5, 0.5, false, a.rank ?? 0);
+    });
+  }
+
   // Own city stacks: the top unit at 60% in the top-left, a count badge when 2 or more (dot below 16px tiles).
   const inOwnCity = (x: number, y: number) => view.knownCities.some((c) => c.x === x && c.y === y && c.owner === view.me);
   for (const city of view.knownCities) {

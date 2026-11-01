@@ -10,6 +10,7 @@ import { HealthBar } from './UnitInfo';
 import { blur } from './blur';
 import { UNIT_ICONS } from './unitIcons';
 import { Chevrons } from './Chevrons';
+import { Flag } from './Flag';
 
 export type Selection = { kind: 'unit'; id: number } | { kind: 'city'; id: number } | { kind: 'enemy'; id: number } | null;
 
@@ -155,7 +156,7 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
       <aside class="panel">
         <Picture src={UNIT_ICONS[e.type]?.src} color={enemyColor} />
         <h3><span class="glyph owned" style={{ background: enemyColor }}>{UNIT_GLYPH[e.type]}</span> {UNIT_STATS[e.type].name}<Chevrons rank={e.rank ?? 0} /></h3>
-        <p>{view.players[e.owner].name}</p>
+        <p><Flag name={view.players[e.owner].name} /> {view.players[e.owner].name}</p>
         <p>{seen}</p>
         <NextBar readyCount={readyCount} onAction={onAction} />
       </aside>
@@ -184,9 +185,9 @@ function SidePanelView({ view, selection, onSelectUnit, onProduction, onAction, 
   return (
     <aside class="panel">
       <h3>{known?.name ?? `City #${selection.id}`}</h3>
-      <p>{owner === null || owner === undefined ? 'Neutral (last known)' : `${view.players[owner].name} (last known)`}</p>
+      <p>{owner === null || owner === undefined ? 'Neutral (last known)' : <><Flag name={view.players[owner].name} /> {view.players[owner].name}{view.allies.includes(owner) ? ' (ally)' : ' (last known)'}</>}</p>
       {view.rules.cityStrength && known && known.owner !== null && <p>Strength {CITY_STRENGTH_HITS - known.damage}/{CITY_STRENGTH_HITS}</p>}
-      {known?.intel && <p>Spy report on who is inside: {known.intel.garrison.length === 0 ? 'nobody' : known.intel.garrison.map((g) => ` `).join(', ')}.</p>}
+      {known?.intel && <p>Spy report on who is inside: {known.intel.garrison.length === 0 ? 'nobody' : known.intel.garrison.map((g) => `${g.count} ${UNIT_STATS[g.type].name}`).join(', ')}.</p>}
       {known?.intel && <p>Spy report: {known.intel.production === null ? 'building nothing' : `building ${UNIT_STATS[known.intel.production].name}, ${known.intel.turnsLeft} turn${known.intel.turnsLeft === 1 ? '' : 's'} to go`}</p>}
       <NextBar readyCount={readyCount} onAction={onAction} />
     </aside>

@@ -114,6 +114,6 @@ export function describeEvent(
     case 'playerEliminated':
       return e.player === me ? 'You have been eliminated.' : `${names[e.player]} has been eliminated.`;
     case 'gameOver':
-      return e.winner === null ? 'Game over: no survivors.' : `${names[e.winner]} wins!`;
+      return e.winner === null ? 'Game over: no survivors.' : `${names[e.winner]} wins!`; // a winning team is named by its lowest seat here; the Victory card names them all
   }
 }

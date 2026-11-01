@@ -109,6 +109,8 @@ export interface Player {
   name: string;
   kind: 'human' | 'ai';
   eliminated: boolean;
+  /** Players with the same team number are allies; absent means the player stands alone. */
+  team?: number;
 }
 
 export interface LastSeen {

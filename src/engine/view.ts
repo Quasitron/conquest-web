@@ -5,6 +5,8 @@ import { index } from './map';
 import { canPlayerSeeUnit, visibleSquares } from './fog';
 import { riverNetOf } from './rivers';
 import { cityIntel } from './spy';
+import { areFriendly, teammatesOf } from './relations';
+import { rankOf } from './units';
 
 export interface EnemyMarker {
   /** View-local id; not the engine's unit id. */
@@ -40,7 +42,11 @@ export interface PlayerView {
   riverNet?: { flow: (number | null)[]; down: (number | null)[]; up: (number | null)[] };
   /** Indices (y * width + x) of squares currently in sight, ascending. */
   visibleSquares: number[];
-  players: { id: PlayerId; name: string; eliminated: boolean }[];
+  players: { id: PlayerId; name: string; eliminated: boolean; team?: number }[];
+  /** The other players on my team. Their cities and units are shared with me, and never enemies. */
+  allies: PlayerId[];
+  /** Units of my allies out in the open (those inside a city show with the city). */
+  allyUnits: { id: number; type: UnitType; owner: PlayerId; x: number; y: number; rank?: number }[];
   myUnits: Unit[];
   myCities: City[];
   /** `damage` is the city's hits taken (city strength rule only; 0 otherwise). */
@@ -91,12 +97,16 @@ export function getPlayerView(s: GameState, me: PlayerId): PlayerView {
     ...(s.relief ? { relief: s.relief.map((r, i) => (fog.explored[i] ? r : null)) } : {}),
     ...riverNetView(s, fog.explored),
     visibleSquares: [...visibleSquares(s, me)].sort((a, b) => a - b),
-    players: s.players.map((p) => ({ id: p.id, name: p.name, eliminated: p.eliminated })),
+    players: s.players.map((p) => ({ id: p.id, name: p.name, eliminated: p.eliminated, ...(p.team !== undefined ? { team: p.team } : {}) })),
+    allies: teammatesOf(s, me),
+    allyUnits: s.units
+      .filter((u) => u.owner !== me && u.carriedBy === null && areFriendly(s, u.owner, me) && !s.cities.some((c) => c.x === u.x && c.y === u.y))
+      .map((u) => ({ id: u.id, type: u.type, owner: u.owner, x: u.x, y: u.y, ...(rankOf(u.wins) > 0 ? { rank: rankOf(u.wins) } : {}) })),
     myUnits: structuredClone(s.units.filter((u) => u.owner === me)),
     myCities: structuredClone(s.cities.filter((c) => c.owner === me)),
     knownCities: s.cities
       .filter((c) => fog.explored[index(s, c.x, c.y)])
-      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: c.owner === me ? me : (fog.knownCityOwner[c.id] ?? null), damage: c.damage ?? 0, ...spyReport(s, me, c) })),
+      .map((c) => ({ id: c.id, name: c.name, x: c.x, y: c.y, owner: areFriendly(s, c.owner, me) ? c.owner : (fog.knownCityOwner[c.id] ?? null), damage: c.damage ?? 0, ...spyReport(s, me, c) })),
     enemies: Object.values(fog.lastSeen)
       .sort((a, b) => a.y - b.y || a.x - b.x || a.turnSeen - b.turnSeen || a.type.localeCompare(b.type))
       .map((e, markerId) => {

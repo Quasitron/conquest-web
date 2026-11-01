@@ -43,8 +43,9 @@ export function checkElimination(s: GameState, pid: PlayerId, events: GameEvent[
 
 function checkWinner(s: GameState, events: GameEvent[]): boolean {
   const alive = s.players.filter((p) => !p.eliminated);
-  if (alive.length > 1) return false;
-  s.winner = alive.length === 1 ? alive[0].id : null;
+  // The game ends when one player, or one team, is left.
+  if (alive.length > 1 && !alive.every((p) => areFriendly(s, p.id, alive[0].id))) return false;
+  s.winner = alive.length >= 1 ? alive[0].id : null; // on a winning team, the lowest seat stands for it
   s.over = true;
   events.push({ type: 'gameOver', winner: s.winner });
   return true;

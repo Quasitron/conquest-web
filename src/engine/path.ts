@@ -2,6 +2,7 @@ import type { Dir, GameState, PlayerId, Pos, Relief, Terrain, Unit, UnitType } f
 import type { PlayerView } from './view';
 import type { MapLike } from './map';
 import { DIRS, chebyshev, index, normalize as normalizeSquare } from './map';
+import { areFriendly } from './relations';
 import { UNIT_STATS, armorBlockedBy, armorSlowedBy, cargoCapacity, effectiveMove } from './units';
 
 export interface PathMap {
@@ -57,10 +58,13 @@ export function pathMapFromState(s: GameState, pid: PlayerId, opts: { blockOwn?:
   for (const c of s.cities) {
     const i = index(s, c.x, c.y);
     if (!fog.explored[i]) continue;
-    cityOwner.set(i, c.owner === pid ? pid : (fog.knownCityOwner[c.id] ?? null));
+    // An ally's city counts as ours: units may enter, refuel and repair there.
+    cityOwner.set(i, areFriendly(s, c.owner, pid) ? pid : (fog.knownCityOwner[c.id] ?? null));
   }
   const enemy = new Set<number>();
   for (const e of Object.values(fog.lastSeen)) if (e.turnSeen === s.turn) enemy.add(index(s, e.x, e.y));
+  // Allied units standing in the open block the square as an enemy would (nothing may share it).
+  for (const u of s.units) if (u.owner !== pid && u.carriedBy === null && areFriendly(s, u.owner, pid)) enemy.add(index(s, u.x, u.y));
   const m = { width: s.width, terrain };
   return {
     width: s.width, height: s.height, wrap: s.wrap, me: pid, turn: s.turn,
@@ -72,9 +76,10 @@ export function pathMapFromState(s: GameState, pid: PlayerId, opts: { blockOwn?:
 
 export function pathMapFromView(v: PlayerView, opts: { blockOwn?: boolean } = {}): PathMap {
   const cityOwner = new Map<number, PlayerId | null>();
-  for (const c of v.knownCities) cityOwner.set(c.y * v.width + c.x, c.owner);
+  for (const c of v.knownCities) cityOwner.set(c.y * v.width + c.x, c.owner !== null && v.allies.includes(c.owner) ? v.me : c.owner);
   const enemy = new Set<number>();
   for (const e of v.enemies) if (e.turnSeen === v.turn) enemy.add(e.y * v.width + e.x);
+  for (const a of v.allyUnits) enemy.add(a.y * v.width + a.x);
   const m = { width: v.width, terrain: v.terrain };
   return {
     width: v.width, height: v.height, wrap: v.wrap, me: v.me, turn: v.turn,

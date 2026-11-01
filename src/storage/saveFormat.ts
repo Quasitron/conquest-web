@@ -9,6 +9,8 @@ export interface SeatConfig {
   color: string;
   /** How a computer seat plays; absent (older games) means Normal. */
   difficulty?: Difficulty;
+  /** The team this seat plays on (1 to 8); seats with the same team are allies. Absent = plays alone. */
+  team?: number;
 }
 
 export interface SaveFile {
@@ -34,7 +36,8 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 
 function isSeat(v: unknown): v is SeatConfig {
   return isObj(v) && typeof v.name === 'string' && (v.kind === 'human' || v.kind === 'idle' || v.kind === 'ai') && typeof v.color === 'string'
-    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty));
+    && (v.difficulty === undefined || DIFFICULTIES.includes(v.difficulty as Difficulty))
+    && (v.team === undefined || (typeof v.team === 'number' && Number.isInteger(v.team) && v.team >= 1 && v.team <= 8));
 }
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);

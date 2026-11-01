@@ -1,5 +1,6 @@
 import type { Relief, Terrain } from '../engine/types';
 import { Rng } from '../engine/rng';
+import { MAX_PLAYERS } from '../engine/setup';
 import type { GeneratedWorld } from '../mapgen';
 import index from '../data/theaters/index.json';
 
@@ -35,8 +36,8 @@ export const THEATERS: readonly TheaterSummary[] = index;
 
 export const theaterById = (id: string): TheaterSummary | undefined => THEATERS.find((t) => t.id === id);
 
-/** Most players a theater takes: one per nation, at most six. */
-export const maxTheaterPlayers = (t: TheaterSummary): number => Math.min(6, t.nations.length);
+/** Most players a theater takes: one per nation, at most eight. */
+export const maxTheaterPlayers = (t: TheaterSummary): number => Math.min(MAX_PLAYERS, t.nations.length);
 
 export async function loadTheater(id: string): Promise<TheaterData> {
   if (!theaterById(id)) throw new Error(`unknown theater "${id}"`);

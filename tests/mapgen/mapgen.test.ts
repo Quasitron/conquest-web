@@ -127,8 +127,8 @@ describe('generateWorld', () => {
     }
   });
 
-  it('produces valid, distinct starts that createGame accepts, for 2..6 players', () => {
-    for (let players = 2; players <= 6; players++) {
+  it('produces valid, distinct starts that createGame accepts, for 2..8 players', () => {
+    for (let players = 2; players <= 8; players++) {
       const w = generateWorld({ ...opts, players }, 100 + players);
       expect(new Set(w.startCityIndices).size).toBe(players);
       const s = createGame({
@@ -162,7 +162,7 @@ describe('generateWorld', () => {
 
   it('rejects invalid options', () => {
     expect(() => generateWorld({ ...opts, width: 10 }, 1)).toThrow(/at least/);
-    expect(() => generateWorld({ ...opts, players: 7 }, 1)).toThrow(/players/);
+    expect(() => generateWorld({ ...opts, players: 9 }, 1)).toThrow(/players/);
     expect(() => generateWorld({ ...opts, waterPercent: 95 }, 1)).toThrow(/water/);
   });
 

@@ -31,7 +31,8 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
       continue;
     }
     const city = v.knownCities.find((c) => c.x === p.x && c.y === p.y);
-    const ownCity = city !== undefined && city.owner === v.me;
+    // An ally's city is as good as our own to enter (units garrison, refuel and repair there).
+    const ownCity = city !== undefined && (city.owner === v.me || (city.owner !== null && v.allies.includes(city.owner)));
     // The first enemy seen on the square is the one that would defend; a pairing the rules forbid is no target.
     const foe = v.enemies.find((e) => e.visibleNow && e.x === p.x && e.y === p.y);
     const enemyHere = foe !== undefined;
@@ -62,7 +63,8 @@ export function stepTargets(v: PlayerView, u: Unit): StepTarget[] {
     }
     const blocked = u.type === 'armor' && v.rules.advancedUnits && armorBlockedBy(v.relief?.[p.y * v.width + p.x] ?? 'clear');
     const fits = domain === 'air' || (domain === 'land' ? terrain === 'land' && !blocked : terrain === 'water');
-    if (fits && (friends.length === 0 || domain === 'air')) out.push({ ...p, dir: d as Dir, attack: false });
+    const allyThere = v.allyUnits.some((a) => a.x === p.x && a.y === p.y);
+    if (fits && ((friends.length === 0 && !allyThere) || domain === 'air')) out.push({ ...p, dir: d as Dir, attack: false });
   }
   return out;
 }

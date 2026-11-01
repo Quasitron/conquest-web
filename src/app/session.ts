@@ -63,7 +63,7 @@ export class GameSession {
     const initial = createGame({
       map: world.map,
       wrap: o.world.wrap,
-      players: o.seats.map((s) => ({ name: s.name, kind: s.kind === 'human' ? 'human' : 'ai' })),
+      players: o.seats.map((s) => ({ name: s.name, kind: s.kind === 'human' ? 'human' : 'ai', ...(s.team !== undefined ? { team: s.team } : {}) })),
       startCityIndices: world.startCityIndices,
       seed: world.seedUsed,
       cityNames: world.cityNames,
