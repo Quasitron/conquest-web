@@ -28,11 +28,13 @@ export interface OpponentStatus {
   name: string;
   /** Still in the game (not eliminated). Nothing else about them is shown. */
   active: boolean;
+  /** On my team. */
+  ally: boolean;
 }
 
 /** Each other player, and whether they are still in the game. */
 export function opponentStatus(view: PlayerView): OpponentStatus[] {
-  return view.players.filter((p) => p.id !== view.me).map((p) => ({ id: p.id, name: p.name, active: !p.eliminated }));
+  return view.players.filter((p) => p.id !== view.me).map((p) => ({ id: p.id, name: p.name, active: !p.eliminated, ally: view.allies.includes(p.id) }));
 }
 
 /** The numbers on the status report, from the viewer's own information only. */

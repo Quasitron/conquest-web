@@ -12,7 +12,7 @@ North Africa, The North Atlantic, The Pacific (it crosses the date line), East A
 Southeast Asia, The Middle East & the Persian Gulf, Eastern North America (the players are the Union, the Confederate States
 and Canada, by state), The Caribbean & Central America, India & the Indian Ocean, Scandinavia & the Baltic, Africa, South
 America & the South Atlantic, The Balkans, Black Sea & Anatolia, and The World (150 × 56, wraps east to west). Each one
-carries its wars and notes, shown on the New Game screen. A game takes up to 6 players; the other countries' cities start neutral.
+carries its wars and notes, shown on the New Game screen. A game takes up to 8 players, who can be put on teams (allies); the other countries' cities start neutral.
 
 ## How they are made
 
@@ -24,6 +24,7 @@ carries its wars and notes, shown on the New Game screen. A game takes up to 6 p
 | Rivers | Natural Earth 1:10m river centrelines | public domain |
 | Cities, capitals, countries | Natural Earth 1:10m populated places | public domain |
 | Deserts | Natural Earth 1:10m geography regions (the "Desert" features: Sahara, Libyan, Arabian, Gobi and the rest) | public domain |
+| Flags (small pictures beside a country's name) | flag-icons 7.2.3, rendered to 64x48 by tools/make-flags.mjs; the Confederate States' First National flag is drawn there, and the Union uses the US flag | MIT |
 | Elevation (mountains, rough ground) | AWS Terrain Tiles, terrarium, zoom 5 (built from SRTM, GMTED2010, ETOPO1 and others) | open data; credit the sources |
 
 The downloaded data is kept outside the repository (`THEATER_DATA`, default `C:/Users/robta/theater-source-data`); what the

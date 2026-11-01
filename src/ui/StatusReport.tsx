@@ -1,5 +1,6 @@
 import { UNIT_STATS, type PlayerView } from '../engine';
 import { UNIT_GLYPH } from './colors';
+import { Flag } from './Flag';
 import { opponentStatus, statusSummary } from './statusNumbers';
 
 /** The status report: your cities, how much you have explored, and each unit type's production, strength and toll. */
@@ -17,7 +18,7 @@ export function StatusTab({ view, colors }: { view: PlayerView; colors: string[]
       <ul class="status-players" aria-label="Opponents">
         {opponents.map((p) => (
           <li key={p.id} class={p.active ? '' : 'out'}>
-            <span class="swatch" style={{ background: colors[p.id] }} /> {p.name}: {p.active ? 'in the game' : 'eliminated'}
+            <span class="swatch" style={{ background: colors[p.id] }} /> <Flag name={p.name} /> {p.name}{p.ally ? ' (ally)' : ''}: {p.active ? 'in the game' : 'eliminated'}
           </li>
         ))}
       </ul>

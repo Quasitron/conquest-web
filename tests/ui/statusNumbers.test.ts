@@ -38,13 +38,13 @@ describe('opponentStatus', () => {
   it('lists the other players and whether they are still in the game, and nothing else', () => {
     const s = makeGame(['*#*#*.'], { players: 3, starts: [0, 1, 2] });
     expect(opponentStatus(getPlayerView(s, 0))).toEqual([
-      { id: 1, name: 'P1', active: true },
-      { id: 2, name: 'P2', active: true },
+      { id: 1, name: 'P1', active: true, ally: false },
+      { id: 2, name: 'P2', active: true, ally: false },
     ]);
     s.players[1].eliminated = true;
     expect(opponentStatus(getPlayerView(s, 0))).toEqual([
-      { id: 1, name: 'P1', active: false },
-      { id: 2, name: 'P2', active: true },
+      { id: 1, name: 'P1', active: false, ally: false },
+      { id: 2, name: 'P2', active: true, ally: false },
     ]);
     // Each player sees the others, never themselves.
     expect(opponentStatus(getPlayerView(s, 2)).map((o) => o.id)).toEqual([0, 1]);

@@ -230,3 +230,7 @@ svg.leader circle { fill: #ffd24a; }
 }
 .dialog-paper { animation: paper-spin 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 @media (prefers-reduced-motion: reduce) { .dialog-paper { animation: none; } }
+
+/* A country's small flag beside its name. */
+.flag { width: 20px; height: 15px; vertical-align: -2px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
+

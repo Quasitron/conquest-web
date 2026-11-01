@@ -38,6 +38,7 @@ import { fightsFromEvents, placeNote, replayFights, stepDuration, FIGHT_MS, BURS
 import { OrdersMenu } from './OrdersMenu';
 import { drawMinimap } from './render';
 import { SidePanel, type Selection } from './SidePanel';
+import { Flag } from './Flag';
 import { StatusLine } from './StatusLine';
 import { dirTo, stepTargets } from './targets';
 import { UnitInfo } from './UnitInfo';
@@ -1178,7 +1179,7 @@ export function GameScreen({ session, onQuit }: Props) {
     <div class={dialogOpen ? 'game modal' : 'game'}>
       <header class="topbar">
         <span title={view.wrap ? 'This map wraps east-west' : 'This map does not wrap'}>Turn {view.turn}</span>
-        <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> {current.name}</span>
+        <span><span class="swatch" style={{ background: colors[view.currentPlayer] }} /> <Flag name={current.name} /> {current.name}</span>
         <OrdersMenu view={view} unit={playing ? selectedUnit : null} at={null} onAction={doAction} onClose={() => {}} />
         <button onClick={(e) => { blur(e); save(session.name !== 'autosave'); }}>Save</button>
         <button onClick={(e) => { blur(e); save(false); }}>Save As…</button>

@@ -316,34 +316,34 @@ export function TitleScreen({ store, onStart }: Props) {
                   <option value="idle">Idle</option>
                 </select>
               </td>
-              <td>
-                <select aria-label={`Team of ${s.name}`} title="Players on the same team are allies" value={s.team ?? ''}
-                  onChange={(e) => {
-                    const v = (e.target as HTMLSelectElement).value;
-                    setSeats(seats.map((x, j) => {
-                      if (j !== i) return x;
-                      const { team: _old, ...rest } = x;
-                      return v === '' ? rest : { ...rest, team: Number(v) };
-                    }));
-                  }}>
-                  <option value="">Alone</option>
-                  {TEAM_NUMBERS.map((n) => <option value={n}>Team {n}</option>)}
-                </select>
-              </td>
             </tr>
-            {s.kind === 'ai' && (
-              <tr>
-                <td />
-                <td colSpan={3}>
-                  <label>Difficulty{' '}
+            <tr>
+              <td />
+              <td colSpan={2}>
+                <label>Team{' '}
+                  <select aria-label={`Team of ${s.name}`} title="Players on the same team are allies" value={s.team ?? ''}
+                    onChange={(e) => {
+                      const v = (e.target as HTMLSelectElement).value;
+                      setSeats(seats.map((x, j) => {
+                        if (j !== i) return x;
+                        const { team: _old, ...rest } = x;
+                        return v === '' ? rest : { ...rest, team: Number(v) };
+                      }));
+                    }}>
+                    <option value="">Alone</option>
+                    {TEAM_NUMBERS.map((n) => <option value={n}>Team {n}</option>)}
+                  </select>
+                </label>
+                {s.kind === 'ai' && (
+                  <label>{' '}Difficulty{' '}
                     <select aria-label={`Difficulty of ${s.name}`} value={s.difficulty ?? DEFAULT_DIFFICULTY}
                       onChange={(e) => updateSeat(i, { difficulty: (e.target as HTMLSelectElement).value as Difficulty })}>
                       {DIFFICULTIES.map((d) => <option value={d}>{DIFFICULTY_LABELS[d]}</option>)}
                     </select>
                   </label>
-                </td>
-              </tr>
-            )}
+                )}
+              </td>
+            </tr>
             </Fragment>
           ))}
           </tbody>
